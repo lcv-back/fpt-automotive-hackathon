@@ -238,7 +238,11 @@ Album art: `LruCache` in-memory (32MB) + disk cache. Load **ngoài main thread**
 
 ---
 
-## 7. `DtcClient` — Vĩ hiện thực, Tùng dùng ⭐ tính năng chữ ký đề #4
+## 7. `DtcClient` — Tùng sở hữu trọn gói ⭐ tính năng chữ ký đề #4
+
+> **Sửa 28/07:** trước ghi "Vĩ hiện thực, Tùng dùng". Proposal slide 3 giao Tùng *"DTC/UDS simulator"*,
+> và cả Script Node `nydus.uds.server` lẫn client ISO-TP đều là việc embedded — một đầu người nhanh hơn
+> hai người ghép. Xem `06-PHAN-CONG-4-NGUOI.md` task **T10**.
 
 **API phía container `viva-svc`:**
 ```
