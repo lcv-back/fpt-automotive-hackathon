@@ -19,7 +19,7 @@
 
 | # | Câu hỏi | Chặn việc gì | Tự xoay được không |
 |---|---|---|---|
-| 1 | Chấm **1 sản phẩm tích hợp hay 4 barem riêng?** | Quyết định T3 (DTC) đáng làm không | ❌ phải hỏi |
+| 1 | ~~Chấm **1 sản phẩm tích hợp hay 4 barem riêng?**~~ | Quyết định T3 (DTC) đáng làm không | ✅ **29/07 đã rõ: MỘT barem 100đ duy nhất cho Vòng 2**, không chia theo đề. Thể lệ ghi thẳng *"không cộng điểm theo số lượng chức năng, màn hình, module"* → **T3 (DTC) không đáng làm**, xem `08` |
 | 2 | Đội có được cấp **GPU/LLM quota** không? (C0 có nhắc) | Chọn PhoWhisper-small hay whisper-tiny INT8 | ⚠️ thiết kế container cho swap được model → không chặn |
 | 3 | VM có outbound internet không? | Không còn ảnh hưởng gì (cloud LLM đã cắt) | ✅ non-blocking |
 | 4 | Tên node CCU + tên pin CAN trong blueprint đội | Đường `/run/nydus/uds-<pin>.sock` cho T3 | ✅ **tự tra được** — `GET /api/v1/deployments/:roomId/nodes` hoặc mở canvas |
@@ -102,19 +102,28 @@ end)
 
 **② Video 3' không cắt ghép là ràng buộc thiết kế demo, không phải việc quay phim.** Một lần chạy 3 phút không dừng nghĩa là: tối đa 5–6 lệnh thoại, không có thời gian phục hồi khi lỗi. → **Chốt kịch bản demo trước 02/08** để có 6 ngày tổng duyệt, không phải nghĩ kịch bản vào 08/08.
 
-**③ Đội cần HAI video khác nhau.** 3' uncut cho C3 (08/08) + 5–7' bản nộp chính thức (09/08). Bản uncut chính là bằng chứng mạnh nhất cho tiêu chí *"Chất lượng thực thi 20đ — demo trực tiếp mượt, không có lỗi chính"*.
+**③ Đội cần HAI video khác nhau.** 3' uncut cho C3 (08/08) + 5–7' bản nộp chính thức (09/08). Bản uncut chính là bằng chứng mạnh nhất cho tiêu chí ~~*"Chất lượng thực thi 20đ"*~~ → 🆕 *"**Demo live online và độ ổn định** — 6đ"* của barem mới, ô L3 đòi *"lần lặp hoặc bằng chứng repeatability"*.
+
+> 🆕 **Nhưng video không thay được demo trực tiếp.** Barem mới có mục "Demo và Q&A" riêng và ô L0 ghi
+> *"Không chạy trực tiếp do nguyên nhân thuộc phía đội"*. Đội phải tập **chạy live**, không chỉ tập quay —
+> xem task **N7** trong `06` PHẦN 4.
 
 ---
 
 ## PHẦN 4 — CẮT PHẠM VI THEO 3 TẦNG
 
-Barem Vòng 2 (100đ) **không có dòng nào cho "làm được mấy đề"**: ý tưởng 25 · kết dính 20 · chất lượng thực thi 20 · tận dụng nền tảng 15 · tài liệu 10 · hiểu khách hàng 10. Một sản phẩm chạy mượt xuyên tầng ăn điểm cao hơn bốn app rời rạc. Barem đứng về phía cắt — đúng như mentor khuyên.
+> ⚠️ **CẬP NHẬT 29/07 — barem trích dưới đây đã bị BTC thay.** Bảng mới:
+> *Demo 25 · Kỹ thuật 20 · **Team-owned 25** · Platform 15 · Khách hàng 10 · Trình bày 5.*
+> Xem `08-BAREM-VONG-2-CHINH-THUC.md`. **Kết luận "cắt phạm vi" dưới đây vẫn đúng — và mạnh hơn trước:**
+> barem mới ghi thẳng *"không cộng điểm theo số lượng chức năng, màn hình, module"*.
+
+Barem Vòng 2 (100đ) **không có dòng nào cho "làm được mấy đề"**: ~~ý tưởng 25 · kết dính 20 · chất lượng thực thi 20 · tận dụng nền tảng 15 · tài liệu 10 · hiểu khách hàng 10~~. Một sản phẩm chạy mượt xuyên tầng ăn điểm cao hơn bốn app rời rạc. Barem đứng về phía cắt — đúng như mentor khuyên.
 
 | Tầng | Nội dung | Xong trước | Chạm tiêu chí |
 |---|---|---|---|
 | **T1 — BẮT BUỘC 100%** | Voice push-to-talk → VAD → ASR → T0 grammar · **Climate đủ 6 chặng** · Safety Guard G1/G2 · HMI real-time | **02/08** | Kết dính 20 · Tận dụng nền tảng 15 · Đề #2 + #3 |
 | **T2 — sau khi T1 xanh** | Media: `MediaSourceProvider` + `UsbMediaProvider` + cache album art · Delivery flow in-app (3 intent) | 05/08 | Đề #1 *Extensibility* · Đề #3 *Coverage* |
-| **T3 — chỉ nếu còn thời gian** | DTC: Script Node `nydus.uds.server` + tester ISO-TP `19 02 FF` + phân nhóm P/C/B/U | 05/08 | Đề #4 *Simulation fidelity* |
+| ~~**T3**~~ 🚫 **ĐÃ BỎ 29/07** | ~~DTC: Script Node `nydus.uds.server` + tester ISO-TP `19 02 FF` + phân nhóm P/C/B/U~~ | — | ~~Đề #4 *Simulation fidelity*~~ → **Barem mới không chấm theo tiêu chí từng đề.** 9h chuyển sang N3b + N4b của Tùng, xem `08` |
 
 **Cắt dứt khoát — ghi ra để không ai bị cám dỗ:**
 
@@ -197,7 +206,7 @@ Nộp demo 10' end-to-end + số đo đầu tiên. Đây là lần cuối mentor
 | Người | Việc |
 |---|---|
 | Dương | Hoàn thiện Media (T2) |
-| Tùng + Vĩ | T3 (DTC) — **chỉ khi T1 và T2 đã xanh** |
+| ~~Tùng + Vĩ~~ | ~~T3 (DTC)~~ 🚫 **đã bỏ 29/07** → thay bằng **N3b + N4b** (Baseline Manifest phần VHAL + ablation A1), hạn 06/08 |
 | Vĩ | Harness v2: 20+ câu tự động, `send_signals` set trạng thái xe, `screenshot` làm bằng chứng |
 | Tùng | Safety scenario pack ≥6 kịch bản pass/fail |
 | Cả đội | **Office hours 04/08 (T3)** |

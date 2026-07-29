@@ -112,25 +112,31 @@ data class Intent(
 }
 ```
 
-**Danh mục intent v1 — khoá cứng, thêm mới phải báo nhóm:**
+**Danh mục intent v2 — 🆕 sửa 29/07: rút xuống 10 intent lõi + `unknown`.**
+
+Barem Vòng 2 mới ghi thẳng *"không cộng điểm theo số lượng chức năng"* → 15 intent không hơn 10 intent.
+Bộ 10 dưới đây được chọn để **giữ nguyên mọi cam kết đã nộp**: slide 11 hứa *"≥5 lệnh car control (cửa,
+âm lượng, media, điều hòa)"* ✔ và proposal slide 3 giao Vĩ *"delivery simulator"* ✔ (giữ đủ 3 intent).
 
 | `name` | Slots | Ví dụ câu | Skill xử lý |
 |---|---|---|---|
-| `hvac_set_temp` | `value: Float`, `zone: String?` | "hạ điều hòa xuống 22 độ" | Climate |
-| `hvac_set_fan` | `level: Int` (0–4) | "quạt mức 2" | Climate |
-| `hvac_power` | `on: Boolean` | "tắt điều hòa" | Climate |
-| `hvac_ac` | `on: Boolean` | "bật A/C" | Climate |
-| `volume_set` | `value: Int` (0–100) | "âm lượng 50" | System |
-| `volume_adjust` | `delta: Int` | "tăng âm lượng" | System |
+| `hvac_set_temp` | `value: Float`, `zone: String?` | "hạ điều hòa xuống 22 độ" | Climate ⭐ lệnh xương sống |
+| `hvac_set_fan` | `level: Int` (0–4) | "quạt mức 2" | Climate — chứng minh `areaId` thứ 2 |
+| `door_lock` | `lock: Boolean` | "khóa cửa", "mở cửa" | Body ⚠️ nhạy cảm — **cần cho ablation A1** |
+| `volume_adjust` | `delta: Int` | "tăng âm lượng" | System — kéo theo audio focus |
 | `media_play` | `query: String?` | "phát nhạc", "phát playlist đi làm" | Media |
 | `media_pause` | — | "dừng nhạc" | Media |
-| `media_next` / `media_prev` | — | "chuyển bài" | Media |
-| `door_lock` | `lock: Boolean` | "khóa cửa", "mở cửa" | Body ⚠️ nhạy cảm |
-| `dtc_query` | `filter: String?` | "xe có lỗi gì không" | DTC |
+| `media_next` | — | "chuyển bài" | Media |
 | `delivery_next_stop` | — | "chặng tiếp theo là gì" | Delivery |
 | `delivery_order_status` | `orderId: String?` | "đơn A12 thế nào" | Delivery |
 | `delivery_confirm` | `orderId: String?` | "xác nhận giao thành công" | Delivery ⚠️ nhạy cảm |
 | `unknown` | `rawText: String` | — | fallback: hỏi lại |
+
+**5 intent đã cắt 29/07** — ~~`hvac_power`~~ · ~~`hvac_ac`~~ · ~~`volume_set`~~ · ~~`media_prev`~~ ·
+~~`dtc_query`~~ *(theo T10 đã bỏ)*. Cả 5 đều là biến thể của intent còn lại, không mở thêm năng lực nào mới.
+
+> ⚠️ **Grammar vẫn phải nhận diện và từ chối lịch sự** 5 câu đã cắt, đừng để rơi vào `unknown` im lặng —
+> ô *"Xử lý lỗi và khả năng quan sát"* (4đ) chấm việc này.
 
 ---
 
@@ -238,11 +244,16 @@ Album art: `LruCache` in-memory (32MB) + disk cache. Load **ngoài main thread**
 
 ---
 
-## 7. `DtcClient` — Tùng sở hữu trọn gói ⭐ tính năng chữ ký đề #4
+## 7. ~~`DtcClient`~~ — 🚫 **KHÔNG TRIỂN KHAI Ở VÒNG 2** (quyết định 29/07)
 
-> **Sửa 28/07:** trước ghi "Vĩ hiện thực, Tùng dùng". Proposal slide 3 giao Tùng *"DTC/UDS simulator"*,
-> và cả Script Node `nydus.uds.server` lẫn client ISO-TP đều là việc embedded — một đầu người nhanh hơn
-> hai người ghép. Xem `06-PHAN-CONG-4-NGUOI.md` task **T10**.
+> **Bỏ 29/07:** barem Vòng 2 mới **không chấm theo tiêu chí từng đề** — chỉ có một bảng 100đ cho cả sản
+> phẩm, và dòng cộng điểm cross-vertical *"+05 kết hợp ≥2 domain"* thuộc **Vòng 3**, không phải Vòng 2.
+> Task **T10 đã bị bỏ**, 9h chuyển sang N3b + N4b. Xem `08-BAREM-VONG-2-CHINH-THUC.md`.
+>
+> **Contract dưới đây giữ lại nguyên vẹn làm tài sản cho Vòng 3** — nếu đội vào chung kết, đây là chỗ
+> cross-vertical thật sự có 5đ và `DtcClient` đáng làm. Đừng xoá, cũng đừng hiện thực ở Vòng 2.
+>
+> *(Lịch sử: bản 28/07 chuyển sở hữu từ "Vĩ hiện thực, Tùng dùng" sang Tùng trọn gói, theo proposal slide 3.)*
 
 **API phía container `viva-svc`:**
 ```

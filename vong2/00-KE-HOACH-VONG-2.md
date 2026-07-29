@@ -8,7 +8,14 @@ Vòng 2 chạy 21/07 → **23:59 ngày 10/08/2026**. Tính từ 26/07 còn **15 
 
 Vấn đề cần giải: proposal Vòng 1 được viết dựa trên mô tả starter pack ở webinar, nhưng tài liệu vận hành CarSky cho thấy nền tảng thật khác ở nhiều điểm cốt lõi (VHAL do Script Node Luau cấp, không có ASR sẵn, TTS không có tiếng Việt, USB phải tự đóng gói). Kế hoạch này ánh xạ lại toàn bộ sản phẩm lên **đúng nguyên liệu CarSky thật**, chia việc theo 4 thành viên, và đặt mốc để kịp deadline.
 
-Chiến lược đã chốt: **Voice làm xương sống + mỗi đề còn lại làm sâu đúng MỘT tiêu chí nặng nhất của nó** — bảo hiểm cho cả hai khả năng BGK chấm theo barem tích hợp hoặc theo 4 barem riêng.
+Chiến lược đã chốt: **Voice làm xương sống + mỗi đề còn lại làm sâu đúng MỘT tiêu chí nặng nhất của nó** — ~~bảo hiểm cho cả hai khả năng BGK chấm theo barem tích hợp hoặc theo 4 barem riêng~~.
+
+> ⚠️ **CẬP NHẬT 29/07 — BTC đã đăng barem Vòng 2 mới, xem `08-BAREM-VONG-2-CHINH-THUC.md`.**
+> Đã rõ: **một barem 100đ duy nhất**, không chia theo 4 đề. Chiến lược "voice làm xương sống" **vẫn đúng**,
+> nhưng phần "làm sâu mỗi đề một tiêu chí" thì **không còn ăn điểm** — barem mới ghi thẳng
+> *"không cộng điểm theo số lượng chức năng, màn hình, module"*. Giờ tiết kiệm được phải đổ vào
+> khối **"Giá trị tăng thêm và phần team-owned" (25đ)** và **"Hiểu người dùng, khách hàng" (10đ)** — hai khối
+> kế hoạch cũ bỏ trống hoàn toàn.
 
 ---
 
@@ -250,7 +257,7 @@ python tools/uds_probe.py --sock /run/nydus/uds-can_main.sock --req "19 02 FF"
 # PASS khi: nhận về PDU bắt đầu bằng 0x59, parse ra danh sách DTC
 ```
 
-**5. Kiểm chứng "code chạy lại được" (Chất lượng thực thi 20đ)**
+**5. Kiểm chứng "code chạy lại được"** *(29/07: giờ thuộc ô **"Test và phương pháp kiểm chứng" 4đ** + **"Demo live online và độ ổn định" 6đ** của barem mới)*
 - Người ngoài đội làm theo đúng README trên máy sạch: clone → build → `adb install` → chạy được kịch bản chính. Nhờ **chị Linh hoặc mentor thử** ngày 08/08.
 
 **6. Kiểm chứng regression tự động qua MCP (câu chuyện AI)**
