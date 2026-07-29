@@ -1,0 +1,97 @@
+name: backend-ci
+
+# Only runs when backend/ (or this workflow file) actually changes — the
+# rest of the repo is docs/planning markdown and doesn't need a Go
+# toolchain spun up on every commit.
+on:
+  push:
+    branches: [main, dev]
+    paths:
+      - "backend/**"
+      - ".github/workflows/backend-ci.yml"
+  pull_request:
+    paths:
+      - "backend/**"
+      - ".github/workflows/backend-ci.yml"
+
+jobs:
+  build-test:
+    name: build, vet, test
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          # Pinned to whatever backend/go.mod declares, so CI can never
+          # drift from what a local `go build` actually uses.
+          go-version-file: backend/go.mod
+
+      - name: gofmt check
+        run: |
+          fmt_out="$(gofmt -l .)"
+          if [ -n "$fmt_out" ]; then
+            echo "The following files are not gofmt'd:"
+            echo "$fmt_out"
+            exit 1
+          fi
+
+      - name: go vet
+        run: go vet ./...
+
+      - name: go build
+        run: go build ./...
+
+      - name: go test
+        run: go test ./... -v
+
+  # "CD" here means: on every push to main, produce ready-to-run binaries
+  # for the platforms the team actually uses (Windows dev machines, and
+  # Linux/macOS in case anyone runs it from WSL/a Mac) and attach them to
+  # the workflow run as downloadable artifacts. There is no server to
+  # deploy this CLI to and no container registry involved — this is a
+  # devops tool run locally/on a dev machine, not a hosted service.
+  build-binaries:
+    name: build release binaries
+    needs: build-test
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    strategy:
+      matrix:
+        include:
+          - goos: linux
+            goarch: amd64
+          - goos: windows
+            goarch: amd64
+          - goos: darwin
+            goarch: amd64
+          - goos: darwin
+            goarch: arm64
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: backend/go.mod
+
+      - name: build
+        env:
+          GOOS: ${{ matrix.goos }}
+          GOARCH: ${{ matrix.goarch }}
+          CGO_ENABLED: "0"
+        run: |
+          ext=""
+          if [ "${{ matrix.goos }}" = "windows" ]; then ext=".exe"; fi
+          go build -o "viva-tools-${{ matrix.goos }}-${{ matrix.goarch }}${ext}" ./cmd/viva-tools
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: viva-tools-${{ matrix.goos }}-${{ matrix.goarch }}
+          path: backend/viva-tools-${{ matrix.goos }}-${{ matrix.goarch }}*
+          retention-days: 14
