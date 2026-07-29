@@ -8,14 +8,14 @@ package domain
 // telling the team, since Long's Kotlin code emits these exact strings.
 const (
 	StageSpeechStart = "speech_start" // VadSegmenter: bắt đầu có tiếng nói
-	StageSpeechEnd    = "speech_end"   // VadSegmenter: endpoint (nói xong)
-	StageAsrSent      = "asr_sent"     // AsrClient: đã gửi audio đi
-	StageAsrDone      = "asr_done"     // AsrClient: đã nhận text về
-	StageNluDone      = "nlu_done"     // IntentRouter: đã ra intent
-	StageGuardDone    = "guard_done"   // SafetyGuard: đã có phán quyết
-	StageExecDone     = "exec_done"    // Skill: hành động đã thực thi xong
-	StageRenderDone   = "render_done"  // HMI: frame đầu tiên phản ánh trạng thái mới
-	StageTtsStart     = "tts_start"    // TtsSpeaker: bắt đầu phát tiếng
+	StageSpeechEnd   = "speech_end"   // VadSegmenter: endpoint (nói xong)
+	StageAsrSent     = "asr_sent"     // AsrClient: đã gửi audio đi
+	StageAsrDone     = "asr_done"     // AsrClient: đã nhận text về
+	StageNluDone     = "nlu_done"     // IntentRouter: đã ra intent
+	StageGuardDone   = "guard_done"   // SafetyGuard: đã có phán quyết
+	StageExecDone    = "exec_done"    // Skill: hành động đã thực thi xong
+	StageRenderDone  = "render_done"  // HMI: frame đầu tiên phản ánh trạng thái mới
+	StageTtsStart    = "tts_start"    // TtsSpeaker: bắt đầu phát tiếng
 )
 
 // CanonicalStageOrder is the sequence stages occur in during one turn, per
@@ -35,9 +35,9 @@ var CanonicalStageOrder = []string{
 
 // TraceEvent is one parsed "VIVA_TRACE|<traceId>|<stage>|<elapsedRealtimeNanos>" line.
 type TraceEvent struct {
-	TraceID               string
-	Stage                 string
-	ElapsedRealtimeNanos  int64
+	TraceID              string
+	Stage                string
+	ElapsedRealtimeNanos int64
 }
 
 // TraceSummary is one parsed
