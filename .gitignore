@@ -1,1 +1,19 @@
 /backend/.env
+
+# Android / Gradle
+# local.properties holds the absolute SDK path of whoever generated it, and on
+# some setups an sdk.dir with a signing keystore next to it. Never commit it.
+local.properties
+.gradle/
+build/
+captures/
+*.apk
+*.aab
+*.keystore
+*.jks
+
+# Keys / secrets — the 10/08 submission checklist checks for these by hand,
+# this is the belt to that braces.
+.env
+.env.*
+!.env.example

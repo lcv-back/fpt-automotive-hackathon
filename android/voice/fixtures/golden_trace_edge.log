@@ -1,0 +1,32 @@
+07-29 21:31:02.000  4821  4821 I VIVA_TRACE: VIVA_TRACE|edge-pipe-in-utterance|speech_start|2000000000
+07-29 21:31:02.211  4821  4821 I VIVA_TRACE: VIVA_TRACE|edge-pipe-in-utterance|speech_end|2500000000
+07-29 21:31:02.422  4821  4821 I VIVA_TRACE: VIVA_TRACE|edge-pipe-in-utterance|asr_done|2800000000
+07-29 21:31:02.633  4821  4821 I VIVA_TRACE: VIVA_TRACE|edge-pipe-in-utterance|tts_start|3000000000
+07-29 21:31:02.844  4821  4821 I VIVA_TRACE: VIVA_TRACE_SUMMARY|edge-pipe-in-utterance|mở cửa / khóa cửa|door_lock|Deny:G1_GEAR_LOCK|e2e_ms=500
+07-29 21:31:03.055  4821  4821 I VIVA_TRACE: VIVA_TRACE|edge-empty-utterance|speech_start|5000000000
+07-29 21:31:03.266  4821  4821 I VIVA_TRACE: VIVA_TRACE|edge-empty-utterance|speech_end|5400000000
+07-29 21:31:03.477  4821  4821 I VIVA_TRACE: VIVA_TRACE|edge-empty-utterance|tts_start|6300000000
+07-29 21:31:03.688  4821  4821 I VIVA_TRACE: VIVA_TRACE_SUMMARY|edge-empty-utterance|-|unknown|Allow|e2e_ms=900
+07-29 21:31:03.899  4821  4821 I VIVA_TRACE: VIVA_TRACE|edge-overlong-utterance|speech_start|8000000000
+07-29 21:31:04.110  4821  4821 I VIVA_TRACE: VIVA_TRACE|edge-overlong-utterance|speech_end|8450000000
+07-29 21:31:04.321  4821  4821 I VIVA_TRACE: VIVA_TRACE|edge-overlong-utterance|tts_start|9250000000
+07-29 21:31:04.532  4821  4821 I VIVA_TRACE: VIVA_TRACE_SUMMARY|edge-overlong-utterance|bật điều hòa bật điều hòa bật điều hòa bật điều hòa bật điều hòa bật điều hòa bật điều hòa bật điều hòa bật điều hòa bật điều hòa bật điều hòa bật điều hòa bật điều hòa bật điều hòa bật điều hòa bật đ|unknown|Allow|e2e_ms=800
+07-29 21:31:04.743  4821  4821 I VIVA_TRACE: VIVA_TRACE|edge-newline-in-utterance|speech_start|11000000000
+07-29 21:31:04.954  4821  4821 I VIVA_TRACE: VIVA_TRACE|edge-newline-in-utterance|speech_end|11430000000
+07-29 21:31:05.165  4821  4821 I VIVA_TRACE: VIVA_TRACE|edge-newline-in-utterance|tts_start|12190000000
+07-29 21:31:05.376  4821  4821 I VIVA_TRACE: VIVA_TRACE_SUMMARY|edge-newline-in-utterance|phát nhạc chuyển bài|media_play|Allow|e2e_ms=760
+07-29 21:31:05.587  4821  4821 I VIVA_TRACE: VIVA_TRACE|edge-abandoned-no-summary|speech_start|14000000000
+07-29 21:31:05.798  4821  4821 I VIVA_TRACE: VIVA_TRACE|edge-abandoned-no-summary|speech_end|14500000000
+07-29 21:31:05.009  4821  4821 I VIVA_TRACE: VIVA_TRACE|edge-abandoned-no-summary|asr_sent|14510000000
+07-29 21:31:06.220  4821  4821 I VIVA_TRACE: VIVA_TRACE|edge-low-confidence|speech_start|17000000000
+07-29 21:31:06.431  4821  4821 I VIVA_TRACE: VIVA_TRACE|edge-low-confidence|speech_end|17610000000
+07-29 21:31:06.642  4821  4821 I VIVA_TRACE: VIVA_TRACE|edge-low-confidence|asr_done|17950000000
+07-29 21:31:06.853  4821  4821 I VIVA_TRACE: VIVA_TRACE|edge-low-confidence|guard_done|17970000000
+07-29 21:31:06.064  4821  4821 I VIVA_TRACE: VIVA_TRACE|edge-low-confidence|tts_start|18000000000
+07-29 21:31:07.275  4821  4821 I VIVA_TRACE: VIVA_TRACE_SUMMARY|edge-low-confidence|khoá cửa|door_lock|Confirm:G3_LOW_CONFIDENCE|e2e_ms=390
+07-29 21:31:07.486  4821  4821 I VIVA_TRACE: VIVA_TRACE|edge-malformed|asr_done|not-a-number
+07-29 21:31:07.697  4821  4821 I VIVA_TRACE: VIVA_TRACE|edge-malformed|asr_done
+07-29 21:31:07.908  4821  4821 I VIVA_TRACE: VIVA_TRACE|edge-malformed|nlu_done|17999000000
+07-29 21:31:07.119  4821  4821 I VIVA_TRACE: VIVA_TRACE_SUMMARY|edge-malformed|khoa cua|door_lock|Allow
+07-29 21:31:08.330  4821  4821 I VIVA_TRACE: VIVA_TRACE_SUMMARY|edge-malformed|khoa cua|door_lock|Allow|690
+07-29 21:32:11.004  4821  4821 D SomeOtherTag: unrelated, must be ignored

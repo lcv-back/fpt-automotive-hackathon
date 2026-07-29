@@ -23,15 +23,32 @@ Mỗi mũi tên là một interface dưới đây. **Mọi bước đều ghi m�
 
 Bắt buộc mọi module phải gọi. Đây là nguồn dữ liệu duy nhất cho benchmark report của đề #3.
 
+> ✅ **ĐÃ HIỆN THỰC 29/07 (L2).** Code thật ở `android/voice/src/main/kotlin/com/viva/voice/trace/`,
+> test ở `src/test/`, log mẫu ở `android/voice/fixtures/`. Chữ ký dưới đây là bản **đã chốt**, khác
+> bản phác 28/07 ở 3 chỗ — đọc mục 1.3 trước khi code theo.
+
 ```kotlin
-data class LatencyTrace(
-    val traceId: String,                        // UUID, sinh khi VAD phát hiện bắt đầu nói
-    val marks: MutableMap<String, Long> = mutableMapOf()   // tên chặng -> elapsedRealtimeNanos
+enum class Stage(val id: String) { SPEECH_START("speech_start"), /* … 9 mốc, xem bảng dưới */ }
+
+class LatencyTrace(
+    val traceId: String,            // UUID, sinh khi VAD phát hiện bắt đầu nói
+    clock: NanoClock,               // elapsedRealtimeNanos — bơm vào để test không cần máy
+    sink: TraceSink,                // nơi ghi ra 1 dòng đã format sẵn
+    diagnostics: TraceDiagnostics = TraceDiagnostics.NONE,
 ) {
-    fun mark(stage: String) { marks[stage] = android.os.SystemClock.elapsedRealtimeNanos() }
-    fun ms(from: String, to: String): Double =
-        (marks[to]!! - marks[from]!!) / 1_000_000.0
+    fun mark(stage: Stage): Long                    // ghi mốc + in ra 1 dòng VIVA_TRACE
+    fun markAt(stage: Stage, nanos: Long): Long     // lùi ngày mốc đã xảy ra (VAD)
+    fun ms(from: Stage, to: Stage): Double?         // null nếu thiếu mốc
+    fun e2eMs(): Double?
+    fun summary(utterance: String, intent: String, verdict: TraceVerdict)
 }
+```
+
+**Cách dùng cho 3 người còn lại — 2 dòng:**
+
+```kotlin
+trace.mark(Stage.GUARD_DONE)                        // Tùng, trong SafetyGuard
+trace.mark(Stage.EXEC_DONE)                         // bất kỳ Skill nào, sau khi VHAL/Media trả về
 ```
 
 **Tên chặng chuẩn — không đặt tên khác:**
@@ -48,15 +65,77 @@ data class LatencyTrace(
 | `render_done` | HMI | Frame đầu tiên phản ánh trạng thái mới |
 | `tts_start` | TtsSpeaker | Bắt đầu phát tiếng |
 
-**Log format bắt buộc** (harness của Vĩ parse dòng này):
-```
-adb logcat tag = VIVA_TRACE
+### 1.1 Log format bắt buộc
+
+Harness của Vĩ parse đúng hai dòng này (`backend/internal/domain/parse.go`):
+
+```text
+adb logcat -s VIVA_TRACE
 VIVA_TRACE|<traceId>|<stage>|<elapsedRealtimeNanos>
 ```
-Kết thúc mỗi lượt in thêm 1 dòng tổng kết:
+
+Kết thúc mỗi lượt in thêm **đúng 1** dòng tổng kết:
+
+```text
+VIVA_TRACE_SUMMARY|<traceId>|<utterance>|<intent>|<verdict>|e2e_ms=<số nguyên>
 ```
-VIVA_TRACE_SUMMARY|<traceId>|<utterance>|<intent>|<verdict>|e2e_ms=<số>
+
+Luật giữ cho dòng không vỡ — `LatencyTrace` tự làm, **không ai phải tự escape**:
+
+| Luật | Vì sao |
+|---|---|
+| `\|` trong text → `/` | Parser tách theo **số field cố định**. Một dấu `\|` lọt vào `utterance` là đẩy `intent` sang ô `verdict` → cả dòng bị loại. Text từ ASR không được tin là sạch |
+| xuống dòng / tab → dấu cách | Newline cắt 1 dòng summary thành 2, không nửa nào parse được |
+| field rỗng → `-` | Giữ đủ số field |
+| `utterance` cắt ở 200 ký tự | logcat cắt message ở ~4000 byte; summary bị cắt = summary không parse được |
+| `e2e_ms` là **số nguyên**, không thập phân | ⚠️ Máy chạy locale `vi-VN` thì `String.format("%.1f")` ra `690,0`, `ParseFloat` phía Go **từ chối** → mọi dòng summary hỏng, chỉ hỏng trên máy thật, ngay lúc demo |
+| Mỗi `stage` in **1 lần** (ghi đè = bỏ qua) | Mốc đánh 2 lần là bug của caller; ghi đè sẽ **rút ngắn** đoạn đo và làm p95 đẹp giả |
+
+> ⚠️ **Ngoại lệ có chủ đích của §9** (*"không dấu tiếng Việt trong `Log.i`"*): riêng ô `utterance`
+> **giữ nguyên dấu**. §9 sinh ra để chống vỡ encoding ở log văn xuôi, nhưng `utterance` là **bằng chứng** —
+> mất dấu thì không đối chiếu được với ground truth, mà đó chính là ô *"Tính đúng của kết quả"* **5đ**.
+> Khi đọc log trên Windows: `chcp 65001` trước khi `adb logcat`.
+
+### 1.2 `<verdict>` — 🆕 chốt 29/07, trả lời câu hỏi treo của Vĩ
+
+`backend/CLAUDE.md` mục *"Câu hỏi còn treo"* hỏi ô này serialize thành gì. Câu trả lời:
+
+```text
+verdict := "Allow" | "Deny:"<RULE_ID> | "Confirm:"<RULE_ID> | "Error:"<STAGE_ID>
 ```
+
+Tách bằng dấu `:` **đầu tiên** → trái là loại, phải là chi tiết. `RULE_ID` là mã luật ở §4
+(`G1_SPEED_LOCK`…), `STAGE_ID` là tên chặng ở bảng trên.
+
+| Quyết định | Lý do |
+|---|---|
+| Mã luật đi kèm, không phải `Deny` trơn | **N4b** (ablation A1, Tùng) phải ra bảng before/after "tắt SafetyGuard thì mở cửa lúc 60km/h vẫn chạy". Có mã luật trong log thì bảng đó là một câu group-by trên CSV Vĩ đã có; không có thì phải chạy tay lại demo rồi đọc logcat. Cùng chi phí in ra, đổi lấy **6đ + 7đ** khối ③ |
+| 🆕 Thêm `Error:<stage>` — không có trong sealed class §4 | Lượt chết giữa chừng **không bao giờ tới SafetyGuard**, nên trước đây nó không có dòng summary và **biến mất khỏi benchmark**. Giờ nó khai luôn chết ở chặng nào → đúng ô *"Xử lý lỗi và khả năng quan sát"* **4đ** mà `08` đang đánh giá 🟡 yếu. Vẫn nằm trong grammar cũ nên **Vĩ không phải sửa parser** |
+| `reasonVi` / `questionVi` / `suggestion` **không** vào log | Là câu tiếng Việt đọc cho tài xế, cần escape, không máy đọc được. Mã luật là khoá join |
+
+### 1.3 Ba chỗ khác bản phác 28/07 — đọc trước khi code theo
+
+| # | Bản 28/07 | Bản chốt 29/07 | Vì sao |
+|---|---|---|---|
+| 1 | `mark(stage: String)` | `mark(stage: Stage)` — enum | Gõ sai tên chặng **không làm fail build**, chỉ làm thủng CSV, và tới 02/08 mới lộ. Enum để compiler bắt |
+| 2 | `ms()` trả `Double`, dùng `!!` | trả `Double?` | Lượt chết giữa chừng là kết quả **cần đo**, không phải exception làm crash app trước mặt BGK |
+| 3 | *(không định nghĩa)* | **`e2e_ms` = `speech_end` → `tts_start`** | Chưa ai định nghĩa "end-to-end" mà cam kết p95 < 1500ms lại nằm trên nó. Tính từ `speech_start` là cộng cả thời gian tài xế **nói** → câu dài thành "hệ thống chậm". `tts_start` là lúc tài xế **nghe thấy** trả lời.<br>Muốn đo màn hình thì harness tự tính `speech_end → render_done` từ mốc thô |
+
+> **Lượt không có `tts_start`** (chết giữa chừng) tính tới **lúc khai lỗi**, không phải tới mốc
+> cuối cùng ghi được. Lý do: lượt kẹt 3s ở ASR timeout mà tính tới mốc cuối sẽ báo ~10ms — nhanh
+> nhất cả bộ đo — và **lượt fail sẽ kéo p95 xuống**. Càng hỏng càng đẹp số là hỏng cách đo.
+
+### 1.4 Log mẫu bàn giao cho Vĩ
+
+`android/voice/fixtures/` — 2 file, đã kiểm bằng đúng semantics `parse.go` + `aggregate.go`:
+
+| File | Dùng để |
+|---|---|
+| `golden_trace.log` | 4 lượt đủ dạng: `Allow` · `Deny:G1_SPEED_LOCK` · `Confirm:G2_CONFIRM_DELIVERY` · `Error:asr_done`, có prefix logcat thật và dòng log lạ xen giữa |
+| `golden_trace_edge.log` | Ca biên: dấu `\|` trong câu · câu rỗng · câu quá dài · newline · lượt bỏ dở không có summary · **4 dòng cố tình hỏng** |
+
+`golden_trace_edge.log` là bài kiểm cho harness: 4 dòng hỏng phải ra **4 warning**, không crash, và
+**không được vứt các mốc hợp lệ cùng `traceId`**.
 
 ---
 

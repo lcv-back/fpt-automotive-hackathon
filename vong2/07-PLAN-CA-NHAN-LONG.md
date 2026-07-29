@@ -65,11 +65,16 @@ thiếu 10h — hai người đó cần chẻ task của mình y hệt cách b�
 
 ### 🔴 T4 29/07 — 4h · *giao LatencyTrace cho Vĩ*
 
-| Việc | Giờ | Xong khi |
-|---|---|---|
-| **L2b** Log format `VIVA_TRACE\|<traceId>\|<stage>\|<nanos>` + dòng `_SUMMARY` | 1.5h | **Vĩ parse được 1 dòng mẫu** ← có người chờ |
-| **L3a** `AudioRecord` + push-to-talk (nút giữ để nói) | 2.25h | Giữ nút → ra file wav nghe rõ |
-| Standup | 0.25h | |
+| Việc | Giờ | Xong khi | |
+|---|---|---|---|
+| **L2b** Log format `VIVA_TRACE\|<traceId>\|<stage>\|<nanos>` + dòng `_SUMMARY` | 1.5h | **Vĩ parse được 1 dòng mẫu** ← có người chờ | ✅ code + log mẫu `android/voice/fixtures/`, contract §1 viết lại |
+| **L3a** `AudioRecord` + push-to-talk (nút giữ để nói) | 2.25h | Giữ nút → ra file wav nghe rõ | ✅ code + test · ⚠️ chưa nghe được, cần Device |
+| Standup | 0.25h | | script sẵn ở `10-BAN-GIAO-L2-29-07.md` PHẦN 5 |
+
+> ⚠️ **Chưa tick được ô "biên dịch được" của L2.** Repo chưa có project Gradle nào
+> (`settings.gradle.kts` + wrapper thuộc D1), nên L2 và L3a **chưa từng compile**.
+> `06` PHẦN 5 dự phòng D1 trễ bằng *"chạy module bằng unit test"* — nhưng unit test cũng cần
+> project Gradle. Đây là việc số 1 tối nay, xem `10-BAN-GIAO-L2-29-07.md` PHẦN 4.
 
 ### 🔴 T5 30/07 — 4h · *VAD + kick-off mentor 19:00*
 

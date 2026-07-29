@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <!--
+      Declared by the library so the app shell cannot forget it: without
+      RECORD_AUDIO, AndroidPcmSource.start() throws and the whole voice
+      pipeline is dead. The app is still responsible for the permission being
+      granted before the first press.
+    -->
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
+
+    <!--
+      Not required, but the cabin build targets a head unit that has one.
+      Marked not-required so the module still installs on an emulator without
+      a microphone, where the trace and WAV tests are the point.
+    -->
+    <uses-feature
+        android:name="android.hardware.microphone"
+        android:required="false" />
+
+</manifest>
