@@ -4,13 +4,13 @@ import "testing"
 
 func TestParseEventLine(t *testing.T) {
 	cases := []struct {
-		name       string
-		line       string
-		wantFound  bool
-		wantErr    bool
-		wantTrace  string
-		wantStage  string
-		wantNanos  int64
+		name      string
+		line      string
+		wantFound bool
+		wantErr   bool
+		wantTrace string
+		wantStage string
+		wantNanos int64
 	}{
 		{
 			name:      "bare line",
