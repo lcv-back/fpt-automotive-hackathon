@@ -29,6 +29,10 @@ jobs:
           # Pinned to whatever backend/go.mod declares, so CI can never
           # drift from what a local `go build` actually uses.
           go-version-file: backend/go.mod
+          # No go.sum to key a cache on — this project deliberately has
+          # zero external dependencies (see README). Caching would just
+          # print a "file not found" warning on every run for no benefit.
+          cache: false
 
       - name: gofmt check
         run: |
@@ -79,6 +83,7 @@ jobs:
       - uses: actions/setup-go@v5
         with:
           go-version-file: backend/go.mod
+          cache: false
 
       - name: build
         env:
