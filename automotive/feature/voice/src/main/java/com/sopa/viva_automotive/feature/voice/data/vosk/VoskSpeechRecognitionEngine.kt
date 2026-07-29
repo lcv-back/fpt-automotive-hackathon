@@ -1,0 +1,202 @@
+package com.sopa.viva_automotive.feature.voice.data.vosk
+
+import android.annotation.SuppressLint
+import android.content.Context
+import android.media.AudioFormat
+import android.media.AudioRecord
+import android.media.MediaRecorder
+import android.util.Log
+import com.sopa.viva_automotive.core.common.coroutines.IoDispatcher
+import com.sopa.viva_automotive.core.database.settings.SettingsDataStore
+import com.sopa.viva_automotive.core.ui.locale.VoiceLanguage
+import com.sopa.viva_automotive.feature.voice.data.SpeechRecognitionEngine
+import com.sopa.viva_automotive.feature.voice.data.TranscriptionEvent
+import dagger.hilt.android.qualifiers.ApplicationContext
+import java.io.File
+import javax.inject.Inject
+import javax.inject.Singleton
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.channels.awaitClose
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.callbackFlow
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.flowOn
+import kotlinx.coroutines.isActive
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.withContext
+import org.json.JSONObject
+import org.vosk.Model
+import org.vosk.Recognizer
+
+@Singleton
+class VoskSpeechRecognitionEngine @Inject constructor(
+    @ApplicationContext private val context: Context,
+    @IoDispatcher private val ioDispatcher: CoroutineDispatcher,
+    private val settingsDataStore: SettingsDataStore,
+) : SpeechRecognitionEngine {
+
+    private val initMutex = Mutex()
+
+    @Volatile
+    private var model: Model? = null
+
+    @Volatile
+    private var loadedLanguage: VoiceLanguage? = null
+
+    @Volatile
+    private var endOfUtteranceRequested: Boolean = false
+
+    override fun requestEndOfUtterance() {
+        endOfUtteranceRequested = true
+    }
+
+    override suspend fun initialize(): Result<Unit> = initMutex.withLock {
+        val language = VoiceLanguage.fromStorageKey(
+            settingsDataStore.settings.first().voiceLanguage,
+        )
+        if (model != null && loadedLanguage == language) {
+            return Result.success(Unit)
+        }
+        withContext(ioDispatcher) {
+            runCatching {
+                releaseModelLocked()
+                val assetDir = language.voskAssetDir
+                val modelDir = File(context.filesDir, assetDir)
+                if (!modelDir.resolve(MODEL_READY_MARKER).exists()) {
+                    copyAssetDir(assetDir, modelDir)
+                    modelDir.resolve(MODEL_READY_MARKER).createNewFile()
+                }
+                require(modelDir.resolve("conf/model.conf").exists()) {
+                    "Vosk model missing conf/model.conf under assets/$assetDir"
+                }
+                model = Model(modelDir.absolutePath)
+                loadedLanguage = language
+                Log.i(TAG, "Loaded Vosk model for ${language.storageKey} ($assetDir)")
+            }.onFailure {
+                Log.e(TAG, "Voice model initialization failed for $language", it)
+                releaseModelLocked()
+            }.map { }
+        }
+    }
+
+    @SuppressLint("MissingPermission") // RECORD_AUDIO is checked by the caller (service/UI).
+    override fun transcribe(): Flow<TranscriptionEvent> = callbackFlow {
+        val loadedModel = model
+        val language = loadedLanguage
+        if (loadedModel == null || language == null) {
+            trySend(
+                TranscriptionEvent.Error(
+                    "Voice model is not available. Check offline STT assets for the selected language.",
+                ),
+            )
+            close()
+            return@callbackFlow
+        }
+
+        endOfUtteranceRequested = false
+        val recognizer = Recognizer(loadedModel, SAMPLE_RATE.toFloat())
+        val minBuffer = AudioRecord.getMinBufferSize(
+            SAMPLE_RATE,
+            AudioFormat.CHANNEL_IN_MONO,
+            AudioFormat.ENCODING_PCM_16BIT,
+        )
+        val audioRecord = AudioRecord(
+            MediaRecorder.AudioSource.VOICE_RECOGNITION,
+            SAMPLE_RATE,
+            AudioFormat.CHANNEL_IN_MONO,
+            AudioFormat.ENCODING_PCM_16BIT,
+            maxOf(minBuffer * 2, BUFFER_SIZE_SAMPLES * 2),
+        )
+
+        if (audioRecord.state != AudioRecord.STATE_INITIALIZED) {
+            recognizer.close()
+            audioRecord.release()
+            trySend(TranscriptionEvent.Error("Microphone is unavailable"))
+            close()
+            return@callbackFlow
+        }
+
+        audioRecord.startRecording()
+        Log.d(TAG, "Listening with Vosk ${language.storageKey}")
+
+        val readerJob = launch(ioDispatcher) {
+            val buffer = ShortArray(BUFFER_SIZE_SAMPLES)
+            var lastPartial = ""
+            while (isActive) {
+                if (endOfUtteranceRequested) {
+                    val forced = JSONObject(recognizer.finalResult).optString("text").trim()
+                        .ifEmpty { lastPartial }
+                    if (forced.isNotEmpty()) {
+                        send(TranscriptionEvent.Final(forced))
+                    } else {
+                        send(TranscriptionEvent.Error("I didn't hear anything"))
+                    }
+                    break
+                }
+
+                val read = audioRecord.read(buffer, 0, buffer.size)
+                if (read < 0) {
+                    send(TranscriptionEvent.Error("Microphone read failed (code $read)"))
+                    break
+                }
+                if (read == 0) continue
+                if (recognizer.acceptWaveForm(buffer, read)) {
+                    val text = JSONObject(recognizer.result).optString("text").trim()
+                    if (text.isNotEmpty()) {
+                        send(TranscriptionEvent.Final(text))
+                        break
+                    }
+                } else {
+                    val partial = JSONObject(recognizer.partialResult).optString("partial").trim()
+                    if (partial.isNotEmpty() && partial != lastPartial) {
+                        lastPartial = partial
+                        send(TranscriptionEvent.Partial(partial))
+                    }
+                }
+            }
+            close()
+        }
+
+        awaitClose {
+            endOfUtteranceRequested = true
+            readerJob.cancel()
+            runCatching { audioRecord.stop() }
+            audioRecord.release()
+            recognizer.close()
+        }
+    }.flowOn(ioDispatcher)
+
+    private fun releaseModelLocked() {
+        runCatching { model?.close() }
+        model = null
+        loadedLanguage = null
+    }
+
+    private fun copyAssetDir(assetPath: String, target: File) {
+        val assets = context.assets
+        val children = assets.list(assetPath).orEmpty()
+        if (children.isEmpty()) {
+            if (assetPath == "model-en-us" || assetPath == "model-vi") {
+                error("Vosk model not found in assets/$assetPath")
+            }
+            target.parentFile?.mkdirs()
+            assets.open(assetPath).use { input ->
+                target.outputStream().use { output -> input.copyTo(output) }
+            }
+        } else {
+            target.mkdirs()
+            children.forEach { child ->
+                copyAssetDir("$assetPath/$child", File(target, child))
+            }
+        }
+    }
+
+    private companion object {
+        const val TAG = "VoskEngine"
+        const val MODEL_READY_MARKER = ".unpacked"
+        const val SAMPLE_RATE = 16_000
+        const val BUFFER_SIZE_SAMPLES = 4_096
+    }
+}

@@ -1,0 +1,16 @@
+<resources>
+    <string name="status_title">Vehicle status</string>
+    <string name="status_speed">Speed</string>
+    <string name="status_speed_value">%1$d km/h</string>
+    <string name="status_fuel">Fuel</string>
+    <string name="status_fuel_value">%1$d%%</string>
+    <string name="status_battery">Battery</string>
+    <string name="status_battery_value">%1$d%%</string>
+    <string name="status_doors">Doors</string>
+    <string name="status_doors_open">Open</string>
+    <string name="status_doors_locked">Locked</string>
+    <string name="status_doors_unlocked">Unlocked</string>
+    <string name="status_body_controls">Body controls</string>
+    <string name="status_doors_locked_toggle">Doors locked</string>
+    <string name="status_interior_lights">Interior lights</string>
+</resources>

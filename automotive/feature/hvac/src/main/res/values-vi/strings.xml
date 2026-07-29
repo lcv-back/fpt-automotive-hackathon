@@ -1,0 +1,15 @@
+<resources>
+    <string name="hvac_title">Điều hòa</string>
+    <string name="hvac_driver">Tài xế</string>
+    <string name="hvac_passenger">Hành khách</string>
+    <string name="hvac_temperature">Nhiệt độ</string>
+    <string name="hvac_airflow">Luồng gió</string>
+    <string name="hvac_fan_speed">Tốc độ quạt</string>
+    <string name="hvac_fan_face">Mặt</string>
+    <string name="hvac_fan_floor">Chân</string>
+    <string name="hvac_fan_both">Cả hai</string>
+    <string name="hvac_fan_defrost">Sấy kính</string>
+    <string name="hvac_ac">Điều hòa không khí</string>
+    <string name="hvac_auto">Chế độ tự động</string>
+    <string name="hvac_power">Nguồn điều hòa</string>
+</resources>

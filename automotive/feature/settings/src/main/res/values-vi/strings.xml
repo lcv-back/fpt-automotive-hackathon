@@ -1,0 +1,33 @@
+<resources>
+    <string name="settings_title">Cài đặt</string>
+    <string name="settings_voice">Trợ lý giọng nói</string>
+    <string name="settings_voice_enabled">Bật trợ lý giọng nói</string>
+    <string name="settings_show_transcription">Hiện nhận dạng trực tiếp</string>
+    <string name="settings_audio_cues">Phát tín hiệu âm thanh</string>
+    <string name="settings_voice_language">Ngôn ngữ giọng nói</string>
+    <string name="settings_voice_language_hint">Ngôn ngữ STT offline. Tiếng Anh: Vosk en-US; Tiếng Việt: Vosk vn-0.4.</string>
+    <string name="settings_display">Hiển thị</string>
+    <string name="settings_theme_auto">Tự động</string>
+    <string name="settings_theme_light">Sáng</string>
+    <string name="settings_theme_dark">Tối</string>
+    <string name="settings_theme_hint">Tự động theo cảm biến ánh sáng của xe: tối ban đêm, sáng ban ngày.</string>
+    <string name="settings_language">Ngôn ngữ</string>
+    <string name="settings_language_system">Hệ thống</string>
+    <string name="settings_language_english">English</string>
+    <string name="settings_language_vietnamese">Tiếng Việt</string>
+    <string name="settings_language_hint">Hệ thống theo ngôn ngữ của xe. English và Tiếng Việt chỉ áp dụng cho ứng dụng này.</string>
+    <string name="settings_units">Đơn vị</string>
+    <string name="settings_use_fahrenheit">Dùng độ Fahrenheit</string>
+    <string name="settings_about">Giới thiệu</string>
+    <string name="settings_about_version">Phiên bản</string>
+    <string name="settings_about_purpose">Mục đích</string>
+    <string name="settings_about_backend">Backend xe</string>
+    <string name="settings_about_build_type">Loại bản dựng</string>
+    <string name="settings_about_app_id">Mã ứng dụng</string>
+    <string name="settings_purpose_dev_testing">Phát triển / kiểm thử</string>
+    <string name="settings_purpose_testing_mock">Kiểm thử (xe giả lập)</string>
+    <string name="settings_purpose_product_debug">Sản phẩm (debug)</string>
+    <string name="settings_purpose_product">Sản phẩm</string>
+    <string name="settings_backend_mock">Giả lập (mock)</string>
+    <string name="settings_backend_real">VHAL (CarPropertyManager)</string>
+</resources>

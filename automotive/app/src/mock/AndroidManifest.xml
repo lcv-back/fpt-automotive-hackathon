@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <application>
+        <!-- Development-only dummy vehicle driver: exported so `adb shell am
+             broadcast` can inject vehicle-side VSTATE events into the mock
+             simulator. This receiver exists only in the mock flavor and
+             touches simulated state, never real hardware. -->
+        <receiver
+            android:name=".debug.VehicleDummyReceiver"
+            android:exported="true"
+            tools:ignore="ExportedReceiver">
+            <intent-filter>
+                <action android:name="com.sopa.viva_automotive.mock.VSTATE" />
+            </intent-filter>
+        </receiver>
+    </application>
+
+</manifest>

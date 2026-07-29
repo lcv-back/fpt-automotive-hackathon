@@ -1,0 +1,4 @@
+<resources>
+    <string name="cd_decrease">Decrease %1$s</string>
+    <string name="cd_increase">Increase %1$s</string>
+</resources>
