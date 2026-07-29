@@ -1,0 +1,14 @@
+# Compiled binaries
+/viva-tools
+/viva-tools.exe
+*.exe
+*.test
+
+# Local secrets — never commit a real CarSky token
+.env
+
+# OS / IDE cruft
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
