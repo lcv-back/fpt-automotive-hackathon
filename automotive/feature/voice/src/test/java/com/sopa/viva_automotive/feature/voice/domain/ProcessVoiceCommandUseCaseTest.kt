@@ -135,6 +135,23 @@ class ProcessVoiceCommandUseCaseTest {
     }
 
     @Test
+    fun `media next survives the module boundary instead of becoming unknown`() = runTest {
+        assertEquals(VehicleIntent.MediaNext, useCase("chuyển bài"))
+    }
+
+    @Test
+    fun `volume commands keep their direction`() = runTest {
+        assertEquals(VehicleIntent.VolumeAdjust(1), useCase("tăng âm lượng"))
+        assertEquals(VehicleIntent.VolumeAdjust(-1), useCase("giảm âm lượng"))
+    }
+
+    @Test
+    fun `grammar intents without an app adapter are labelled, not denied`() = runTest {
+        assertEquals(VehicleIntent.NotWired("media_pause"), useCase("dừng nhạc"))
+        assertEquals(VehicleIntent.NotWired("delivery_next_stop"), useCase("chặng tiếp theo là gì"))
+    }
+
+    @Test
     fun `set temperature without number maps to unknown`() = runTest {
         val intent = useCase("set the temperature")
         assertTrue(intent is VehicleIntent.Unknown)

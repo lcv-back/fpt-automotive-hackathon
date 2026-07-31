@@ -23,9 +23,19 @@ class ProcessVoiceCommandUseCase @Inject constructor(
         if (text.isBlank()) return VehicleIntent.Unknown(utterance)
 
         when (val coreRoute = grammarRouter.route(utterance)) {
-            is RouteResult.Matched -> when (val action = CoreIntentMapper.map(coreRoute.intent)) {
-                is AutomotiveVoiceAction.VehicleControl -> return action.intent
-                else -> return VehicleIntent.Unknown(utterance)
+            is RouteResult.Matched -> return when (val action = CoreIntentMapper.map(coreRoute.intent)) {
+                is AutomotiveVoiceAction.VehicleControl -> action.intent
+                is AutomotiveVoiceAction.VolumeAdjust -> VehicleIntent.VolumeAdjust(action.delta)
+                AutomotiveVoiceAction.MediaNext -> VehicleIntent.MediaNext
+                // The mapper returns null for two different reasons, and they owe
+                // the driver two different answers: a vehicle intent it could not
+                // fill (bad slot) is genuinely not understood, while a media or
+                // delivery intent simply has no adapter in this build.
+                null -> if (isVehicleIntent(coreRoute.intent.name)) {
+                    VehicleIntent.Unknown(utterance)
+                } else {
+                    VehicleIntent.NotWired(coreRoute.intent.name)
+                }
             }
             is RouteResult.NeedsClarification ->
                 return VehicleIntent.Clarification(coreRoute.promptVi)
@@ -85,6 +95,10 @@ class ProcessVoiceCommandUseCase @Inject constructor(
             else -> VehicleIntent.Unknown(originalUtterance)
         }
     }
+
+    /** Intent families that reach the vehicle through [ExecuteVehicleControlUseCase]. */
+    private fun isVehicleIntent(intentName: String): Boolean =
+        intentName.startsWith("hvac_") || intentName == "door_lock"
 
         private fun normalize(utterance: String): String =
         utterance.lowercase().trim()

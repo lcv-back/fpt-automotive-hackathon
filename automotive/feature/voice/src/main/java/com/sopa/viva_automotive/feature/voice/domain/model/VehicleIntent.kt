@@ -26,6 +26,20 @@ sealed interface VehicleIntent {
 
     data class QueryStatus(val kind: StatusQueryKind) : VehicleIntent
 
+    data class VolumeAdjust(val delta: Int) : VehicleIntent
+
+    data object MediaNext : VehicleIntent
+
+    /**
+     * The grammar understood the command but this build has no adapter that can
+     * carry it out yet (media transport, delivery skill).
+     *
+     * Kept distinct from [Unknown] on purpose: telling the driver "I didn't
+     * understand" for a command we routed correctly is a false statement, and it
+     * hides the gap from the demo instead of labelling it.
+     */
+    data class NotWired(val intentName: String) : VehicleIntent
+
     data class Clarification(val promptVi: String) : VehicleIntent
 
     data class Unknown(val utterance: String) : VehicleIntent

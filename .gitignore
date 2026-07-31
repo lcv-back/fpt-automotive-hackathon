@@ -17,3 +17,8 @@ captures/
 .env
 .env.*
 !.env.example
+
+# Team credentials. docs/link.md held the CarSky account and password in clear
+# text and was tracked until 01/08; see docs/link.example.md. The repo is part
+# of the submission, and the rules (3.6) forbid publishing platform internals.
+docs/link.md

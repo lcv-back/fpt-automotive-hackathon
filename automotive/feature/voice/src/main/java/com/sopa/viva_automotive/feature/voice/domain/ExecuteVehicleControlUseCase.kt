@@ -14,6 +14,15 @@ import kotlinx.coroutines.flow.first
 
 class CommandValidationException(message: String) : IllegalArgumentException(message)
 
+/**
+ * The command was routed correctly but no adapter in this build can execute it.
+ *
+ * Separate from [CommandValidationException] so the HMI, the demo script and the
+ * integration table can report "understood, not wired" without dressing it up as
+ * a misheard command.
+ */
+class CommandNotWiredException(message: String) : IllegalStateException(message)
+
 class ExecuteVehicleControlUseCase @Inject constructor(
     private val vehicleRepository: VehicleRepository,
     private val settingsDataStore: SettingsDataStore,
@@ -72,6 +81,27 @@ class ExecuteVehicleControlUseCase @Inject constructor(
                 .map { VehicleControlResponses.driverDoor(intent.locked) }
 
         is VehicleIntent.QueryStatus -> queryStatus(intent.kind)
+
+        is VehicleIntent.VolumeAdjust ->
+            Result.failure(
+                CommandNotWiredException(
+                    "Mình nghe rõ lệnh âm lượng, nhưng bản demo này chưa nối bộ điều khiển âm lượng.",
+                ),
+            )
+
+        is VehicleIntent.MediaNext ->
+            Result.failure(
+                CommandNotWiredException(
+                    "Mình nghe rõ lệnh chuyển bài, nhưng bản demo này chưa nối trình phát nhạc.",
+                ),
+            )
+
+        is VehicleIntent.NotWired ->
+            Result.failure(
+                CommandNotWiredException(
+                    "Mình nhận đúng lệnh “${intent.intentName}”, nhưng bản demo này chưa có phần thực thi cho nó.",
+                ),
+            )
 
         is VehicleIntent.Clarification ->
             Result.failure(CommandValidationException(intent.promptVi))
