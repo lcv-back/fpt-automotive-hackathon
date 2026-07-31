@@ -93,8 +93,13 @@ class ProcessVoiceCommandUseCaseTest {
     }
 
     @Test
-    fun `vietnamese ac on`() = runTest {
-        assertEquals(VehicleIntent.SetAc(true), useCase("bật điều hòa"))
+    fun `removed vietnamese ac power intent is rejected before legacy fallback`() = runTest {
+        assertEquals(
+            VehicleIntent.Clarification(
+                "Lệnh này chưa hỗ trợ trong bản demo. Bạn thử một lệnh điều hòa, cửa, âm thanh hoặc giao hàng nhé.",
+            ),
+            useCase("bật điều hòa"),
+        )
     }
 
     @Test

@@ -22,6 +22,12 @@ class GrammarIntentRouter : IntentRouter {
         if (command.isEmpty()) {
             return RouteResult.NeedsClarification("Bạn muốn mình thực hiện việc gì?")
         }
+        if (isRemovedCommand(command)) {
+            return RouteResult.Unsupported(
+                promptVi = "Lệnh này chưa hỗ trợ trong bản demo. Bạn thử một lệnh điều hòa, cửa, âm thanh hoặc giao hàng nhé.",
+                canFallback = false,
+            )
+        }
 
         if (command.contains("lạnh quá")) {
             return RouteResult.NeedsClarification(
@@ -52,11 +58,38 @@ class GrammarIntentRouter : IntentRouter {
         if (command.contains("giảm âm lượng")) {
             return matched("volume_adjust", mapOf("delta" to -1))
         }
+        if (command.contains("dừng nhạc") || command.contains("tạm dừng nhạc")) {
+            return matched("media_pause")
+        }
         if (command.contains("chuyển bài") || command.contains("bài tiếp theo")) {
             return matched("media_next")
         }
+        if (command.startsWith("phát nhạc") || command.startsWith("phát playlist")) {
+            val query = command.removePrefix("phát ").takeUnless { it == "nhạc" }
+            return matched("media_play", query?.let { mapOf("query" to it) }.orEmpty())
+        }
+        if (command.contains("chặng tiếp theo") || command.contains("điểm dừng tiếp theo")) {
+            return matched("delivery_next_stop")
+        }
+        if (command.contains("đơn") && DELIVERY_STATUS_CUES.any(command::contains)) {
+            return matched("delivery_order_status", orderIdSlot(command))
+        }
+        if (command.contains("xác nhận") && command.contains("giao")) {
+            return matched("delivery_confirm", orderIdSlot(command))
+        }
         return RouteResult.Unsupported()
     }
+
+    private fun isRemovedCommand(command: String): Boolean =
+        REMOVED_COMMANDS.any { pattern -> pattern.containsMatchIn(command) }
+
+    private fun orderIdSlot(command: String): Map<String, Any> =
+        ORDER_ID.find(command)
+            ?.groupValues
+            ?.get(1)
+            ?.uppercase(Locale.ROOT)
+            ?.let { mapOf("orderId" to it) }
+            .orEmpty()
 
     private fun routeTemperature(command: String): RouteResult {
         val value = NUMBER.find(command)?.groupValues?.get(1)?.toIntOrNull()
@@ -114,6 +147,14 @@ class GrammarIntentRouter : IntentRouter {
         private val WHITESPACE = Regex("""\s+""")
         private val SUPPORTED_WAKE = Regex("""^(?:viva|vivi)\s+ơi(?:\s+|$)""")
         private val UNSUPPORTED_WAKE = Regex("""^(?:siri|alexa|hey google)\s+ơi?(?:\s+|$)""")
+        private val ORDER_ID = Regex("""\b([a-z]\d{1,6})\b""")
+        private val DELIVERY_STATUS_CUES = listOf("thế nào", "trạng thái", "đến đâu")
+        private val REMOVED_COMMANDS = listOf(
+            Regex("""\b(?:bật|tắt)\s+(?:điều hòa|ac)\b"""),
+            Regex("""đặt\s+âm lượng"""),
+            Regex("""\b(?:bài trước|quay lại bài trước)\b"""),
+            Regex("""\b(?:dtc|mã lỗi|xe có lỗi)\b"""),
+        )
         private val TEMPERATURE_CUES = listOf("đặt", "hạ", "tăng", "giảm", "xuống", "lên", "độ")
     }
 }

@@ -66,19 +66,41 @@ class GrammarIntentRouterTest {
     }
 
     @Test
-    fun `five backbone command families are recognized`() {
+    fun `all ten core intents are recognized`() {
         val cases = mapOf(
             "hạ điều hòa xuống 24 độ" to "hvac_set_temp",
             "quạt mức 3" to "hvac_set_fan",
             "khóa cửa" to "door_lock",
             "tăng âm lượng" to "volume_adjust",
+            "phát playlist đi làm" to "media_play",
+            "dừng nhạc" to "media_pause",
             "chuyển bài" to "media_next",
+            "chặng tiếp theo là gì" to "delivery_next_stop",
+            "đơn A12 thế nào" to "delivery_order_status",
+            "xác nhận giao thành công" to "delivery_confirm",
         )
 
         cases.forEach { (text, expectedIntent) ->
             val result = router.route(text) as RouteResult.Matched
             assertEquals(expectedIntent, result.intent.name)
         }
+    }
+
+    @Test
+    fun `media play keeps an optional query`() {
+        val result = router.route("phát playlist đi làm") as RouteResult.Matched
+
+        assertEquals("media_play", result.intent.name)
+        assertEquals("playlist đi làm", result.intent.slots["query"])
+    }
+
+    @Test
+    fun `delivery commands keep a canonical order id when spoken`() {
+        val status = router.route("đơn a12 thế nào") as RouteResult.Matched
+        val confirmation = router.route("xác nhận giao đơn b07 thành công") as RouteResult.Matched
+
+        assertEquals("A12", status.intent.slots["orderId"])
+        assertEquals("B07", confirmation.intent.slots["orderId"])
     }
 
     @Test
@@ -90,10 +112,19 @@ class GrammarIntentRouterTest {
     }
 
     @Test
-    fun `ac power phrase remains available to the app fallback router`() {
-        val result = router.route("bật điều hòa")
+    fun `removed intent variants are rejected without falling through`() {
+        val removedCommands = listOf(
+            "bật điều hòa",
+            "bật ac",
+            "đặt âm lượng 50",
+            "quay lại bài trước",
+            "xe có lỗi gì",
+        )
 
-        assertTrue(result is RouteResult.Unsupported)
-        assertEquals(true, (result as RouteResult.Unsupported).canFallback)
+        removedCommands.forEach { command ->
+            val result = router.route(command) as RouteResult.Unsupported
+            assertEquals("Unexpected fallback for '$command'", false, result.canFallback)
+            assertTrue(result.promptVi.contains("chưa hỗ trợ"))
+        }
     }
 }
