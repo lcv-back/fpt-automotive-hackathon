@@ -17,6 +17,42 @@ Audio ──▶ VadSegmenter ──▶ AsrClient ──▶ IntentRouter ──�
 
 Mỗi mũi tên là một interface dưới đây. **Mọi bước đều ghi mốc thời gian vào `LatencyTrace`.**
 
+### ⭐ 0.1 — Sơ đồ trên DỪNG Ở `Skill`. Đây là phần dưới nó (mentor sửa 30/07)
+
+Nguyên văn: *"Luồng chạy này của các bạn chưa đủ — **không có phần vhal nào nhận intent cả**.
+Chính xác thì: (Agent → STT → command) APP → **service fw** → **PropertyID** ← vhal → CAN signal → CCU."*
+
+```
+Skill.execute(intent)
+   │
+   │  ⚠️ intent DỪNG LẠI Ở ĐÂY — VHAL không biết `hvac_set_temp` là gì
+   ▼
+VivaCarService  (service fw của đội — M1, Tùng + Vĩ)
+   │  tra bảng M2:  intent + slots  →  (propertyId, areaId, kiểu, value)
+   ▼
+CarPropertyManager → Android Car Service → VHAL (pin `vhal` của Skycraft)
+   ▼
+IVI Gateway (Script Node) ──kuksa──► Central Broker (VSS) ◄──kuksa── PWT Gateway (Script Node)
+                                                                          │ can
+                                                                          ▼
+                                                              CAN Bus → CCU *(được phép mô phỏng)*
+```
+
+Chiều ngược lại đi đúng đường đó ngược lên (`←` trong sơ đồ mentor) và kết thúc ở **callback của
+`VivaCarService`**, service fan-out cho app HVAC / app DOOR / HMI.
+
+| Nhóm intent | Đường đi thật | Qua VHAL? |
+|---|---|---|
+| `hvac_*`, `door_lock` | App → `VivaCarService` → PropertyID → VHAL → KUKSA → CAN → CCU | ✅ |
+| `volume_adjust` | App → `CarAudioManager` | ❌ |
+| `media_*` | App → `MediaSession` / `MediaBrowserService` | ❌ |
+| `delivery_*` | App → `DeliverySkill` (nội bộ) | ❌ |
+
+> ⚠️ **Chỉ nhóm đầu tiên được claim "chạy full-stack tới CAN".** Khai gộp cả 10 intent là sai — ô
+> *Minh bạch phạm vi demo* (2đ) và *Ranh giới và tính tương xứng* (2đ) chấm đúng chỗ này.
+>
+> Nguồn đầy đủ: **`11-PHAN-HOI-MENTOR-KICKOFF-30-07.md`** PHẦN 2–4.
+
 ---
 
 ## 1. `LatencyTrace` — đo latency (Long sở hữu)
@@ -281,13 +317,17 @@ data class SkillResult(
 )
 ```
 
-| Skill | Owner | Intent xử lý |
-|---|---|---|
-| `ClimateSkill` | Tùng | `hvac_*` |
-| `MediaSkill` | Dương | `media_*`, `volume_*` |
-| `DtcSkill` | Tùng | `dtc_query` |
-| `DeliverySkill` | Vĩ | `delivery_*` |
-| `BodySkill` | Tùng | `door_lock` |
+| Skill | Owner | Intent xử lý | ⭐ Dịch thành gì ở tầng dưới |
+|---|---|---|---|
+| `ClimateSkill` | Tùng | `hvac_*` | **PropertyID + areaId** qua `VivaCarService` (bảng M2) |
+| `MediaSkill` | Dương | `media_*`, `volume_*` | `MediaSession` · `CarAudioManager` — **không qua VHAL** |
+| `DtcSkill` | Tùng | `dtc_query` | 🚫 không triển khai ở Vòng 2 |
+| `DeliverySkill` | Vĩ | `delivery_*` | nội bộ app — **không qua VHAL** |
+| `BodySkill` | Tùng | `door_lock` | **PropertyID + areaId** qua `VivaCarService` (bảng M2) |
+
+> ⭐ **31/07 — cột thứ 4 là chỗ mentor nói đang thiếu.** `Skill.execute(intent)` **không được** gọi thẳng
+> `CarPropertyManager`: nó gọi `VivaCarService`, và service tra bảng M2 để ra `(propertyId, areaId, kiểu,
+> value)`. Xem §0.1. Bảng M2 do **Long (cột intent) + Tùng (cột property/VSS/CAN)** chốt ngày 31/07.
 
 ---
 

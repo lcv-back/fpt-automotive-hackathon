@@ -9,6 +9,18 @@
 > Bảng mới: **Demo 25 · Kỹ thuật 20 · Team-owned 25 · Platform 15 · Khách hàng 10 · Trình bày 5.**
 > Giải mã đầy đủ + 7 task mới ở **`08-BAREM-VONG-2-CHINH-THUC.md`** — đọc file đó trước khi làm tiếp file này.
 > File này đã được cập nhật theo bản mới: thêm **N1, N2, N7** vào PHẦN 2/3, sửa mục ⑬ ⑮ ở PHẦN 5, sửa checklist PHẦN 7.
+>
+> ---
+>
+> **⭐ Cập nhật 31/07 — mentor đã sửa kiến trúc sau kick-off tối qua.**
+> Nguyên văn: *"Luồng chạy này của các bạn chưa đủ — **không có phần vhal nào nhận intent cả**.
+> Chính xác thì: (Agent → STT → command) APP → **service fw** → **PropertyID** ← vhal → CAN signal → CCU."*
+> Nguồn đầy đủ + 8 task M1–M8 ở **`11-PHAN-HOI-MENTOR-KICKOFF-30-07.md`**.
+>
+> **Chạm vào file này ở 5 chỗ:** ⑴ **M2** bảng `intent → PropertyID` vào lịch **hôm nay** (PHẦN 2);
+> ⑵ **M7** bộ 5 tình huống phức tạp — mentor gọi thẳng đây là *"chìa khoá ăn điểm"*, chẻ M7a/M7b vào
+> 02/08 + 04/08; ⑶ mốc cân 1 tối nay có **4 câu hỏi**, không phải 2 (PHẦN 4); ⑷ thêm quyết định **⑯
+> service fw đi đường nào** (PHẦN 5); ⑸ thứ gác cửa cho Tùng đổi từ T2 sang **M1a spike quyền VHAL**.
 
 ---
 
@@ -16,8 +28,8 @@
 
 | Vai | Nội dung | Chiếm |
 |---|---|---|
-| **Người làm** — Voice AI | VAD · ASR client · Intent Router · TTS · audio focus · latency · 🆕 **dựng bằng chứng (N1, N2, N6)** | 53h → **55h** |
-| **Đội trưởng** | Mentor · gác 3 mốc cân bằng · gỡ tắc · điều phối demo · 🆕 **tổng duyệt LIVE (N7)** · nộp bài | 16h → **19.5h** việc chung + gánh nặng ngắt quãng |
+| **Người làm** — Voice AI | VAD · ASR client · Intent Router · TTS · audio focus · latency · 🆕 **dựng bằng chứng (N1, N2, N6)** · ⭐ **bảng intent→PropertyID (M2) + 5 tình huống phức tạp (M7)** | 53h → 55h → ⭐ **56.5h** |
+| **Đội trưởng** | Mentor · gác 3 mốc cân bằng · gỡ tắc · điều phối demo · 🆕 **tổng duyệt LIVE (N7)** · nộp bài · ⭐ **chốt đường đi của service fw (PHẦN 5 ⑯)** | 16h → **19.5h** việc chung + gánh nặng ngắt quãng |
 
 **Quy tắc khi hai vai xung đột:** vai đội trưởng thắng ở **4 thời điểm cố định** — 21:30 mỗi tối (standup),
 31/07 21:30 (mốc cân 1), 03/08 (C2), 05/08 23:59 (freeze). Ngoài 4 thời điểm đó, bạn là người làm voice
@@ -90,19 +102,30 @@ thiếu 10h — hai người đó cần chẻ task của mình y hệt cách b�
 
 | Việc | Giờ | Xong khi |
 |---|---|---|
-| **L3c** Tinh chỉnh ngưỡng VAD | 1h | Không cắt sớm khi nói chậm |
+| ⭐ **M2** Cột intent của bảng **`intent → PropertyID + areaId + kiểu + value`** — Tùng làm cột property | 1h | Mọi intent `hvac_*` + `door_lock` có đủ 4 cột, **không dòng nào trống** |
 | **L4** `AsrClient` + `FakeAsrClient` stub + đổi sang endpoint thật của Vĩ | 1.75h | Nói → ra text tiếng Việt |
 | **L5a** Grammar **5 lệnh xương sống** (đủ để demo, chưa cần 15) | 1h | 5/5 câu ra đúng intent |
-| **⚖️ MỐC CÂN 1 — 21:30** — vai đội trưởng, xem PHẦN 4 | 0.25h | Có phán quyết ĐƯỢC / CHƯA |
+| **⚖️ MỐC CÂN 1 — 21:30** — vai đội trưởng, ⭐ **4 câu hỏi** (PHẦN 4) | 0.25h | Có phán quyết ĐƯỢC / CHƯA |
+| ~~**L3c** Tinh chỉnh ngưỡng VAD~~ → **dời sang 01/08** | ~~1h~~ | lấy chỗ cho M2 |
+
+> ⭐ **M2 là thứ đứng trên L3c hôm nay.** Đây là mắt xích mentor nói đang thiếu, và Tùng đang chờ nó để
+> viết `VivaCarService` (M1). VAD tinh chỉnh trễ một ngày không ai chờ; bảng ánh xạ trễ một ngày thì
+> M1 phải code theo bảng tạm. Chi tiết `11` PHẦN 2.
+>
+> **Bảng viết thế nào:** một dòng một intent, bốn cột —
+> `hvac_set_temp` | `HVAC_TEMPERATURE_SET` · areaId `ROW_1_LEFT` · `Float` | `Vehicle.Cabin.HVAC…` | tên CAN signal.
+> Hai cột cuối là phần Tùng nối tiếp từ T1. **Bảng này dùng lại ở 4 chỗ:** M1, README T11, Baseline
+> Manifest N3b, và Claim–Evidence Map N1 — viết một lần, đừng viết lại.
 
 ### 🟡 T7 01/08 — 10h · *ngày dài thứ nhất*
 
 | Việc | Giờ |
 |---|---|
-| **L5b** ~~Đủ 15 intent~~ → nốt **5 intent còn lại** cho đủ **10 intent lõi** (`03-contracts.md` §3 v2) + unit test *(barem mới: không cộng điểm theo số lượng chức năng)* | 2.5h |
+| **L5b** ~~Đủ 15 intent~~ → nốt **5 intent còn lại** cho đủ **10 intent lõi** (`03-contracts.md` §3 v2) + unit test *(barem mới: không cộng điểm theo số lượng chức năng)* | ~~2.5h~~ ⭐ **1.5h** |
 | **L6** `TtsSpeaker` + pre-render ~30 câu vào `res/raw/` | 4h |
 | 🆕 **N2 Product & Integration Card** — 5 ô: user vs buyer · offering & quan hệ tiếp nhận · outcome + giả định · dependency có nhãn thật/mô phỏng/kế hoạch · bước kiểm chứng tiếp theo | 2h |
-| Đệm / gỡ tắc cho đội | 1.75h |
+| ⭐ **L3c** Tinh chỉnh ngưỡng VAD *(dời từ 31/07)* | 1h |
+| Đệm / gỡ tắc cho đội | ~~1.75h~~ **1.25h** |
 | Standup | 0.25h |
 
 > **N2 là task lãi nhất trong cả plan của bạn: 2h lấy 10đ.** Làm sớm hôm nay chứ đừng để cuối vòng — nó là
@@ -113,12 +136,18 @@ thiếu 10h — hai người đó cần chẻ task của mình y hệt cách b�
 | Việc | Giờ | Xong khi |
 |---|---|---|
 | **L7** Audio focus `CarAudioManager` — duck nhạc khi TTS nói | 3h | Nhạc đang phát + ra lệnh + TTS trả lời, không chồng tiếng |
-| **L8** **Chốt kịch bản demo 3' uncut** — ≤6 lệnh, có lời thoại, có đường thoát khi 1 lệnh fail | 2h | Văn bản + đã chạy thử 1 lần |
+| ⭐ **M7a** Viết **bảng 5 tình huống phức tạp + hành vi mong đợi** *(chưa code)* | 1h | 5 dòng, mỗi dòng có cột "hành vi mong đợi" viết trước |
+| **L8** **Chốt kịch bản demo 3' uncut** — ≤6 lệnh, có lời thoại, có đường thoát khi 1 lệnh fail.<br>⭐ **Phải có ≥2 tình huống của M7a và ≥1 lệnh media** (*"chuyển bài"* — kick-off nhắc) | 2h | Văn bản + đã chạy thử 1 lần |
 | **Tổng duyệt demo 10' cho C2** (cả đội) | 3h | Chạy trọn không dừng |
-| Đệm | 1.75h | |
+| Đệm | ~~1.75h~~ **0.75h** | |
 
 > L8 là task **rẻ nhất mà đắt nhất** trong plan của bạn. Chốt hôm nay = có 6 ngày tập.
 > Để tới 08/08 mới nghĩ kịch bản = quay 3' uncut trong lo lắng.
+>
+> ⭐ **M7a đứng TRƯỚC L8 trong ngày, không phải sau.** Mentor nói *"chìa khoá ăn điểm: con AI xử lý độ
+> phức tạp ntn"* — nếu bạn chốt kịch bản trước rồi mới nghĩ tình huống thì kịch bản sẽ toàn lệnh đơn
+> chạy trơn, đúng thứ ô *"Kịch bản đại diện và tình huống biên"* (4đ) cho điểm thấp nhất.
+> Bảng 5 tình huống ở `11` PHẦN 6 — chép sang, sửa lại cho khớp bộ intent thật.
 
 ### 🟢 T2 03/08 — 4h · **C2**
 
@@ -132,16 +161,17 @@ thiếu 10h — hai người đó cần chẻ task của mình y hệt cách b�
 
 | Việc | Giờ |
 |---|---|
-| **L9a** Bắt đầu tinh chỉnh latency — đo từng chặng, tìm chặng chậm nhất | 2.5h |
-| **Office hours mentor** | 1h |
+| ⭐ **M7b** Hiện thực 5 tình huống của M7a trong grammar/router + unit test | 2h |
+| **L9a** ~~Tinh chỉnh latency~~ → chỉ **đo từng chặng, tìm chặng chậm nhất** *(phần tinh chỉnh dồn sang 05/08)* | ~~2.5h~~ **0.75h** |
+| **Office hours mentor** — ⭐ hỏi 3 câu **d · e · f** ở `11` PHẦN 8 *(quyền privileged · được sửa tới đâu trên guest · Script Node clone-rồi-sửa có đúng cách không)* | 1h |
 | Standup | 0.25h |
 
 ### 🔵 T4 05/08 — 5h · **FEATURE FREEZE 23:59**
 
 | Việc | Giờ | Xong khi |
 |---|---|---|
-| **L9b** Đạt **p95 < 1500ms** đường edge | 2.5h | **Số của Vĩ xác nhận**, không phải bạn tự đo |
-| **L10** Chốt trục so sánh thay *"edge vs hybrid"* đã hứa ở slide 9/11 (PHẦN 5) | 2h | Có quyết định + 1 đoạn giải thích |
+| **L9b** Đạt **p95 < 1500ms** đường edge *(⭐ +1.25h bù phần L9a bị cắt hôm qua)* | ~~2.5h~~ **3.75h** | **Số của Vĩ xác nhận**, không phải bạn tự đo |
+| **L10** Chốt trục so sánh thay *"edge vs hybrid"* đã hứa ở slide 9/11 (PHẦN 5) *(⭐ khuyến nghị đã có sẵn ở PHẦN 5 ⑭ — đây là 1 quyết định + 1 đoạn văn, không phải 2h nghiên cứu)* | ~~2h~~ **1h** | Có quyết định + 1 đoạn giải thích |
 | **⚖️ Tuyên bố FREEZE lúc 23:59** — vai đội trưởng | 0.25h | Cả 3 người xác nhận |
 
 ### 🟣 T5 06/08 — 5h *(tăng 1h)*
@@ -214,12 +244,28 @@ thiếu 10h — hai người đó cần chẻ task của mình y hệt cách b�
 | **N1** | 🆕 **Claim–Evidence Map** | 3.5h | 🔴 07/08 | **cả đội** (dùng cho slide + Q&A) |
 | **N2** | 🆕 **Product & Integration Card** | 2h | 🟡 01/08 | — |
 | **N6** | 🆕 **Artifact identity** (cùng Vĩ + Dương) | 1h | 🔴 09/08 | — |
-| — | **Tổng task cá nhân** | ~~53h~~ **55h** | | |
+| | *— dưới đây là task sinh ra từ phản hồi mentor 30/07, xem `11` —* | | | |
+| **M2** | ⭐ **Bảng `intent → PropertyID + areaId + kiểu`** *(cột intent; Tùng làm cột property)* | 1h | 🔴 **31/07** | **Tùng** (M1 chờ) |
+| **M7** | ⭐ **Bộ 5 tình huống phức tạp** — M7a viết hành vi mong đợi *(02/08)* · M7b hiện thực + test *(04/08)* | 3h | 🔴 02/08 · 04/08 | L8 (chờ M7a) |
+| — | **Tổng task cá nhân** | ~~53h~~ ~~55h~~ ⭐ **56.5h** | | |
 | **N7** | 🆕 **Tổng duyệt LIVE + Q&A** ×2 — *tính vào **việc chung**, không vào 55h trên* | 3.5h | 🟡 06/08 · 🔴 09/08 | **cả đội** |
 
 **Tổng cộng +5.5h so với bản cũ:** task cá nhân 53h → **55h**, việc chung 16h → **19.5h**.
 Lấy từ quỹ đệm (**11h → 5.5h**). Không phải làm thêm giờ, nhưng đệm mỏng đi thật —
 nếu mốc cân 1 (31/07) đỏ thì phải cắt tiếp, và **đừng cắt vào N1/N2/N7**.
+
+⭐ **31/07 — thêm M2 + M7 (4h), đệm 5.5h → 4h.** Không lấy hết 4h từ đệm, mà cắt lại ba chỗ:
+
+| Cắt ở đâu | Từ | Còn | Vì sao cắt được |
+|---|---|---|---|
+| **L5b** 5 intent còn lại | 2.5h | **1.5h** | Cả 5 đều là biến thể của intent đã có. Mentor nói điểm nằm ở **chiều sâu tình huống**, barem ghi *"không cộng điểm theo số lượng chức năng"* |
+| **L9** latency | 5h | **4.5h** | Đo tách khỏi tinh chỉnh: 1h đo ở 04/08, 3.5h tinh chỉnh ở 05/08 |
+| **L10** trục so sánh | 2h | **1h** | PHẦN 5 ⑭ **đã có khuyến nghị sẵn**. Đây là 1 quyết định + 1 đoạn văn, không phải 2h nghiên cứu |
+| | | **−2.5h** | phần còn lại (1.5h) lấy từ đệm |
+
+> **Đệm 4h là ngưỡng cuối.** Nếu mốc cân 1 tối nay đỏ thì thứ tự hoãn của bạn là:
+> **M7b (04/08) → L6 pre-render TTS → L3c**. Vẫn **không cắt vào N1 · N2 · N7 · M2**.
+> M2 chỉ 1h và **Tùng đang chờ nó** — nó không bao giờ nằm trong danh sách cắt.
 
 > **L15 là task mới.** C3 (08/08) yêu cầu *"test chạy được + video 3' uncut + **slide pitch**"* nhưng bản
 > `06` chưa giao slide cho ai. Bạn giữ vì đã sở hữu write-up và kịch bản demo — dùng lại cùng nội dung.
@@ -246,12 +292,24 @@ Thể lệ mới: Digital Cockpit **phải chứng minh core flow chạy trên C
 utilization. Chạy trên emulator local = trần cứng L1 = mất phần lớn 15đ. Nếu 31/07 chưa chạy trên CarSky
 thì đó là việc số 1 của cả đội, **đứng trên mọi tính năng còn lại**.
 
+⭐ **Và hai câu nữa, thêm 31/07 sau kick-off — thành 4 câu:**
+
+| # | Câu | Nếu ❌ |
+|---|---|---|
+| ③ | *APK của đội đã **cài lên Device AAOS** và chạy được chưa?* (M6 của Dương) | Cả đội **dừng viết tính năng** cho tới khi có một APK chạy trên Device. Hôm nay code voice của bạn **chưa từng biên dịch** (`10` PHẦN 4) — chừng nào chưa có mốc này thì mọi ước lượng giờ còn lại đều là phỏng đoán |
+| ④ | *`setProperty` HVAC từ APK của đội có **bị từ chối quyền** không?* (M1a của Tùng) | 🚨 **Nặng nhất trong bốn.** Không set được property = không có 6 chặng = mất phần lớn khối Demo **và** khối Platform. Nếu 21:30 Tùng chưa có câu trả lời: đó là việc duy nhất của anh ấy đêm nay, và **bạn nhắn mentor câu d ngay trong đêm** (`11` PHẦN 8) |
+
 | | Bạn làm gì |
 |---|---|
 | ✅ ĐƯỢC | Giữ nguyên `06`. Dương bắt đầu media từ 01/08 |
 | ❌ CHƯA | **Hoãn vô điều kiện D5–D9.** Dương sang hỗ trợ Tùng. Bạn dừng L7. Cả 4 dồn tới khi xanh<br>*(T10 DTC không còn trong danh sách — đã bỏ hẳn 29/07)* |
 
 Đây là quyết định khó nhất của bạn trong 13 ngày. Đừng "để mai xem sao" — nói ra ngay tối 31/07.
+
+> ⚠️ **Câu ④ khác ba câu kia về bản chất: nó không đo tiến độ, nó đo xem kế hoạch có khả thi không.**
+> Ba câu đầu trả lời "CHƯA" thì bạn dồn người. Câu ④ trả lời "bị từ chối quyền và không remount được"
+> thì **dồn người không cứu được** — phải đổi cách tiếp cận, và bạn muốn biết điều đó vào ngày 31/07
+> chứ không phải ngày 05/08.
 
 **③ ⚖️ 03/08 sau C2 — Mốc cân 2**
 Ai dư > 6h thì nhận việc từ đường găng của người khác, **không tự mở phạm vi mới**.
@@ -274,6 +332,14 @@ Ai viết tính năng mới sau mốc này là **rủi ro cho cả đội, khôn
 | **Tùng** | T2 Script Node Luau 8h, hạn 30/07 | **Đây là task rủi ro nhất cả đội** — 8h liền, cả 3 người còn lại chờ. Hỏi tiến độ vào tối 29/07, đừng đợi tới 30/07 |
 | **Vĩ** | V6+V7 container ASR, hạn 30/07 | Bạn có stub nên không tắc. Nhưng nếu 31/07 vẫn chưa có ASR thật thì demo C2 mất một nửa sức thuyết phục |
 | **Dương** | D1 App shell, hạn 29/07 | Cả 3 người chờ. Deadline sớm nhất trong nhóm, và đang là ngày thứ hai — kiểm tra tối 28/07 xem đã dựng project chưa |
+
+### ⭐ 31/07 — thứ bạn gác cửa đã đổi
+
+| Người | Thứ phải canh từ hôm nay | Vì sao đổi |
+|---|---|---|
+| **Tùng** 🚨 | **M1a spike quyền VHAL** *(trước cả T2)*, rồi **M4 đọc Script Node có sẵn** | M1a là thứ duy nhất có thể làm cả kế hoạch vô nghĩa mà **dồn người không cứu được**. M4 là thứ duy nhất có thể **trả lại 3–4h** cho đường găng. Cả hai đều là việc 1–1.5h — hỏi kết quả lúc 21:30, đừng đợi 02/08 |
+| **Tùng** | Đệm của anh ấy đã về **~0h** sau khi nhận 11h việc mới | Anh ấy vừa giữ đường găng cũ vừa nhận phần lớn việc mới. **Bạn là người phải chủ động cắt việc của anh ấy**, đừng đợi anh ấy xin: thứ tự hoãn là **M5 → M3-phần-Tùng** |
+| **Dương** | **M6 — một APK lên Device tối nay**, dù trống rỗng | Dương còn **7.5h đệm**, nhiều nhất đội. Ở mốc cân 2 (03/08), người chuyển giờ sang Tùng là **Dương**, không phải ngược lại |
 
 ---
 
@@ -327,6 +393,29 @@ cross-vertical nào.** Thể lệ 6.7 vẫn khuyến khích, nhưng ở Vòng 2 
 Vehicle Middleware, đội **để dành làm đòn bẩy cho Vòng 3** nơi nó thật sự có 5đ. Nói ra chủ động vẫn ăn điểm
 minh bạch; im lặng mới mất.
 
+### ⭐ ⑯ "Service fw" đi đường nào — **chốt ở standup tối nay 31/07**
+
+Mentor hỏi ngược *"làm sao triển khai phần fw server / fw service"* và đưa link
+[AAOS 101 Day3 — Car Framework Core](https://source.android.com/static/docs/automotive/car-framework-core/gapb-2024-aaos-101-day3-carframework-core.pdf).
+Đây là **câu hỏi chờ đội trả lời ở office hours 04/08**, không phải gợi ý đọc thêm. Ba đường:
+
+| | Cách | Chi phí | Đánh giá |
+|---|---|---|---|
+| A | Sửa AOSP thật: thêm service vào `packages/services/Car`, build lại image AAOS, flash lên Device | Nhiều ngày build, chưa rõ CarSky có cho thay image guest không | ❌ **Loại** — còn 10 ngày |
+| **B** | **`VivaCarService` — APK riêng: `Service` + AIDL, giữ một kết nối `Car`/`CarPropertyManager` duy nhất, sở hữu bảng M2, gọi `SafetyGuard`, fan-out callback cho app HVAC/DOOR/HMI. Cài privileged nếu quyền đòi** | ~5h Tùng + 2h Vĩ *(≈3h là đóng gói lại T3, không phải viết mới)* | ✅ **Khuyến nghị** |
+| C | Giữ `VhalRepository` là library trong app như `06` T3 đang ghi | 0h | ❌ Đúng chỗ mentor nói thiếu |
+
+**Vì sao B chứ không chỉ vì mentor nói:** ô *Tách phần team-owned* **5đ** chấm ranh giới
+`provided/configured/modified/new`, ô *Mức quyết định* **6đ** chấm ablation. Nếu `VhalRepository` chỉ là
+một class trong app thì ablation A3 trả lời được *"bỏ đi thì HMI mất real-time"* — yếu. Nếu là **một
+service riêng mà các app khác bind vào** thì bỏ nó đi là **app HVAC, app DOOR và AI Agent cùng chết** —
+đó mới là L3. Kick-off cũng ghi đúng chữ này: *"xây dựng vendor car service **của riêng mình**"*.
+
+**Quyết định của bạn tối nay chỉ gồm 2 câu:** ⑴ chốt đường **B**; ⑵ giao **Tùng chủ, Vĩ đóng gói/cài đặt**
+— đúng như kick-off giao *"Vĩ và Tùng hợp tác xử lý phần ứng dụng bắt tay với AI Agent, HVAC"*.
+Nếu M1a tối nay cho thấy quyền privileged không cấp được, quyết định này **phải mở lại** — và lúc đó
+câu **d** gửi mentor là việc gấp nhất của bạn. Chi tiết `11` PHẦN 3.
+
 ---
 
 ## PHẦN 6 — BẠN CHỜ AI, AI CHỜ BẠN
@@ -334,6 +423,8 @@ minh bạch; im lặng mới mất.
 ```
 BẠN GIAO:
   L2 LatencyTrace (29/07) ─────► Vĩ V8 Harness v1 (31/07) ─► V10 số cho C2 (02/08)
+  M2 cột intent (31/07) ⭐ ────► Tùng M2 cột property ─► M1 VivaCarService (02/08)
+  M7a 5 tình huống (02/08) ⭐ ─► L8 kịch bản 3' của chính bạn
   L8 kịch bản 3' (02/08) ──────► cả đội tập 6 ngày
   L11 README (06/08) ──────────► Vĩ V13 lắp ghép (07/08)
 
@@ -342,10 +433,16 @@ BẠN CHỜ:
        └─ KHÔNG TẮC: đã có FakeAsrClient trong 03-contracts.md
   Dương D1 App shell (29/07) ──► chỗ cắm code voice
        └─ TẮC THẬT: nếu trễ, chạy module bằng unit test, ghép sau
+  Dương M6 APK trên Device (31/07) ⭐ ─► chỗ chạy thật cho mọi thứ bạn đã viết
+       └─ TẮC THẬT: code voice của bạn tới giờ CHƯA TỪNG BIÊN DỊCH
+  Tùng M1 VivaCarService (02/08) ⭐ ─► Skill của bạn gọi service thay vì gọi thẳng property
+       └─ KHÔNG TẮC ngay: giữ nguyên đường gọi cũ, đổi sang client AIDL sau
   Tùng T3 VhalRepository (31/07) ─► không tắc bạn, tắc demo
 ```
 
-Chỉ có **một** thứ chặn bạn thật sự: **App shell của Dương, hạn 29/07.** Kiểm tra tối 28/07.
+Chỉ có **một** thứ chặn bạn thật sự, và 31/07 nó **vẫn là Dương**: ~~App shell hạn 29/07~~ →
+⭐ **M6 — một APK chạy được trên Device, tối nay.** Chừng nào chưa có nó thì L2, L3, L4, L5 của bạn
+đều là code chưa từng biên dịch, và mọi ước lượng giờ còn lại chỉ là phỏng đoán.
 
 ---
 
@@ -361,6 +458,10 @@ Chỉ có **một** thứ chặn bạn thật sự: **App shell của Dương, h
 - [ ] README có **bảng Vehicle Property + CAN signal đã dùng** (Tùng giao, bạn kiểm)
 - [ ] Write-up có đủ: prompt đã dùng · AI hỗ trợ tốt ở đâu · **AI sai ở đâu** · MCP-driven testing
 - [ ] Đã xử lý cam kết ⑭ (edge vs hybrid) bằng văn bản
+- [ ] ⭐ README/write-up có **bảng M2 đủ 4 cột** `intent → PropertyID + areaId → đường VSS → CAN signal`
+      — đây là thứ mentor nói đang thiếu, và là bằng chứng duy nhất cho câu *"intent không đi thẳng xuống VHAL"*
+- [ ] ⭐ Write-up mô tả rõ **`VivaCarService` là service fw do đội tự dựng** (đường B ở PHẦN 5 ⑯),
+      kèm cách cài lên AAOS — trả lời thẳng câu mentor hỏi ở kick-off
 
 ### 🆕 Đủ **8** deliverable — thể lệ mới, không phải 4
 
@@ -373,10 +474,16 @@ Chỉ có **một** thứ chặn bạn thật sự: **App shell của Dương, h
 - [ ] ⑦ 🆕 **Claim–Evidence Map** — claim ↔ baseline ↔ team-owned ↔ expected result ↔ evidence ID — *Long, N1*
 - [ ] ⑧ 🆕 **Product & Integration Card** — offering · user · buyer/process owner · dependency · next validation step — *Long, N2*
 
-### 🆕 Ba thứ dễ mất điểm oan, soát trước khi nộp
+### 🆕 ⭐ **Năm** thứ dễ mất điểm oan, soát trước khi nộp
 
 - [ ] **Ba trạng thái integration đã khai đúng nhãn** — *đã tích hợp / mô phỏng / kế hoạch*. `FakeAsrClient`,
-      emulator, synthetic data phải nằm ở nhãn "mô phỏng", không được khai là "đã tích hợp"
+      emulator, synthetic data phải nằm ở nhãn "mô phỏng", không được khai là "đã tích hợp".
+      ⭐ **Thêm CCU vào danh sách này** — mentor cho phép *"giả lập nhận gửi CAN signal"*, nhưng cho phép
+      giả lập **không** đồng nghĩa cho phép khai là thật (ô *Ranh giới và tính tương xứng* 2đ)
+- [ ] ⭐ **Không khai gộp "chạy full-stack tới CAN" cho cả 10 intent.** Chỉ nhóm `hvac_*` và `door_lock`
+      đi qua VHAL → CAN. `volume_*` đi `CarAudioManager`, `media_*` đi `MediaSession`, `delivery_*` là
+      nội bộ app — **ba nhóm này không chạm VHAL** (`11` PHẦN 2). Khai gộp là đúng loại sai mà ô
+      *Minh bạch phạm vi demo* (2đ) trừ điểm
 - [ ] **Synthetic data đã công bố cách tạo, phạm vi và giới hạn** (bộ 20 utterance × 3 mức nhiễu của Vĩ)
 - [ ] **Video backup cùng một identity** với APK + commit + config đã nộp — không phải bản quay tuần trước
 - [ ] README public **không lộ chi tiết nội bộ nền tảng CarSky** (thể lệ 3.6: chỉ được công khai giải pháp của đội)
