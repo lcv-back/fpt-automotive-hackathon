@@ -29,3 +29,14 @@ sealed class RouteResult {
 fun interface IntentRouter {
     fun route(text: String): RouteResult
 }
+
+/**
+ * Additive T0 extension point owned by the consuming app.
+ *
+ * [route] receives a lowercase, punctuation-normalized command with the supported wake phrase
+ * removed. Return `null` when the rule does not match. A match is still only a proposal and must
+ * pass through the app gateway and SafetyGuard before any action executes.
+ */
+fun interface GrammarRule {
+    fun route(command: String): RouteResult?
+}

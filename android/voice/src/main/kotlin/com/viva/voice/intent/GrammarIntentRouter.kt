@@ -3,12 +3,17 @@ package com.viva.voice.intent
 import java.util.Locale
 
 /**
- * Deterministic T0 router for the five demo command families.
+ * Deterministic T0 router for the ten core intents and additive app-owned rules.
  *
  * The optional wake phrase is stripped here so the same router works with a
- * future wake-word detector and with today's push-to-talk fallback.
+ * future wake-word detector and with today's push-to-talk fallback. Extension
+ * rules are snapshotted at construction and run only after core rules and
+ * removed-command filters.
  */
-class GrammarIntentRouter : IntentRouter {
+class GrammarIntentRouter(
+    extensionRules: List<GrammarRule> = emptyList(),
+) : IntentRouter {
+    private val extensionRules = extensionRules.toList()
 
     override fun route(text: String): RouteResult {
         val normalized = normalize(text)
@@ -76,6 +81,9 @@ class GrammarIntentRouter : IntentRouter {
         }
         if (command.contains("xác nhận") && command.contains("giao")) {
             return matched("delivery_confirm", orderIdSlot(command))
+        }
+        extensionRules.forEach { rule ->
+            rule.route(command)?.let { return it }
         }
         return RouteResult.Unsupported()
     }

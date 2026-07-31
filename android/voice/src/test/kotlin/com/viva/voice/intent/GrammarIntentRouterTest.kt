@@ -127,4 +127,71 @@ class GrammarIntentRouterTest {
             assertTrue(result.promptVi.contains("chưa hỗ trợ"))
         }
     }
+
+    @Test
+    fun `an app can add an intent rule without changing the core router`() {
+        val extendedRouter = GrammarIntentRouter(
+            extensionRules = listOf(
+                GrammarRule { command ->
+                    if (command == "mở cốp") {
+                        RouteResult.Matched(
+                            Intent(
+                                name = "trunk_open",
+                                confidence = 1f,
+                                tier = Intent.Tier.T0,
+                            ),
+                        )
+                    } else {
+                        null
+                    }
+                },
+            ),
+        )
+
+        val result = extendedRouter.route("Viva ơi, mở cốp") as RouteResult.Matched
+
+        assertEquals("trunk_open", result.intent.name)
+    }
+
+    @Test
+    fun `extension rules cannot restore a removed core intent`() {
+        val extendedRouter = GrammarIntentRouter(
+            extensionRules = listOf(
+                GrammarRule { command ->
+                    RouteResult.Matched(
+                        Intent(
+                            name = "unsafe_override",
+                            slots = mapOf("raw" to command),
+                            confidence = 1f,
+                            tier = Intent.Tier.T0,
+                        ),
+                    )
+                },
+            ),
+        )
+
+        val result = extendedRouter.route("bật điều hòa") as RouteResult.Unsupported
+
+        assertEquals(false, result.canFallback)
+    }
+
+    @Test
+    fun `extension configuration is snapshotted when the router is created`() {
+        val rules = mutableListOf<GrammarRule>()
+        val extendedRouter = GrammarIntentRouter(extensionRules = rules)
+        rules += GrammarRule { command ->
+            RouteResult.Matched(
+                Intent(
+                    name = "late_mutation",
+                    slots = mapOf("raw" to command),
+                    confidence = 1f,
+                    tier = Intent.Tier.T0,
+                ),
+            )
+        }
+
+        val result = extendedRouter.route("mở cốp")
+
+        assertTrue(result is RouteResult.Unsupported)
+    }
 }
