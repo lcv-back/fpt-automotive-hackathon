@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <uses-feature
+        android:name="android.hardware.type.automotive"
+        android:required="true" />
+    <uses-feature
+        android:name="android.hardware.microphone"
+        android:required="false" />
+
+    <!-- Local voice assistant: on-device STT from the microphone. -->
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MICROPHONE" />
+
+    <!-- Car properties (real flavor). CONTROL_* permissions are system-privileged:
+         the OEM must allowlist them for this package (privapp-permissions XML on
+         the /system or /vendor partition) and the app must be installed as a
+         privileged app or platform-signed. Without the allowlist entry, the
+         CarService rejects the grant and CarPropertyManager calls throw
+         SecurityException (surfaced as ERROR results by RealVehicleRepository). -->
+    <uses-permission android:name="android.car.permission.CAR_SPEED" />
+    <uses-permission android:name="android.car.permission.CAR_ENERGY" />
+    <uses-permission android:name="android.car.permission.CAR_INFO" />
+    <uses-permission android:name="android.car.permission.CONTROL_CAR_CLIMATE" />
+    <uses-permission android:name="android.car.permission.CONTROL_CAR_DOORS" />
+    <uses-permission android:name="android.car.permission.READ_CAR_INTERIOR_LIGHTS" />
+    <uses-permission android:name="android.car.permission.CONTROL_CAR_INTERIOR_LIGHTS" />
+
+    <application
+        android:name=".VivaApplication"
+        android:allowBackup="true"
+        android:icon="@mipmap/ic_launcher"
+        android:label="@string/app_name"
+        android:localeConfig="@xml/locales_config"
+        android:roundIcon="@mipmap/ic_launcher_round"
+        android:supportsRtl="true"
+        android:theme="@style/Theme.Vivaautomotive">
+
+        <activity
+            android:name=".MainActivity"
+            android:exported="true"
+            android:launchMode="singleTask">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+
+            <!-- The UI adapts to CarUxRestrictions, so it may stay usable while driving. -->
+            <meta-data
+                android:name="distractionOptimized"
+                android:value="true" />
+        </activity>
+
+        <!-- Instantiatable is a lint false positive: the class lives in the
+             :feature:voice library module and extends LifecycleService. -->
+        <service
+            android:name="com.sopa.viva_automotive.feature.voice.service.VoiceAssistantService"
+            android:exported="false"
+            android:foregroundServiceType="microphone"
+            tools:ignore="Instantiatable" />
+    </application>
+
+</manifest>

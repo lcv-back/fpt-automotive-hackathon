@@ -1,0 +1,8 @@
+<resources>
+
+    <style name="Theme.Vivaautomotive" parent="android:Theme.Material.NoActionBar">
+        <item name="android:windowBackground">#121418</item>
+        <item name="android:statusBarColor">#121418</item>
+        <item name="android:windowLightStatusBar">false</item>
+    </style>
+</resources>

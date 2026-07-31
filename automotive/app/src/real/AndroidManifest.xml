@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <!-- Real flavor: declare the car API. required=false because many AAOS
+         images put android.car on the bootclasspath rather than as a named
+         shared library; required=true causes INSTALL_FAILED_MISSING_SHARED_LIBRARY. -->
+    <application>
+        <uses-library
+            android:name="android.car"
+            android:required="false" />
+    </application>
+
+</manifest>

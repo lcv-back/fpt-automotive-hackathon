@@ -1,0 +1,10 @@
+<resources>
+
+    <!-- Day variant; values-night/themes.xml provides the night variant so the
+         launch window already matches the system day/night state. -->
+    <style name="Theme.Vivaautomotive" parent="android:Theme.Material.Light.NoActionBar">
+        <item name="android:windowBackground">#F7F8FA</item>
+        <item name="android:statusBarColor">#F7F8FA</item>
+        <item name="android:windowLightStatusBar">true</item>
+    </style>
+</resources>

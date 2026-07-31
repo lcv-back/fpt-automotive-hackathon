@@ -1,0 +1,8 @@
+<resources>
+    <string name="voice_cd_start">Start voice command</string>
+    <string name="voice_cd_stop">Cancel listening</string>
+    <string name="voice_disabled">Voice assistant disabled</string>
+    <string name="voice_idle_prompt">Tap the mic and speak a command</string>
+    <string name="voice_listening">Listening…</string>
+    <string name="voice_processing">Understanding…</string>
+</resources>

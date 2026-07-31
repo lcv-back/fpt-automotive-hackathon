@@ -1,0 +1,16 @@
+<resources>
+    <string name="status_title">Trạng thái xe</string>
+    <string name="status_speed">Tốc độ</string>
+    <string name="status_speed_value">%1$d km/h</string>
+    <string name="status_fuel">Nhiên liệu</string>
+    <string name="status_fuel_value">%1$d%%</string>
+    <string name="status_battery">Pin</string>
+    <string name="status_battery_value">%1$d%%</string>
+    <string name="status_doors">Cửa</string>
+    <string name="status_doors_open">Mở</string>
+    <string name="status_doors_locked">Đã khóa</string>
+    <string name="status_doors_unlocked">Đã mở khóa</string>
+    <string name="status_body_controls">Điều khiển thân xe</string>
+    <string name="status_doors_locked_toggle">Khóa cửa</string>
+    <string name="status_interior_lights">Đèn trong cabin</string>
+</resources>

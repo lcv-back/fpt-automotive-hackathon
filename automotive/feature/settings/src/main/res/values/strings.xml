@@ -1,0 +1,33 @@
+<resources>
+    <string name="settings_title">Settings</string>
+    <string name="settings_voice">Voice assistant</string>
+    <string name="settings_voice_enabled">Voice assistant enabled</string>
+    <string name="settings_show_transcription">Show live transcription</string>
+    <string name="settings_audio_cues">Play audio cues</string>
+    <string name="settings_voice_language">Voice language</string>
+    <string name="settings_voice_language_hint">Offline STT language. English uses Vosk en-US; Vietnamese uses Vosk vn-0.4.</string>
+    <string name="settings_display">Display</string>
+    <string name="settings_theme_auto">Auto</string>
+    <string name="settings_theme_light">Light</string>
+    <string name="settings_theme_dark">Dark</string>
+    <string name="settings_theme_hint">Auto follows the vehicle\'s light sensor: dark at night, light in daylight.</string>
+    <string name="settings_language">Language</string>
+    <string name="settings_language_system">System</string>
+    <string name="settings_language_english">English</string>
+    <string name="settings_language_vietnamese">Tiếng Việt</string>
+    <string name="settings_language_hint">System follows the vehicle language. English and Vietnamese apply to this app only.</string>
+    <string name="settings_units">Units</string>
+    <string name="settings_use_fahrenheit">Use Fahrenheit</string>
+    <string name="settings_about">About</string>
+    <string name="settings_about_version">Version</string>
+    <string name="settings_about_purpose">Purpose</string>
+    <string name="settings_about_backend">Vehicle backend</string>
+    <string name="settings_about_build_type">Build type</string>
+    <string name="settings_about_app_id">Application ID</string>
+    <string name="settings_purpose_dev_testing">Development / testing</string>
+    <string name="settings_purpose_testing_mock">Testing (mock vehicle)</string>
+    <string name="settings_purpose_product_debug">Product (debug)</string>
+    <string name="settings_purpose_product">Product</string>
+    <string name="settings_backend_mock">Mock simulator</string>
+    <string name="settings_backend_real">VHAL (CarPropertyManager)</string>
+</resources>

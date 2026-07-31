@@ -1,0 +1,8 @@
+<resources>
+    <string name="voice_cd_start">Bắt đầu lệnh giọng nói</string>
+    <string name="voice_cd_stop">Hủy nghe</string>
+    <string name="voice_disabled">Trợ lý giọng nói đã tắt</string>
+    <string name="voice_idle_prompt">Chạm mic và nói lệnh</string>
+    <string name="voice_listening">Đang nghe…</string>
+    <string name="voice_processing">Đang hiểu lệnh…</string>
+</resources>

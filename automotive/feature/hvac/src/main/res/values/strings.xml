@@ -1,0 +1,15 @@
+<resources>
+    <string name="hvac_title">Climate</string>
+    <string name="hvac_driver">Driver</string>
+    <string name="hvac_passenger">Passenger</string>
+    <string name="hvac_temperature">Temperature</string>
+    <string name="hvac_airflow">Airflow</string>
+    <string name="hvac_fan_speed">Fan speed</string>
+    <string name="hvac_fan_face">Face</string>
+    <string name="hvac_fan_floor">Floor</string>
+    <string name="hvac_fan_both">Both</string>
+    <string name="hvac_fan_defrost">Defrost</string>
+    <string name="hvac_ac">Air conditioning</string>
+    <string name="hvac_auto">Auto mode</string>
+    <string name="hvac_power">Climate power</string>
+</resources>
