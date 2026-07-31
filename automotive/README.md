@@ -49,9 +49,12 @@ gradlew :app:assembleMockDebug
 # VHAL-backed build (see permission note below)
 gradlew :app:assembleRealDebug
 
-# Unit tests (NLU, state machine, mock repository)
-gradlew :feature:voice:testDebugUnitTest :vehicle-service:impl:testDebugUnitTest
+# Unit tests (voice core, NLU, contracts, repository, shared units)
+gradlew :voice-core:testDebugUnitTest :feature:voice:testDebugUnitTest :vehicle-service:api:testDebugUnitTest :vehicle-service:impl:testDebugUnitTest :core:common:testDebugUnitTest
 ```
+
+Verified on 01/08/2026 with Temurin JDK 21 and Android SDK 37: 119 tests passed;
+both `assembleMockDebug` and `assembleRealDebug` completed successfully.
 
 > Note: `android.car.permission.CONTROL_CAR_CLIMATE`, `CONTROL_CAR_DOORS`, and
 > `CONTROL_CAR_INTERIOR_LIGHTS` are privileged permissions. The `real` flavor can
@@ -149,9 +152,9 @@ VSTATE command to the mock build:
 adb shell am broadcast -a com.sopa.viva_automotive.mock.VSTATE \
     --es unit_type ac --es state_value 1
 
-# Fan speed level 6
+# Fan speed level 5
 adb shell am broadcast -a com.sopa.viva_automotive.mock.VSTATE \
-    --es unit_type fan_speed --es state_value 6
+    --es unit_type fan_speed --es state_value 5
 
 # Driver setpoint 22.5 C, defrost airflow, driver door opened
 adb shell am broadcast -a com.sopa.viva_automotive.mock.VSTATE --es unit_type temp_driver --es state_value 22.5

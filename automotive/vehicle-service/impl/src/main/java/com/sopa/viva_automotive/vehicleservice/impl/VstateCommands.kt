@@ -1,6 +1,7 @@
 package com.sopa.viva_automotive.vehicleservice.impl
 
 import com.sopa.viva_automotive.vehicleservice.api.FanDirection
+import com.sopa.viva_automotive.vehicleservice.api.FanSpeed
 import com.sopa.viva_automotive.vehicleservice.api.VehicleAreas
 import com.sopa.viva_automotive.vehicleservice.api.VehicleProperties
 
@@ -16,7 +17,14 @@ object VstateCommands {
             "hvac_power" -> global(VehicleProperties.HVAC_POWER_ON, stateValue.toVehicleBoolean())
             "ac" -> global(VehicleProperties.HVAC_AC_ON, stateValue.toVehicleBoolean())
             "hvac_auto" -> global(VehicleProperties.HVAC_AUTO_ON, stateValue.toVehicleBoolean())
-            "fan_speed" -> global(VehicleProperties.HVAC_FAN_SPEED, stateValue.toInt())
+            "fan_speed" -> global(
+                VehicleProperties.HVAC_FAN_SPEED,
+                stateValue.toInt().also { level ->
+                    require(FanSpeed.isValid(level)) {
+                        "Fan speed must be between ${FanSpeed.MIN_LEVEL} and ${FanSpeed.MAX_LEVEL}"
+                    }
+                },
+            )
             "fan_direction" -> global(VehicleProperties.HVAC_FAN_DIRECTION, stateValue.toFanDirection())
             "temp_driver" -> PropertyWrite(
                 VehicleProperties.HVAC_TEMPERATURE_SET,

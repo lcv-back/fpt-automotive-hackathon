@@ -10,12 +10,15 @@ test, ghép sau."* Tách library là cách biến câu đó thành sự thật t
 logic lõi ở đây **không import `android.*`**, nên unit test chạy trên JVM, không
 cần Device, không cần emulator, không cần Robolectric.
 
-Đúng **2 file** được phép chạm framework, và chúng chỉ làm mỗi việc dịch:
+Các adapter dưới đây được phép chạm framework/runtime; logic còn lại vẫn JVM thuần:
 
 | File | Chạm gì |
 |---|---|
 | `trace/AndroidTrace.kt` | `SystemClock.elapsedRealtimeNanos`, `Log.i` |
 | `audio/AndroidPcmSource.kt` | `AudioRecord` |
+| `audio/SileroVadOnnxScorer.kt` | Android assets + ONNX Runtime |
+| `tts/AndroidTtsSpeaker.kt` | `TextToSpeech` + `MediaPlayer` |
+| `tts/AndroidAudioFocusController.kt` | `AudioManager` + `AudioFocusRequest` |
 
 Thêm framework vào bất kỳ file nào khác là **làm hỏng tính chất này** — test sẽ cần emulator,
 và test cần emulator là test không ai chạy.
@@ -42,8 +45,8 @@ cd automotive
 ./gradlew :voice-core:testDebugUnitTest :feature:voice:testDebugUnitTest
 ```
 
-> Project Gradle và wrapper đã có sau khi merge app shell của Dương. Máy chạy lệnh vẫn cần JDK 21
-> (`automotive/gradle/gradle-daemon-jvm.properties`) và Android SDK 37.
+> Project Gradle và wrapper đã có sau khi merge app shell của Dương. Build local ngày 01/08 dùng
+> Temurin JDK 21 (`automotive/gradle/gradle-daemon-jvm.properties`) và Android SDK 37.
 
 ## Đang có gì
 
@@ -51,11 +54,19 @@ cd automotive
 |---|---|---|
 | `trace/` | **L2** `LatencyTrace` + log format `VIVA_TRACE\|` | ✅ code + test + log mẫu |
 | `audio/` | **L3a** push-to-talk `AudioRecord` + WAV | ✅ code + test |
-| `audio/` | **L3b** Silero VAD ONNX | ⬜ 30/07 |
+| `audio/` | **L3b/L3c** Silero VAD ONNX + endpointer | ✅ code/model/unit test + synthetic baseline; cabin/Device là integration gate riêng |
 | `asr/` | **L4** `AsrClient` + `FakeAsrClient` | 🟡 contract + fake; endpoint thật chưa cắm |
-| `intent/` | **L5a** grammar T0 — 5 lệnh xương sống | 🟡 code + test viết; chưa chạy vì thiếu Gradle root |
+| `intent/` | **L5a/L5b** grammar T0 — đủ 10 intent lõi | ✅ code + test router; 5 biến thể đã cắt được từ chối rõ ràng |
 | `agent/` | Voice ↔ app/service boundary | 🟡 code + test viết; chờ Dương cắm adapter |
-| `tts/` | **L6** `TtsSpeaker` | ⬜ 01/08 |
+| `tts/` | **L6** Android vi-VN TTS + 36 pre-rendered clips + final cue | ✅ code/assets/unit test + APK build; nghe Device là integration gate riêng |
+| `tts/` | **L7** transient audio focus cho TTS | 🟡 code/unit test/APK build xanh; ducking với media thật còn chờ Device |
+
+### Build evidence — 01/08/2026
+
+- JDK 21 + Android SDK 37: năm suite Gradle chạy **121 test, 0 failure/error/skipped**.
+- `:app:assembleMockDebug :app:assembleRealDebug`: `BUILD SUCCESSFUL in 6m 51s`, 303 actionable tasks.
+- APK sinh tại `app/build/outputs/apk/mock/debug/` và `app/build/outputs/apk/real/debug/`.
+- Evidence này xác nhận code/build; không thay thế kiểm thử nghe TTS, VAD cabin hoặc quyền VHAL trên Device.
 
 ## `trace/` — dùng thế nào
 
@@ -87,6 +98,34 @@ val wav = WavWriter.toWav(utterance.pcm, utterance.sampleRate)       // để ng
 ```
 
 `record()` **block** — gọi từ main thread là ANR.
+
+### Silero VAD và baseline L3c
+
+`SileroVadOnnxScorer` nạp model v6.2.1 từ assets, giữ recurrent state + 64 mẫu context và chấm
+từng frame cố định 512 mẫu/16 kHz. `VadEndpointer` dùng hysteresis `0.50/0.35`, tối thiểu 250 ms
+speech, 100 ms silence và pad 30 ms; toàn bộ số này nằm trong `VadConfig` để đổi bằng evidence,
+không hard-code rải rác.
+
+Model: `silero_vad_v6_2_1.onnx` · SHA-256
+`1a153a22f4509e292a94e67d6f9b85e8deb25b4988682b7e174c65279d8788e3`.
+
+Baseline mô phỏng tái lập:
+
+```bash
+python scripts/evaluate_vad_thresholds.py > fixtures/vad-threshold-baseline.csv
+```
+
+Trên 36 câu TTS Việt, threshold `0.50` trigger 36/36 từ clean đến white-noise 0 dB, median coverage
+99.0% ở 0 dB và 0/36 trigger trên noise-only. Đây chỉ là **MÔ PHỎNG**: task L3c đã hoàn tất ở mức
+chọn baseline tái lập; audio cabin/Device vẫn là integration gate trước khi claim hiệu năng thực tế.
+Giữ `0.50` làm baseline vì đó cũng là mặc định upstream, không hạ xuống `0.35` chỉ để tối ưu synthetic set.
+
+Nguồn upstream chính chủ:
+
+- Silero VAD v6.2.1 (MIT): https://github.com/snakers4/silero-vad/releases/tag/v6.2.1
+- Wrapper/endpoint parameters: https://github.com/snakers4/silero-vad/blob/master/src/silero_vad/utils_vad.py
+- ONNX Runtime Java: https://onnxruntime.ai/docs/get-started/with-java.html
+- ONNX Runtime Android/R8: https://onnxruntime.ai/docs/build/android.html
 
 ## Flow MVP đúng sau kick-off 30/07
 
@@ -146,8 +185,45 @@ Mapper này là chỗ duy nhất biết cả `com.viva.voice.intent.Intent` và 
 tiếp chỉ cần nối ba nhánh action vào `ExecuteVehicleControlUseCase`, MediaSession và CarAudioManager;
 `VoiceAgent` vẫn JVM thuần và không import Activity/ViewModel.
 
+## `tts/` — Android voice trước, file đóng gói sau
+
+`AndroidTtsSpeaker` khởi tạo engine bất đồng bộ, kiểm tra `vi-VN`, gọi API `speak(CharSequence, …,
+utteranceId)` và chỉ đánh dấu `tts_start` trong `UtteranceProgressListener.onStart`. Nếu Device không
+có dữ liệu tiếng Việt hoặc engine báo lỗi, speaker tra `PrerenderedPrompts` và phát clip WAV tương ứng
+trong `res/raw/`. Text động chưa có clip dùng `viva_notification_ping.wav` làm cue cuối, còn HMI giữ
+nguyên text và trạng thái thực thi. Owner của Service phải gọi `close()` để `shutdown()` engine và
+giải phóng player.
+
+Mỗi lượt phát xin `AUDIOFOCUS_GAIN_TRANSIENT_MAY_DUCK` với `USAGE_ASSISTANT` và
+`CONTENT_TYPE_SPEECH`; cùng `AudioAttributes` được dùng cho focus request, TTS và WAV fallback.
+Focus được trả trong cả nhánh thành công lẫn lỗi. Khi nhận focus loss, speaker dừng playback và lượt nói
+không được báo thành công. Đây là bằng chứng code/unit test; việc nhạc trên AAOS duck đúng và không chồng
+tiếng vẫn phải kiểm chứng trên Device.
+
+Nguồn API chính thức:
+
+- `TextToSpeech`: https://developer.android.com/reference/android/speech/tts/TextToSpeech
+- `AudioFocusRequest`: https://developer.android.com/reference/android/media/AudioFocusRequest
+- AAOS audio focus: https://source.android.com/docs/automotive/audio/audio-focus
+- `UtteranceProgressListener`: https://developer.android.com/reference/android/speech/tts/UtteranceProgressListener
+- `MediaPlayer.create(Context, R.raw.*)` và yêu cầu `release()`:
+  https://developer.android.com/reference/android/media/MediaPlayer
+- Keep file cho resource được tra bằng `getIdentifier()`:
+  https://developer.android.com/topic/performance/app-optimization/customize-which-resources-to-keep
+
+Tạo lại 36 clip fallback bằng giọng Windows `Microsoft An - Vietnamese (Vietnam)`:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\generate_tts_assets.ps1
+```
+
+Catalog cố ý dùng câu **“Đã đặt nhiệt độ mục tiêu 24°C”**: đó là setpoint đã được service xác nhận,
+không phải claim cabin đã đạt 24°C. Fan chỉ có mức `0..5`.
+
 ## Thư viện ngoài
 
-Hiện **không có** dependency runtime nào ngoài AAOS SDK. Khi thêm ONNX Runtime cho L3b,
-ghi nguồn vào đây và vào README gốc — checklist nộp bài 10/08 bắt buộc *"ghi rõ nguồn mọi
-thư viện mã nguồn mở ngoài AAOS SDK"*.
+- L6 chỉ dùng API trong Android SDK; các WAV được tạo offline và đóng gói, không thêm runtime library.
+- L3b dùng `com.microsoft.onnxruntime:onnxruntime-android:1.20.0` và model Silero VAD v6.2.1.
+  License Silero được giữ tại `third_party/silero-vad-LICENSE`; cả hai dự án dùng MIT.
+
+Checklist nộp bài 10/08 bắt buộc ghi lại hai nguồn L3b ở README gốc khi lắp ghép tài liệu cuối.

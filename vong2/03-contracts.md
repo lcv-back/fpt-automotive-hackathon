@@ -53,6 +53,35 @@ Chiều ngược lại đi đúng đường đó ngược lên (`←` trong sơ 
 >
 > Nguồn đầy đủ: **`11-PHAN-HOI-MENTOR-KICKOFF-30-07.md`** PHẦN 2–4.
 
+### ⭐ 0.2 — M2: bảng dịch intent → PropertyID → VSS → CAN (chốt 01/08)
+
+**Trạng thái:** contract dưới đây đã đủ để Long nối `:voice-core` với code Dương/Tùng; phần chạy thật
+trên Device vẫn phải được chứng minh riêng ở M1a/M6. VHAL chỉ nhận bộ
+`(propertyId, areaId, value)`, tuyệt đối không nhận tên intent.
+
+| Intent + slots từ Voice Core | PropertyID + areaId + kiểu/value | Đường VSS | CAN command ↔ status |
+|---|---|---|---|
+| `hvac_set_temp` · `value: Float` · `zone` thiếu ⇒ `DRIVER` | `HVAC_TEMPERATURE_SET` = `358614275` · `SEAT_ZONE_DRIVER` = `49 (0x31)` · `Float` °C · chỉ nhận `16.0..32.0`, ngoài khoảng ⇒ fail/clarify | `Vehicle.Cabin.HVAC.Station.Row1.Driver.Temperature` · `float`, °C · truyền thẳng giá trị vật lý | `HvacCommand.Driver_Temperature` (`BO_ 256`, bit 0, 16-bit, scale 0.1, range 16–32°C) ↔ `HvacStatus.Driver_Temperature` (`BO_ 257`, nhiệt độ **thực** −40–80°C, không phải setpoint) |
+| `hvac_set_fan` · `level: Int` | `HVAC_FAN_SPEED` = `356517120` · `GLOBAL` = `0` · `Int` mức `0..5`, ngoài khoảng ⇒ fail/clarify | `Vehicle.Cabin.HVAC.Station.Row1.Driver.FanSpeed` · `uint8`, percent `0..100` · Gateway bắt buộc đổi `percent = level × 20`; chiều về `level = round(percent / 20)` | `HvacCommand.Driver_FanSpeed` (`BO_ 256`, bit 32, 8-bit, range 0–5) ↔ `HvacStatus.Driver_FanSpeed` (`BO_ 257`) |
+| `door_lock` · `lock: Boolean` | `DOOR_LOCK` = `371198722` · `DOOR_ROW_1_LEFT` = `1 (0x01)` · `Boolean` · `true=lock`, `false=unlock` | `Vehicle.Cabin.Door.Row1.DriverSide.IsLocked` · `boolean` · truyền thẳng | `DoorCommand.Row1Driver_IsLocked` (`BO_ 528`, bit 0, 8-bit bool) ↔ `DoorStatus.Row1Driver_IsLocked` (`BO_ 769`) |
+
+**Ba luật tích hợp bắt buộc:**
+
+1. `CoreIntentMapper` là ranh giới dịch kiểu duy nhất. Slot thiếu, sai kiểu, `NaN` hoặc ngoài range phải
+   dừng ở đây; không tự gán một lệnh xe mặc định.
+2. V1 của câu *"khóa/mở cửa"* chỉ tác động **cửa tài xế** vì code Dương đang dùng
+   `DOOR_ROW_1_LEFT` và DBC có bốn signal cửa tách biệt. Muốn điều khiển cả bốn cửa phải tạo một
+   quyết định mới và fan-out bốn write; không được đổi ngầm ý nghĩa của intent hiện tại.
+3. Chỉ phát TTS dạng *"Đã…"* sau khi lệnh qua `SafetyGuard` và service trả `Applied`. Với nhiệt độ,
+   nói *"Đã đặt nhiệt độ mục tiêu 24°C"*; không nói cabin **đã đạt** 24°C vì signal status là nhiệt độ
+   thực và cần thời gian thay đổi. `Denied`, `ConfirmationRequired`, timeout hay lỗi quyền đều có câu
+   trả lời riêng và không được giả thành thành công.
+
+**Nguồn đối chiếu:** constants/area từ
+`automotive/vehicle-service/api/.../VehicleProperties.kt`; đường gọi hiện tại từ
+`CoreIntentMapper.kt` và `ExecuteVehicleControlUseCase.kt`; VSS/CAN từ
+`docs/dbc/vss_full_demo.json`, `body_can.dbc` và `docs/dbc/README.md`.
+
 ---
 
 ## 1. `LatencyTrace` — đo latency (Long sở hữu)
@@ -329,7 +358,8 @@ data class SkillResult(
 
 > ⭐ **31/07 — cột thứ 4 là chỗ mentor nói đang thiếu.** `Skill.execute(intent)` **không được** gọi thẳng
 > `CarPropertyManager`: nó gọi `VivaCarService`, và service tra bảng M2 để ra `(propertyId, areaId, kiểu,
-> value)`. Xem §0.1. Bảng M2 do **Long (cột intent) + Tùng (cột property/VSS/CAN)** chốt ngày 31/07.
+> value)`. Xem §0.2. Bảng M2 đã điền đủ từ source ngày 01/08; Tùng còn phải xác nhận bằng log Device
+> ở M1a/M6 trước khi đội claim đường full-stack đã chạy thật.
 
 ---
 

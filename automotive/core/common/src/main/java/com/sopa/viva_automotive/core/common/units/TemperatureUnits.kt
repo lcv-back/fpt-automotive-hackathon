@@ -5,7 +5,7 @@ import kotlin.math.roundToInt
 object TemperatureUnits {
 
         const val MIN_CELSIUS = 16f
-    const val MAX_CELSIUS = 30f
+    const val MAX_CELSIUS = 32f
 
     fun celsiusToFahrenheit(celsius: Float): Float = celsius * 9f / 5f + 32f
 

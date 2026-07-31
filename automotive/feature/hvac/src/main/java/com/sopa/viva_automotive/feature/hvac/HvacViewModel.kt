@@ -6,6 +6,7 @@ import com.sopa.viva_automotive.core.common.units.TemperatureUnits
 import com.sopa.viva_automotive.core.database.settings.SettingsDataStore
 import com.sopa.viva_automotive.vehicleservice.api.ClimateState
 import com.sopa.viva_automotive.vehicleservice.api.ClimateStateObserver
+import com.sopa.viva_automotive.vehicleservice.api.FanSpeed
 import com.sopa.viva_automotive.vehicleservice.api.VehicleProperties
 import com.sopa.viva_automotive.vehicleservice.api.VehicleRepository
 import com.sopa.viva_automotive.vehicleservice.api.VehicleZone
@@ -50,7 +51,7 @@ class HvacViewModel @Inject constructor(
     }
 
     fun adjustFanSpeed(delta: Int) {
-        val target = (climate.value.fanSpeed + delta).coerceIn(MIN_FAN, MAX_FAN)
+        val target = FanSpeed.clamp(climate.value.fanSpeed + delta)
         setProperty(VehicleProperties.HVAC_FAN_SPEED, 0, target)
     }
 
@@ -69,10 +70,5 @@ class HvacViewModel @Inject constructor(
                 _errors.tryEmit(error.message ?: "Climate command failed")
             }
         }
-    }
-
-    private companion object {
-        const val MIN_FAN = 0
-        const val MAX_FAN = 6
     }
 }

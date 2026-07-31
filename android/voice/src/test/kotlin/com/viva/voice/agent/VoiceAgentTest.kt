@@ -33,6 +33,12 @@ class VoiceAgentTest {
         }
     }
 
+    private class FailingTts : TtsSpeaker {
+        override suspend fun speak(text: String, trace: LatencyTrace) {
+            error("no TTS engine or fallback audio")
+        }
+    }
+
     private class FakeGateway(
         private val result: CommandResult,
     ) : CommandGateway {
@@ -56,7 +62,7 @@ class VoiceAgentTest {
         val tts = RecordingTts()
         val gateway = FakeGateway(
             CommandResult.Applied(
-                spokenVi = "Đã đặt nhiệt độ điều hòa xuống 24 độ C.",
+                spokenVi = "Đã đặt nhiệt độ mục tiêu 24°C.",
                 hmiPatch = mapOf("climate.temperatureC" to 24f),
             ),
         )
@@ -72,7 +78,7 @@ class VoiceAgentTest {
         assertEquals(VoiceTurnStatus.APPLIED, result.status)
         assertEquals("hvac_set_temp", result.intent?.name)
         assertEquals(24f, result.hmiPatch["climate.temperatureC"])
-        assertEquals(listOf("Đã đặt nhiệt độ điều hòa xuống 24 độ C."), tts.spoken)
+        assertEquals(listOf("Đã đặt nhiệt độ mục tiêu 24°C."), tts.spoken)
     }
 
     @Test
@@ -169,6 +175,28 @@ class VoiceAgentTest {
 
         assertEquals(VoiceTurnStatus.APPLIED, result.status)
         assertEquals("media_next", gateway.received?.name)
+    }
+
+    @Test
+    fun `tts failure preserves an already applied command and its HMI text`() = runImmediate {
+        val response = "Đã đặt nhiệt độ mục tiêu 24°C."
+        val agent = VoiceAgent(
+            asr = FakeAsrClient(),
+            router = GrammarIntentRouter(),
+            gateway = FakeGateway(
+                CommandResult.Applied(
+                    response,
+                    mapOf("climate.temperatureC" to 24f),
+                ),
+            ),
+            tts = FailingTts(),
+        )
+
+        val result = agent.handleText("hạ điều hòa xuống 24 độ", trace())
+
+        assertEquals(VoiceTurnStatus.APPLIED, result.status)
+        assertEquals(response, result.spokenVi)
+        assertEquals(24f, result.hmiPatch["climate.temperatureC"])
     }
 
     private fun <T> runImmediate(block: suspend () -> T): T {

@@ -3,6 +3,7 @@ package com.sopa.viva_automotive.feature.voice.domain
 import com.sopa.viva_automotive.core.common.units.TemperatureUnits
 import com.sopa.viva_automotive.core.database.settings.SettingsDataStore
 import com.sopa.viva_automotive.feature.voice.domain.model.VehicleIntent
+import com.sopa.viva_automotive.vehicleservice.api.FanSpeed
 import com.sopa.viva_automotive.vehicleservice.api.VehicleAreas
 import com.sopa.viva_automotive.vehicleservice.api.VehicleProperties
 import com.sopa.viva_automotive.vehicleservice.api.VehicleRepository
@@ -33,24 +34,26 @@ class ExecuteVehicleControlUseCase @Inject constructor(
         }
 
         is VehicleIntent.SetFanSpeed -> {
-            if (intent.level !in MIN_FAN..MAX_FAN) {
+            if (!FanSpeed.isValid(intent.level)) {
                 Result.failure(
-                    CommandValidationException("Fan speed must be between $MIN_FAN and $MAX_FAN"),
+                    CommandValidationException(
+                        "Fan speed must be between ${FanSpeed.MIN_LEVEL} and ${FanSpeed.MAX_LEVEL}",
+                    ),
                 )
             } else {
                 vehicleRepository
                     .setProperty(VehicleProperties.HVAC_FAN_SPEED, VehicleAreas.GLOBAL, intent.level)
-                    .map { "Fan speed set to ${intent.level}" }
+                    .map { VehicleControlResponses.fanSpeed(intent.level) }
             }
         }
 
         is VehicleIntent.AdjustFanSpeed ->
             currentInt(VehicleProperties.HVAC_FAN_SPEED, VehicleAreas.GLOBAL).mapCatching { current ->
-                val target = (current + intent.delta).coerceIn(MIN_FAN, MAX_FAN)
+                val target = FanSpeed.clamp(current + intent.delta)
                 vehicleRepository
                     .setProperty(VehicleProperties.HVAC_FAN_SPEED, VehicleAreas.GLOBAL, target)
                     .getOrThrow()
-                "Fan speed set to $target"
+                VehicleControlResponses.fanSpeed(target)
             }
 
         is VehicleIntent.SetAc ->
@@ -66,7 +69,7 @@ class ExecuteVehicleControlUseCase @Inject constructor(
         is VehicleIntent.SetDoorLock ->
             vehicleRepository
                 .setProperty(VehicleProperties.DOOR_LOCK, VehicleAreas.DOOR_ROW_1_LEFT, intent.locked)
-                .map { if (intent.locked) "Doors locked" else "Doors unlocked" }
+                .map { VehicleControlResponses.driverDoor(intent.locked) }
 
         is VehicleIntent.QueryStatus -> queryStatus(intent.kind)
 
@@ -97,12 +100,7 @@ class ExecuteVehicleControlUseCase @Inject constructor(
             )
             if (result.isFailure) return result.map { "" }
         }
-        val zoneLabel = when (zone) {
-            VehicleZone.DRIVER -> "driver"
-            VehicleZone.PASSENGER -> "passenger"
-            VehicleZone.ALL -> "all zones"
-        }
-        return Result.success("Temperature set to ${formatTemp(value)} for $zoneLabel")
+        return Result.success(VehicleControlResponses.temperatureTarget(value))
     }
 
     private suspend fun queryStatus(kind: VehicleIntent.StatusQueryKind): Result<String> =
@@ -140,9 +138,4 @@ class ExecuteVehicleControlUseCase @Inject constructor(
         vehicleRepository.getProperty(propertyId, areaId).mapCatching {
             it.intValue() ?: error("Property $propertyId has no numeric value")
         }
-
-    private companion object {
-        const val MIN_FAN = 0
-        const val MAX_FAN = 6
-    }
 }

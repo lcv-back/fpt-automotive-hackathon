@@ -1,0 +1,37 @@
+raw_name	text_vi
+tts_temp_16	Đã đặt nhiệt độ mục tiêu 16 độ C.
+tts_temp_17	Đã đặt nhiệt độ mục tiêu 17 độ C.
+tts_temp_18	Đã đặt nhiệt độ mục tiêu 18 độ C.
+tts_temp_19	Đã đặt nhiệt độ mục tiêu 19 độ C.
+tts_temp_20	Đã đặt nhiệt độ mục tiêu 20 độ C.
+tts_temp_21	Đã đặt nhiệt độ mục tiêu 21 độ C.
+tts_temp_22	Đã đặt nhiệt độ mục tiêu 22 độ C.
+tts_temp_23	Đã đặt nhiệt độ mục tiêu 23 độ C.
+tts_temp_24	Đã đặt nhiệt độ mục tiêu 24 độ C.
+tts_temp_25	Đã đặt nhiệt độ mục tiêu 25 độ C.
+tts_temp_26	Đã đặt nhiệt độ mục tiêu 26 độ C.
+tts_temp_27	Đã đặt nhiệt độ mục tiêu 27 độ C.
+tts_temp_28	Đã đặt nhiệt độ mục tiêu 28 độ C.
+tts_temp_29	Đã đặt nhiệt độ mục tiêu 29 độ C.
+tts_temp_30	Đã đặt nhiệt độ mục tiêu 30 độ C.
+tts_temp_31	Đã đặt nhiệt độ mục tiêu 31 độ C.
+tts_temp_32	Đã đặt nhiệt độ mục tiêu 32 độ C.
+tts_fan_0	Đã đặt quạt mức 0.
+tts_fan_1	Đã đặt quạt mức 1.
+tts_fan_2	Đã đặt quạt mức 2.
+tts_fan_3	Đã đặt quạt mức 3.
+tts_fan_4	Đã đặt quạt mức 4.
+tts_fan_5	Đã đặt quạt mức 5.
+tts_driver_door_locked	Đã khóa cửa tài xế.
+tts_driver_door_unlocked	Đã mở khóa cửa tài xế.
+tts_media_next	Đã chuyển bài.
+tts_volume_up	Đã tăng âm lượng.
+tts_volume_down	Đã giảm âm lượng.
+tts_did_not_hear_try_again	Mình chưa nghe rõ. Bạn thử lại giúp mình nhé.
+tts_did_not_hear_repeat	Mình chưa nghe rõ. Bạn nói lại giúp mình nhé.
+tts_command_failed	Mình chưa thực hiện được yêu cầu. Bạn thử lại giúp mình nhé.
+tts_clarify_warmer	Bạn muốn tăng nhiệt độ điều hòa lên bao nhiêu độ?
+tts_clarify_temperature_range	Nhiệt độ hỗ trợ từ mười sáu đến ba mươi hai độ C. Bạn muốn đặt bao nhiêu độ?
+tts_clarify_fan_level	Bạn muốn đặt quạt ở mức mấy, từ không đến năm?
+tts_deny_door_while_moving	Xe đang chạy, mình chưa mở cửa được.
+tts_wrong_wake_phrase	Từ gọi của trợ lý là Viva ơi hoặc Vivi ơi. Bạn thử lại nhé.

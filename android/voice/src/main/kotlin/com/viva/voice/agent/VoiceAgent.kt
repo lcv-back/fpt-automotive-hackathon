@@ -210,11 +210,9 @@ class VoiceAgent(
                 result.intent?.name ?: "unknown",
                 TraceVerdict.Error(Stage.TTS_START),
             )
-            result.copy(
-                status = VoiceTurnStatus.FAILED,
-                spokenVi = "Không phát được phản hồi bằng giọng nói.",
-                hmiPatch = emptyMap(),
-            )
+            // Audio output is not command execution. Keep the verified status and HMI text;
+            // the Android speaker already attempts a short cue as its last fallback.
+            result
         }
     }
 

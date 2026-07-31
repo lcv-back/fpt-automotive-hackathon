@@ -83,16 +83,17 @@ thiếu 10h — hai người đó cần chẻ task của mình y hệt cách b�
 | **L3a** `AudioRecord` + push-to-talk (nút giữ để nói) | 2.25h | Giữ nút → ra file wav nghe rõ | ✅ code + test · ⚠️ chưa nghe được, cần Device |
 | Standup | 0.25h | | script sẵn ở `10-BAN-GIAO-L2-29-07.md` PHẦN 5 |
 
-> ⚠️ **Chưa tick được ô "biên dịch được" của L2.** Repo chưa có project Gradle nào
-> (`settings.gradle.kts` + wrapper thuộc D1), nên L2 và L3a **chưa từng compile**.
-> `06` PHẦN 5 dự phòng D1 trễ bằng *"chạy module bằng unit test"* — nhưng unit test cũng cần
-> project Gradle. Đây là việc số 1 tối nay, xem `10-BAN-GIAO-L2-29-07.md` PHẦN 4.
+> ✅ **Build gate local đã mở ngày 01/08.** Máy có Temurin JDK 21, Android SDK 37 và Gradle root.
+> Năm suite `:voice-core`, `:feature:voice`, `:vehicle-service:api`, `:vehicle-service:impl`,
+> `:core:common` đã chạy **121 test, 0 failure/error/skipped**. Hai variant
+> `:app:assembleMockDebug` và `:app:assembleRealDebug` cũng `BUILD SUCCESSFUL`; kiểm chứng
+> cabin/CarSky vẫn được theo dõi riêng tại Device Integration Gate.
 
 ### 🔴 T5 30/07 — 4h · *VAD + kick-off mentor 19:00*
 
 | Việc | Giờ | Xong khi |
 |---|---|---|
-| **L3b** Silero VAD ONNX — nạp model, cắt đoạn nói | 2.75h | Cắt đúng điểm bắt đầu/kết thúc |
+| ✅ **L3b** Silero VAD ONNX — model v6.2.1, scorer/endpointer và unit test đã build/chạy xanh bằng JDK 21 | 2.75h | Cắt đúng điểm bắt đầu/kết thúc trên fixture; cabin thuộc Device Integration Gate |
 | **Kick-off mentor** — demo ≤5', còn lại làm quen + hỏi đáp | 1h | 5 câu hỏi có câu trả lời hoặc có hẹn trả lời |
 | Standup | 0.25h | |
 
@@ -102,42 +103,45 @@ thiếu 10h — hai người đó cần chẻ task của mình y hệt cách b�
 
 | Việc | Giờ | Xong khi |
 |---|---|---|
-| ⭐ **M2** Cột intent của bảng **`intent → PropertyID + areaId + kiểu + value`** — Tùng làm cột property | 1h | Mọi intent `hvac_*` + `door_lock` có đủ 4 cột, **không dòng nào trống** |
+| ✅ ⭐ **M2** Bảng **`intent → PropertyID + areaId + kiểu + value → VSS → CAN`** — đã điền đủ từ source ở `03-contracts.md` §0.2 ngày 01/08 | 1h | 3/3 intent `hvac_*` + `door_lock` đủ 4 cột; còn xác nhận Device ở M1a/M6 |
 | **L4** `AsrClient` + `FakeAsrClient` stub + đổi sang endpoint thật của Vĩ | 1.75h | Nói → ra text tiếng Việt |
-| **L5a** Grammar **5 lệnh xương sống** (đủ để demo, chưa cần 15) | 1h | 5/5 câu ra đúng intent |
+| ✅ **L5a** Grammar **5 lệnh xương sống** (đủ để demo, chưa cần 15) — test router đã chạy xanh | 1h | 5/5 câu ra đúng intent |
 | **⚖️ MỐC CÂN 1 — 21:30** — vai đội trưởng, ⭐ **4 câu hỏi** (PHẦN 4) | 0.25h | Có phán quyết ĐƯỢC / CHƯA |
 | ~~**L3c** Tinh chỉnh ngưỡng VAD~~ → **dời sang 01/08** | ~~1h~~ | lấy chỗ cho M2 |
 
-> ⭐ **M2 là thứ đứng trên L3c hôm nay.** Đây là mắt xích mentor nói đang thiếu, và Tùng đang chờ nó để
-> viết `VivaCarService` (M1). VAD tinh chỉnh trễ một ngày không ai chờ; bảng ánh xạ trễ một ngày thì
-> M1 phải code theo bảng tạm. Chi tiết `11` PHẦN 2.
+> ✅ **M2 đã bù xong 01/08 ở `03-contracts.md` §0.2.** Đây là mắt xích mentor nói đang thiếu; Tùng có
+> thể code `VivaCarService` (M1) theo bảng chốt thay vì bảng tạm. Phần chưa xong là log xác nhận trên
+> Device ở M1a/M6, không phải contract M2. Chi tiết `11` PHẦN 2.
 >
 > **Bảng viết thế nào:** một dòng một intent, bốn cột —
-> `hvac_set_temp` | `HVAC_TEMPERATURE_SET` · areaId `ROW_1_LEFT` · `Float` | `Vehicle.Cabin.HVAC…` | tên CAN signal.
-> Hai cột cuối là phần Tùng nối tiếp từ T1. **Bảng này dùng lại ở 4 chỗ:** M1, README T11, Baseline
+> `hvac_set_temp` | `HVAC_TEMPERATURE_SET` · areaId `SEAT_ZONE_DRIVER (0x31)` · `Float` | `Vehicle.Cabin.HVAC…` | tên CAN signal.
+> Hai cột cuối đã đối chiếu với DBC/VSS thật. **Bảng này dùng lại ở 4 chỗ:** M1, README T11, Baseline
 > Manifest N3b, và Claim–Evidence Map N1 — viết một lần, đừng viết lại.
 
 ### 🟡 T7 01/08 — 10h · *ngày dài thứ nhất*
 
 | Việc | Giờ |
 |---|---|
-| **L5b** ~~Đủ 15 intent~~ → nốt **5 intent còn lại** cho đủ **10 intent lõi** (`03-contracts.md` §3 v2) + unit test *(barem mới: không cộng điểm theo số lượng chức năng)* | ~~2.5h~~ ⭐ **1.5h** |
-| **L6** `TtsSpeaker` + pre-render ~30 câu vào `res/raw/` | 4h |
-| 🆕 **N2 Product & Integration Card** — 5 ô: user vs buyer · offering & quan hệ tiếp nhận · outcome + giả định · dependency có nhãn thật/mô phỏng/kế hoạch · bước kiểm chứng tiếp theo | 2h |
-| ⭐ **L3c** Tinh chỉnh ngưỡng VAD *(dời từ 31/07)* | 1h |
+| ✅ **L5b** Đã bổ sung **5 intent còn lại**, đủ **10 intent lõi** (`03-contracts.md` §3 v2), giữ slot media/order và từ chối rõ 5 biến thể đã cắt; unit test router chạy xanh | ~~2.5h~~ ⭐ **1.5h** |
+| ✅ **L6** `AndroidTtsSpeaker` + 36 câu Việt pre-render + cue; unit test và hai APK variant đã build xanh. Nghe trên Device là runtime gate riêng | 4h |
+| ✅ 🆕 **N2 Product & Integration Card** — hoàn thành 5 ô trong `12-PRODUCT-INTEGRATION-CARD.md`: user vs buyer · offering & quan hệ tiếp nhận · outcome + giả định · dependency có nhãn thật/mô phỏng/kế hoạch · bước kiểm chứng tiếp theo | 2h |
+| ✅ ⭐ **L3c** Đã chốt baseline `threshold=0.50` bằng synthetic TTS/noise (36/36, noise-only 0/36) và unit test endpointer; retune bằng audio cabin/Device là follow-up integration *(dời từ 31/07)* | 1h |
 | Đệm / gỡ tắc cho đội | ~~1.75h~~ **1.25h** |
 | Standup | 0.25h |
 
 > **N2 là task lãi nhất trong cả plan của bạn: 2h lấy 10đ.** Làm sớm hôm nay chứ đừng để cuối vòng — nó là
 > khung cho cả write-up L12 lẫn slide L15. Thể lệ nói rõ *không cần* TAM, pricing hay LOI, chỉ cần 5 ô trên.
+>
+> ✅ **N2 hoàn thành 01/08** tại `12-PRODUCT-INTEGRATION-CARD.md`. Card giữ riêng giả thuyết với kết quả đo,
+> gắn nhãn từng dependency và chốt Device Integration Gate làm bước kiểm chứng tiếp theo.
 
 ### 🟡 CN 02/08 — 10h · *ngày dài thứ hai · chốt kịch bản*
 
 | Việc | Giờ | Xong khi |
 |---|---|---|
-| **L7** Audio focus `CarAudioManager` — duck nhạc khi TTS nói | 3h | Nhạc đang phát + ra lệnh + TTS trả lời, không chồng tiếng |
-| ⭐ **M7a** Viết **bảng 5 tình huống phức tạp + hành vi mong đợi** *(chưa code)* | 1h | 5 dòng, mỗi dòng có cột "hành vi mong đợi" viết trước |
-| **L8** **Chốt kịch bản demo 3' uncut** — ≤6 lệnh, có lời thoại, có đường thoát khi 1 lệnh fail.<br>⭐ **Phải có ≥2 tình huống của M7a và ≥1 lệnh media** (*"chuyển bài"* — kick-off nhắc) | 2h | Văn bản + đã chạy thử 1 lần |
+| 🟡 **L7** Audio focus TTS — code dùng `AudioManager`/`AudioFocusRequest`, unit test và hai APK variant đã xanh; còn Device gate | 3h | Chờ kiểm chứng nhạc thật duck đúng và không chồng tiếng trên AAOS Device |
+| ✅ ⭐ **M7a** Đã viết **bảng 5 tình huống phức tạp + hành vi mong đợi** tại `13-M7A-TINH-HUONG-PHUC-TAP.md` | 1h | 5/5 tình huống có expected/forbidden/status; M7b code phần còn thiếu sau |
+| 🟡 **L8** Đã chốt văn bản **kịch bản demo 3' uncut** tại `14-KICH-BAN-DEMO-3-PHUT.md`: ≤6 lệnh, ≥2 tình huống M7a, ≥1 lệnh media và đường thoát lỗi | 2h | Chờ chạy thử/tổng duyệt trên Device |
 | **Tổng duyệt demo 10' cho C2** (cả đội) | 3h | Chạy trọn không dừng |
 | Đệm | ~~1.75h~~ **0.75h** | |
 
@@ -171,14 +175,14 @@ thiếu 10h — hai người đó cần chẻ task của mình y hệt cách b�
 | Việc | Giờ | Xong khi |
 |---|---|---|
 | **L9b** Đạt **p95 < 1500ms** đường edge *(⭐ +1.25h bù phần L9a bị cắt hôm qua)* | ~~2.5h~~ **3.75h** | **Số của Vĩ xác nhận**, không phải bạn tự đo |
-| **L10** Chốt trục so sánh thay *"edge vs hybrid"* đã hứa ở slide 9/11 (PHẦN 5) *(⭐ khuyến nghị đã có sẵn ở PHẦN 5 ⑭ — đây là 1 quyết định + 1 đoạn văn, không phải 2h nghiên cứu)* | ~~2h~~ **1h** | Có quyết định + 1 đoạn giải thích |
+| ✅ **L10** Đã chốt trục **Vosk on-device vs `viva-asr` container** và đoạn giải thích tại `15-QUYET-DINH-BENCHMARK-ASR.md`; số benchmark chờ Vĩ | ~~2h~~ **1h** | Có quyết định + wording trung thực; không còn claim “hybrid” giả |
 | **⚖️ Tuyên bố FREEZE lúc 23:59** — vai đội trưởng | 0.25h | Cả 3 người xác nhận |
 
 ### 🟣 T5 06/08 — 5h *(tăng 1h)*
 
 | Việc | Giờ |
 |---|---|
-| **L11** README: kiến trúc + voice pipeline + **extension point thêm intent mới không sửa core** | 3h |
+| ✅ **L11** README: kiến trúc + voice pipeline + **extension point `GrammarRule` thêm intent mới không sửa core**; test extension đã xanh | 3h |
 | **Office hours — buổi cuối cùng còn kịp sửa gì đó** | 1h |
 | 🆕 **N7a Tổng duyệt LIVE lần 1** — chạy core flow trực tiếp, **không quay**, mỗi người bị hỏi ngược về phần mình | 1h |
 
@@ -229,8 +233,8 @@ thiếu 10h — hai người đó cần chẻ task của mình y hệt cách b�
 | L2 | `LatencyTrace` + log format | 3h | 🔴 29/07 | **Vĩ** |
 | L3 | Push-to-talk + VAD Silero ONNX | 6h | 🔴 30/07 *(chẻ a/b/c)* | — |
 | L4 | `AsrClient` + stub + đổi endpoint thật | 3h | 🔴 31/07 | — |
-| L5 | Intent T0 grammar — 5 lệnh *(31/07)* → ~~15~~ **10 intent lõi** *(01/08)* | ~~6h~~ **3.5h** | 🔴 31/07 / 🟡 01/08 | — |
-| L6 | `TtsSpeaker` + pre-render 30 câu | 4h | 🟡 01/08 | — |
+| L5 | Intent T0 grammar — 5 lệnh *(31/07)* → ~~15~~ ✅ **10 intent lõi** *(01/08)* | ~~6h~~ **3.5h** | ✅ 01/08 | — |
+| L6 | `TtsSpeaker` + pre-render 30 câu | 4h | ✅ 01/08 | — |
 | L7 | Audio focus `CarAudioManager` | 3h | 🔴 02/08 | — |
 | L8 | Chốt kịch bản demo 3' uncut | 2h | 🔴 02/08 | **cả đội** |
 | L9 | Latency p95 < 1500ms | 5h | 🔴 05/08 | — |

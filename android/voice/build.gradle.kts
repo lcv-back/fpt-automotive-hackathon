@@ -17,6 +17,7 @@ android {
 
     defaultConfig {
         minSdk = 29 // AAOS / Android 10, the CarSky Device baseline
+        consumerProguardFiles("consumer-rules.pro")
 
         // 03-contracts.md §2: "Config trong app doc tu BuildConfig.ASR_BASE_URL
         // - khong hard-code". Overridden per build; PA-2 (adb reverse) is the
@@ -44,9 +45,6 @@ android {
 }
 
 dependencies {
-    // Deliberately no runtime dependencies yet. Silero VAD (L3b) needs
-    // onnxruntime-android; add it in that commit, not before, and record the
-    // source in the README - the submission checklist requires every
-    // open-source library outside the AAOS SDK to be credited.
+    implementation("com.microsoft.onnxruntime:onnxruntime-android:1.20.0")
     testImplementation("junit:junit:4.13.2")
 }

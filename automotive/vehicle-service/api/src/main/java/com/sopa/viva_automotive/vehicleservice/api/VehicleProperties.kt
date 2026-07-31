@@ -20,6 +20,16 @@ object VehicleProperties {
     const val HVAC_POWER_ON = 354419984
 }
 
+/** Canonical discrete fan levels shared by UI, voice, and vehicle-service clients. */
+object FanSpeed {
+    const val MIN_LEVEL = 0
+    const val MAX_LEVEL = 5
+
+    fun isValid(level: Int): Boolean = level in MIN_LEVEL..MAX_LEVEL
+
+    fun clamp(level: Int): Int = level.coerceIn(MIN_LEVEL, MAX_LEVEL)
+}
+
 object FanDirection {
     const val FACE = 0x1
     const val FLOOR = 0x2

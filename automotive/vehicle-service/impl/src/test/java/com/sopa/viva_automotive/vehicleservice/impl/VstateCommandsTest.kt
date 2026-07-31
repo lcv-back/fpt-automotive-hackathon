@@ -35,10 +35,11 @@ class VstateCommandsTest {
 
     @Test
     fun `fan speed level maps to int`() {
-        val write = VstateCommands.parse("fan_speed", "6").getOrThrow()
+        val write = VstateCommands.parse("fan_speed", "5").getOrThrow()
 
         assertEquals(VehicleProperties.HVAC_FAN_SPEED, write.propertyId)
-        assertEquals(6, write.value)
+        assertEquals(5, write.value)
+        assertTrue(VstateCommands.parse("fan_speed", "6").isFailure)
     }
 
     @Test

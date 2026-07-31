@@ -6,6 +6,12 @@ import org.junit.Test
 class TemperatureUnitsTest {
 
     @Test
+    fun `vehicle contract supports sixteen through thirty two celsius`() {
+        assertEquals(16f, TemperatureUnits.MIN_CELSIUS, 0f)
+        assertEquals(32f, TemperatureUnits.MAX_CELSIUS, 0f)
+    }
+
+    @Test
     fun `celsius to fahrenheit`() {
         assertEquals(32f, TemperatureUnits.celsiusToFahrenheit(0f), 0.01f)
         assertEquals(68f, TemperatureUnits.celsiusToFahrenheit(20f), 0.01f)
