@@ -148,6 +148,7 @@ android {
 }
 
 dependencies {
+    implementation(project(":voice-core"))
     implementation(project(":core:common"))
     implementation(project(":core:ui"))
     implementation(project(":core:database"))

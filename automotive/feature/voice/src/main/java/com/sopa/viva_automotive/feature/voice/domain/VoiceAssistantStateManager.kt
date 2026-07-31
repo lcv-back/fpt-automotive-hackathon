@@ -44,6 +44,11 @@ class VoiceAssistantStateManager @Inject constructor() {
         _state.value = VoiceAssistantState.Executing(description)
     }
 
+    fun transitionToClarification(promptVi: String) {
+        _state.value = VoiceAssistantState.Clarification(promptVi)
+        _events.tryEmit(VoiceEvent.ClarificationRequested(promptVi))
+    }
+
     fun transitionToSuccess(message: String) {
         _state.value = VoiceAssistantState.Success(message)
         _events.tryEmit(VoiceEvent.CommandExecuted(message))

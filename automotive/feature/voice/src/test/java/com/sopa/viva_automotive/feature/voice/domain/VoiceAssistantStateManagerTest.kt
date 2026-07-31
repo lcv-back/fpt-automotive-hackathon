@@ -57,6 +57,25 @@ class VoiceAssistantStateManagerTest {
     }
 
     @Test
+    fun `clarification is a first class state and event, not a command failure`() =
+        runTest(UnconfinedTestDispatcher()) {
+            val received = mutableListOf<VoiceEvent>()
+            val collector = launch { stateManager.events.collect { received.add(it) } }
+
+            stateManager.transitionToClarification("Bạn muốn đặt bao nhiêu độ?")
+
+            assertEquals(
+                VoiceAssistantState.Clarification("Bạn muốn đặt bao nhiêu độ?"),
+                stateManager.state.value,
+            )
+            assertEquals(
+                listOf(VoiceEvent.ClarificationRequested("Bạn muốn đặt bao nhiêu độ?")),
+                received,
+            )
+            collector.cancel()
+        }
+
+    @Test
     fun `success and error emit one-off events`() = runTest(UnconfinedTestDispatcher()) {
         val received = mutableListOf<VoiceEvent>()
         val collector = launch { stateManager.events.collect { received.add(it) } }

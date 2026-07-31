@@ -2,9 +2,13 @@ package com.sopa.viva_automotive.feature.voice.domain
 
 import com.sopa.viva_automotive.feature.voice.data.CommandMappingRepository
 import com.sopa.viva_automotive.feature.voice.domain.embedding.SemanticIntentMatcher
+import com.sopa.viva_automotive.feature.voice.integration.AutomotiveVoiceAction
+import com.sopa.viva_automotive.feature.voice.integration.CoreIntentMapper
 import com.sopa.viva_automotive.feature.voice.domain.model.VehicleIntent
 import com.sopa.viva_automotive.feature.voice.domain.model.VehicleIntentTypes
 import com.sopa.viva_automotive.vehicleservice.api.VehicleZone
+import com.viva.voice.intent.GrammarIntentRouter
+import com.viva.voice.intent.RouteResult
 import javax.inject.Inject
 
 class ProcessVoiceCommandUseCase @Inject constructor(
@@ -12,9 +16,24 @@ class ProcessVoiceCommandUseCase @Inject constructor(
     private val semanticIntentMatcher: SemanticIntentMatcher,
 ) {
 
+    private val grammarRouter = GrammarIntentRouter()
+
     suspend operator fun invoke(utterance: String): VehicleIntent {
         val text = normalize(utterance)
         if (text.isBlank()) return VehicleIntent.Unknown(utterance)
+
+        when (val coreRoute = grammarRouter.route(utterance)) {
+            is RouteResult.Matched -> when (val action = CoreIntentMapper.map(coreRoute.intent)) {
+                is AutomotiveVoiceAction.VehicleControl -> return action.intent
+                else -> return VehicleIntent.Unknown(utterance)
+            }
+            is RouteResult.NeedsClarification ->
+                return VehicleIntent.Clarification(coreRoute.promptVi)
+            is RouteResult.Unsupported ->
+                if (!coreRoute.canFallback) {
+                    return VehicleIntent.Clarification(coreRoute.promptVi)
+                }
+        }
 
         val keywordIntent = commandMappingRepository.getMappings()
             .sortedByDescending { it.priority }

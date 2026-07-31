@@ -26,6 +26,8 @@ sealed interface VehicleIntent {
 
     data class QueryStatus(val kind: StatusQueryKind) : VehicleIntent
 
+    data class Clarification(val promptVi: String) : VehicleIntent
+
     data class Unknown(val utterance: String) : VehicleIntent
 
     enum class StatusQueryKind { SPEED, FUEL, BATTERY, TEMPERATURE }

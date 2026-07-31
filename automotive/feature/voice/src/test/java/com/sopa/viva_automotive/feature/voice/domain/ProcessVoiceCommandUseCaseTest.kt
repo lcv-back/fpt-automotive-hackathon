@@ -98,6 +98,32 @@ class ProcessVoiceCommandUseCaseTest {
     }
 
     @Test
+    fun `Long grammar handles wake phrase temperature before embedding fallback`() = runTest {
+        assertEquals(
+            VehicleIntent.SetTemperature(24.0, VehicleZone.DRIVER),
+            useCase("Viva ơi hạ điều hòa xuống 24 độ"),
+        )
+    }
+
+    @Test
+    fun `ambiguous cold complaint returns a clarification instead of executing`() = runTest {
+        assertEquals(
+            VehicleIntent.Clarification("Bạn muốn tăng nhiệt độ điều hòa lên bao nhiêu độ?"),
+            useCase("lạnh quá"),
+        )
+    }
+
+    @Test
+    fun `another assistant wake phrase cannot fall through to vehicle execution`() = runTest {
+        assertEquals(
+            VehicleIntent.Clarification(
+                "Từ gọi của trợ lý là “Viva ơi” hoặc “Vivi ơi”. Bạn thử lại nhé.",
+            ),
+            useCase("Siri ơi hạ điều hòa xuống 24 độ"),
+        )
+    }
+
+    @Test
     fun `unrecognized utterance maps to unknown`() = runTest {
         val intent = useCase("play some jazz music")
         assertTrue(intent is VehicleIntent.Unknown)

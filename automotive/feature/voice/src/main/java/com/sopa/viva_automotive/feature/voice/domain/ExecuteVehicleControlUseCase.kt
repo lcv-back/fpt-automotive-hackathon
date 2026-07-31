@@ -70,6 +70,9 @@ class ExecuteVehicleControlUseCase @Inject constructor(
 
         is VehicleIntent.QueryStatus -> queryStatus(intent.kind)
 
+        is VehicleIntent.Clarification ->
+            Result.failure(CommandValidationException(intent.promptVi))
+
         is VehicleIntent.Unknown ->
             Result.failure(
                 CommandValidationException("Sorry, I didn't understand \"${intent.utterance}\""),

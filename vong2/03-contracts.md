@@ -236,7 +236,7 @@ Bộ 10 dưới đây được chọn để **giữ nguyên mọi cam kết đã
 | `name` | Slots | Ví dụ câu | Skill xử lý |
 |---|---|---|---|
 | `hvac_set_temp` | `value: Float`, `zone: String?` | "hạ điều hòa xuống 22 độ" | Climate ⭐ lệnh xương sống |
-| `hvac_set_fan` | `level: Int` (0–4) | "quạt mức 2" | Climate — chứng minh `areaId` thứ 2 |
+| `hvac_set_fan` | `level: Int` (0–5 theo `body_can.dbc`) | "quạt mức 2" | Climate — chứng minh `areaId` thứ 2 |
 | `door_lock` | `lock: Boolean` | "khóa cửa", "mở cửa" | Body ⚠️ nhạy cảm — **cần cho ablation A1** |
 | `volume_adjust` | `delta: Int` | "tăng âm lượng" | System — kéo theo audio focus |
 | `media_play` | `query: String?` | "phát nhạc", "phát playlist đi làm" | Media |
@@ -296,6 +296,8 @@ data class VehicleState(
 | `G1_STALE_STATE` | `now - timestampNanos > 500ms` | mọi intent nhạy cảm | Deny — "Mình chưa đọc được trạng thái xe, thử lại giúp mình." |
 | `G3_LOW_CONFIDENCE` | `intent.confidence < 0.6` | mọi intent nhạy cảm | Confirm — hỏi lại nguyên câu |
 | `G3_LLM_WHITELIST` | `tier == T2 && name !in whitelist` | mọi intent từ cloud | Deny — không thực thi |
+| `G3_MISSING_SLOT` | câu có đúng nhóm lệnh nhưng thiếu giá trị bắt buộc | `hvac_set_temp`, `hvac_set_fan` | Confirm — hỏi đúng slot còn thiếu, không tự đoán |
+| `G3_UNSUPPORTED` | wake phrase/trợ lý khác hoặc câu nằm ngoài 10 intent lõi | mọi câu ngoài phạm vi | Deny — nói rõ phạm vi, không gọi Skill |
 
 **Nguyên tắc bất di bất dịch:** LLM chỉ được **đề xuất** intent. Chỉ `SafetyGuard` mới quyết định thực thi. Không có đường tắt từ tier T2 xuống Skill.
 

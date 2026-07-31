@@ -167,6 +167,17 @@ UI and voice assistant react exactly as they would in a vehicle.
 
 ## Voice models
 
+### Long voice-core integration
+
+The app includes `../android/voice` as Gradle module `:voice-core`. The stable boundary is
+`CoreIntentMapper`: Long's grammar emits the five backbone intent names, and the mapper translates
+them into the app's existing `VehicleIntent`, media-next, or volume actions. Malformed or missing
+slots return `null`; they never fall through to a default vehicle command.
+
+This is intentionally a narrow bridge. The current Vosk/embedding pipeline remains unchanged until
+the text-path contract is green, then `VoiceAssistantService` can switch one stage at a time instead
+of replacing microphone, NLU, vehicle execution, and UI in one risky merge.
+
 | Setting | Asset folder | Model |
 | ------- | ------------ | ----- |
 | English | `feature/voice/src/main/assets/model-en-us/` | `vosk-model-small-en-us-0.15` |

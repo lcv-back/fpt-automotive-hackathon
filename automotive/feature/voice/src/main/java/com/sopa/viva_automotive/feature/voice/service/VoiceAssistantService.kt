@@ -101,13 +101,17 @@ class VoiceAssistantService : LifecycleService() {
             else -> {
                 stateManager.transitionToProcessing(utterance)
                 val intent = processVoiceCommand(utterance)
-                stateManager.transitionToExecuting(describe(intent))
-                executeVehicleControl(intent).fold(
-                    onSuccess = { message -> stateManager.transitionToSuccess(message) },
-                    onFailure = { error ->
-                        stateManager.transitionToError(error.message ?: "Command failed")
-                    },
-                )
+                if (intent is VehicleIntent.Clarification) {
+                    stateManager.transitionToClarification(intent.promptVi)
+                } else {
+                    stateManager.transitionToExecuting(describe(intent))
+                    executeVehicleControl(intent).fold(
+                        onSuccess = { message -> stateManager.transitionToSuccess(message) },
+                        onFailure = { error ->
+                            stateManager.transitionToError(error.message ?: "Command failed")
+                        },
+                    )
+                }
             }
         }
 
@@ -123,6 +127,7 @@ class VoiceAssistantService : LifecycleService() {
         is VehicleIntent.SetHvacPower -> "Switching climate system"
         is VehicleIntent.SetDoorLock -> "Updating door locks"
         is VehicleIntent.QueryStatus -> "Checking vehicle status"
+        is VehicleIntent.Clarification -> "Clarifying command"
         is VehicleIntent.Unknown -> "Interpreting command"
     }
 

@@ -145,6 +145,7 @@ private fun statusLabel(state: VoiceAssistantState, voiceEnabled: Boolean): Stri
     state is VoiceAssistantState.Listening -> stringResource(R.string.voice_listening)
     state is VoiceAssistantState.Processing -> stringResource(R.string.voice_processing)
     state is VoiceAssistantState.Executing -> state.description
+    state is VoiceAssistantState.Clarification -> state.promptVi
     state is VoiceAssistantState.Success -> state.message
     state is VoiceAssistantState.Error -> state.message
     else -> ""

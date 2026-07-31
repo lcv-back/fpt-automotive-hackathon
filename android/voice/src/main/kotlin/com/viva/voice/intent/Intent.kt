@@ -1,0 +1,31 @@
+package com.viva.voice.intent
+
+/** A normalized command proposal. Only the gateway may decide to execute it. */
+data class Intent(
+    val name: String,
+    val slots: Map<String, Any> = emptyMap(),
+    val confidence: Float,
+    val tier: Tier,
+) {
+    enum class Tier { T0, T1, T2 }
+}
+
+/** Result of language understanding before any vehicle or media action occurs. */
+sealed class RouteResult {
+    data class Matched(val intent: Intent) : RouteResult()
+
+    data class NeedsClarification(
+        val promptVi: String,
+        val rule: String = "G3_MISSING_SLOT",
+    ) : RouteResult()
+
+    data class Unsupported(
+        val promptVi: String = "Mình chưa hỗ trợ yêu cầu này. Bạn thử nói theo cách khác nhé.",
+        val rule: String = "G3_UNSUPPORTED",
+        val canFallback: Boolean = true,
+    ) : RouteResult()
+}
+
+fun interface IntentRouter {
+    fun route(text: String): RouteResult
+}
