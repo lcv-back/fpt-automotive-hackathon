@@ -201,6 +201,9 @@ thiếu 10h — hai người đó cần chẻ task của mình y hệt cách b�
 > ⏩ **L12 và L15 đã kéo lên trước:** write-up hoàn chỉnh ở `20-WRITE-UP-AI-VONG-2.md`; deck 10 slide ở
 > `docs/VIVA_Pitch_Vong2.pptx`. Cả hai khóa claim Device/p95/SafetyGuard đúng theo N1, nên chỉ cần thay
 > evidence khi integration gate mở, không phải viết lại narrative.
+>
+> ⏩ **N7-Q&A cũng đã kéo phần chuẩn bị độc lập lên trước:** `21-QA-BGK-VONG-2.md` có 16 câu hỏi khó,
+> câu trả lời ngắn, evidence cần mở và ranh giới không được vượt. Phần rehearsal live vẫn chờ cả đội/Device.
 
 | Việc | Giờ |
 |---|---|
