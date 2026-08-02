@@ -104,6 +104,8 @@ Sau khi đăng ký rule, cần bổ sung mapper/action ở module sở hữu dom
 - [5 tình huống phức tạp M7a](vong2/13-M7A-TINH-HUONG-PHUC-TAP.md)
 - [Kịch bản demo 3 phút L8](vong2/14-KICH-BAN-DEMO-3-PHUT.md)
 - [Quyết định benchmark ASR L10](vong2/15-QUYET-DINH-BENCHMARK-ASR.md)
+- [N1 Claim–Evidence Map](vong2/18-CLAIM-EVIDENCE-MAP.md)
+- [Runbook tổng duyệt C2 10 phút](vong2/19-TONG-DUYET-C2-10-PHUT.md)
 - [Plan cá nhân và các Device Integration Gate](vong2/07-PLAN-CA-NHAN-LONG.md)
 
 ## Mã nguồn mở và tài sản mô hình

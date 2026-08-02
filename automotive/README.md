@@ -53,7 +53,8 @@ gradlew :app:assembleRealDebug
 gradlew :voice-core:testDebugUnitTest :feature:voice:testDebugUnitTest :vehicle-service:api:testDebugUnitTest :vehicle-service:impl:testDebugUnitTest :core:common:testDebugUnitTest
 ```
 
-Verified on 01/08/2026 with Temurin JDK 21 and Android SDK 37: 119 tests passed;
+Verified again on 02/08/2026 with Temurin JDK 21 and Android SDK 37: 139 tests passed
+(65 in `voice-core` + 74 in the automotive modules), with 0 failures/errors/skipped;
 both `assembleMockDebug` and `assembleRealDebug` completed successfully.
 
 > Note: `android.car.permission.CONTROL_CAR_CLIMATE`, `CONTROL_CAR_DOORS`, and

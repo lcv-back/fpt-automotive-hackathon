@@ -1,0 +1,30 @@
+Evidence ID: E12
+Label: JVM/source verification only — NOT CarSky/Device evidence
+Captured at: 2026-08-02T22:03:06+07:00
+Commit: 150df0bebc8d071632eef6223d5f37e3f7c84684
+Java: Temurin 21.0.12+8 LTS
+Gradle wrapper: 9.5.0
+Android SDK compileSdk: 37
+
+Command:
+  cd automotive
+  .\gradlew.bat test --console=plain
+
+Result:
+  BUILD SUCCESSFUL in 1m 3s
+  voice-core: 65 tests
+  automotive modules: 74 tests
+  total: 139 tests, 0 failures, 0 errors, 0 skipped
+
+APK build verification:
+  .\gradlew.bat :app:assembleMockDebug :app:assembleRealDebug --console=plain
+  BUILD SUCCESSFUL in 18s
+
+Backend verification:
+  cd backend
+  go test ./...
+  exit 0
+
+Known non-blocking build warning:
+  Gradle discarded its configuration-cache entry because three model download
+  tasks retain script object references. Test and APK build results still exited 0.

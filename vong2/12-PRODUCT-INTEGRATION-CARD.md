@@ -44,9 +44,9 @@ Các con số trên là **mục tiêu/giả thuyết**, chưa phải kết quả
 - **MÔ PHỎNG:** thay thế có chủ đích để phát triển hoặc demo; không được dùng làm bằng chứng tích hợp thật.
 - **KẾ HOẠCH:** contract hoặc hướng triển khai đã chốt nhưng runtime integration chưa hoàn tất.
 
-| Dependency / điểm nối | Trạng thái 01/08 | Bằng chứng hoặc giới hạn |
+| Dependency / điểm nối | Trạng thái 02/08 | Bằng chứng hoặc giới hạn |
 |---|---|---|
-| VIVA Agent + `voice-core` trong app AAOS | **THẬT — source/build, chưa Device-verified** | Bridge `CoreIntentMapper` đã tích hợp; 119 unit test và hai APK variant build xanh bằng JDK 21 ngày 01/08 |
+| VIVA Agent + `voice-core` trong app AAOS | **THẬT — source/build, chưa Device-verified** | Bridge `CoreIntentMapper` đã tích hợp; 139 unit test và hai APK variant build xanh bằng JDK 21, kiểm lại ngày 02/08 |
 | ASR on-device (Vosk EN/VI) + intent routing | **THẬT — source, chưa đo trên Device** | Model/task Gradle và pipeline tồn tại trong `automotive/feature/voice`; chưa claim accuracy/latency thực tế |
 | `SafetyGuard` trước vehicle execution | **KẾ HOẠCH — contract/trace đã chốt** | Voice/LLM chỉ sinh intent; guard quyết định allow/deny/confirm, nhưng implementation của Tùng chưa có trong repo |
 | `MockVehicleRepository` | **MÔ PHỎNG** | Dùng cho emulator/unit test; không chứng minh core flow chạy trên CarSky |
@@ -64,7 +64,7 @@ Các con số trên là **mục tiêu/giả thuyết**, chưa phải kết quả
 
 **Validation gate kế tiếp — Device Integration Gate:**
 
-1. ✅ Dùng JDK 21 build `mockDebug` và `realDebug`; 119 unit test xanh, 0 failure/error/skipped (01/08).
+1. ✅ Dùng JDK 21 build `mockDebug` và `realDebug`; 139 unit test xanh *(65 voice-core + 74 automotive)*, 0 failure/error/skipped (kiểm lại 02/08).
 2. Cài bản `realDebug`/`VivaCarService` theo allowlist OEM trên Device CarSky.
 3. Chạy 3 intent vehicle-control M2: đặt nhiệt độ 24°C, đặt fan mức 5, khóa cửa tài xế.
 4. Với từng lệnh, chỉ tính thành công khi service trả `Applied`; lưu cùng `traceId`: intent → policy → PropertyID/area/value → VHAL callback → VSS/CAN evidence.

@@ -61,9 +61,10 @@ cd automotive
 | `tts/` | **L6** Android vi-VN TTS + 36 pre-rendered clips + final cue | ✅ code/assets/unit test + APK build; nghe Device là integration gate riêng |
 | `tts/` | **L7** transient audio focus cho TTS | 🟡 code/unit test/APK build xanh; ducking với media thật còn chờ Device |
 
-### Build evidence — 01/08/2026
+### Build evidence — kiểm lại 02/08/2026
 
-- JDK 21 + Android SDK 37: năm suite Gradle chạy **121 test, 0 failure/error/skipped**.
+- JDK 21 + Android SDK 37: full Gradle `test` ngày 02/08 chạy **139 test**
+  *(65 `voice-core` + 74 ở các module automotive)*, **0 failure/error/skipped**.
 - `:app:assembleMockDebug :app:assembleRealDebug`: `BUILD SUCCESSFUL in 6m 51s`, 303 actionable tasks.
 - APK sinh tại `app/build/outputs/apk/mock/debug/` và `app/build/outputs/apk/real/debug/`.
 - Evidence này xác nhận code/build; không thay thế kiểm thử nghe TTS, VAD cabin hoặc quyền VHAL trên Device.

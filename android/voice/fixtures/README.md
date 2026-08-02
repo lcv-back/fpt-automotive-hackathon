@@ -9,7 +9,7 @@ Chạy thử:
 
 ```bash
 cd backend
-go run ./cmd/viva-tools harness --input ../android/voice/fixtures/golden_trace.log --out /tmp/report.csv
+go run ./cmd/viva-tools harness report --input ../android/voice/fixtures/golden_trace.log --out report.csv
 ```
 
 ## `golden_trace.log` — đường hạnh phúc, 4 lượt

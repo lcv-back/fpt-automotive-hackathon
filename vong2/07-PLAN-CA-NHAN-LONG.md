@@ -83,9 +83,9 @@ thiếu 10h — hai người đó cần chẻ task của mình y hệt cách b�
 | **L3a** `AudioRecord` + push-to-talk (nút giữ để nói) | 2.25h | Giữ nút → ra file wav nghe rõ | ✅ code + test · ⚠️ chưa nghe được, cần Device |
 | Standup | 0.25h | | script sẵn ở `10-BAN-GIAO-L2-29-07.md` PHẦN 5 |
 
-> ✅ **Build gate local đã mở ngày 01/08.** Máy có Temurin JDK 21, Android SDK 37 và Gradle root.
+> ✅ **Build gate local đã mở ngày 01/08 và kiểm lại ngày 02/08.** Máy có Temurin JDK 21, Android SDK 37 và Gradle root.
 > Năm suite `:voice-core`, `:feature:voice`, `:vehicle-service:api`, `:vehicle-service:impl`,
-> `:core:common` đã chạy **121 test, 0 failure/error/skipped**. Hai variant
+> `:core:common` đã chạy tổng cộng **139 test (65 voice-core + 74 automotive), 0 failure/error/skipped**. Hai variant
 > `:app:assembleMockDebug` và `:app:assembleRealDebug` cũng `BUILD SUCCESSFUL`; kiểm chứng
 > cabin/CarSky vẫn được theo dõi riêng tại Device Integration Gate.
 
@@ -186,11 +186,11 @@ thiếu 10h — hai người đó cần chẻ task của mình y hệt cách b�
 | **Office hours — buổi cuối cùng còn kịp sửa gì đó** | 1h |
 | 🆕 **N7a Tổng duyệt LIVE lần 1** — chạy core flow trực tiếp, **không quay**, mỗi người bị hỏi ngược về phần mình | 1h |
 
-### 🟣 T6 07/08 — 4h · *ngày dựng bằng chứng*
+### 🟣 T6 07/08 — 4h · *ngày đóng bằng chứng*
 
 | Việc | Giờ | Xong khi |
 |---|---|---|
-| 🆕 **N1 Claim–Evidence Map** — mỗi claim cốt lõi ↔ baseline ↔ phần team-owned ↔ expected result ↔ **evidence ID** | 3.5h | Mỗi claim trỏ được tới 1 file log/CSV/ảnh có tên |
+| ⏩ **N1 Claim–Evidence Map** — bản v1 đã kéo lên 02/08 tại `18-CLAIM-EVIDENCE-MAP.md`; 07/08 chỉ đóng map bằng evidence Device + N3 Baseline Manifest | 3.5h | Mỗi claim giữ lại trỏ tới 1 file log/CSV/ảnh **đã tồn tại**, đúng artifact identity |
 | Standup | 0.25h | |
 
 > **N1 thay chỗ L12a, không phải thêm vào.** Claim–Evidence Map chính là dàn ý của write-up — làm nó trước

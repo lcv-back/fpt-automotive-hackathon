@@ -23,7 +23,7 @@ viva-tools harness report --adb --serial <device-serial> --out report.csv
 Try it against the bundled fixture:
 
 ```
-go run ./cmd/viva-tools harness report --input testdata/sample_trace.log --out /tmp/report.csv
+go run ./cmd/viva-tools harness report --input testdata/sample_trace.log --out report.csv
 ```
 
 ### `viva-tools carsky ...`
