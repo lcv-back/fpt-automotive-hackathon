@@ -22,3 +22,7 @@ captures/
 # text and was tracked until 01/08; see docs/link.example.md. The repo is part
 # of the submission, and the rules (3.6) forbid publishing platform internals.
 docs/link.md
+
+# Local artifact-generation workspaces and inspection sidecars.
+.tmp/
+*.pptx.inspect.ndjson

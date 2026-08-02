@@ -106,6 +106,8 @@ Sau khi đăng ký rule, cần bổ sung mapper/action ở module sở hữu dom
 - [Quyết định benchmark ASR L10](vong2/15-QUYET-DINH-BENCHMARK-ASR.md)
 - [N1 Claim–Evidence Map](vong2/18-CLAIM-EVIDENCE-MAP.md)
 - [Runbook tổng duyệt C2 10 phút](vong2/19-TONG-DUYET-C2-10-PHUT.md)
+- [Write-up câu chuyện AI Vòng 2](vong2/20-WRITE-UP-AI-VONG-2.md)
+- [Slide pitch Vòng 2](docs/VIVA_Pitch_Vong2.pptx)
 - [Plan cá nhân và các Device Integration Gate](vong2/07-PLAN-CA-NHAN-LONG.md)
 
 ## Mã nguồn mở và tài sản mô hình
