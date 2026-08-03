@@ -9,6 +9,7 @@
 package carsky
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -59,8 +60,19 @@ func (c *Client) ExportBlueprint(id string) (json.RawMessage, error) {
 }
 
 // CloneBlueprint calls POST /api/v1/blueprints/:id/clone.
-func (c *Client) CloneBlueprint(id string) (json.RawMessage, error) {
-	return c.do(http.MethodPost, fmt.Sprintf("/blueprints/%s/clone", id), nil)
+//
+// The body carries the new blueprint's name, which the API marks **required**
+// (confirmed against the live /api/v1/openapi.json on 03/08). Before that was
+// checked this method posted an empty body and every call would have failed
+// with a 400 the first time anyone had a working credential.
+func (c *Client) CloneBlueprint(id, name string) (json.RawMessage, error) {
+	payload, err := json.Marshal(struct {
+		Name string `json:"name"`
+	}{Name: name})
+	if err != nil {
+		return nil, fmt.Errorf("encode clone request: %w", err)
+	}
+	return c.do(http.MethodPost, fmt.Sprintf("/blueprints/%s/clone", id), bytes.NewReader(payload))
 }
 
 // ListNodes calls GET /api/v1/deployments/:roomId/nodes.
@@ -118,6 +130,11 @@ func (c *Client) doOnce(method, path string, body io.Reader) (json.RawMessage, e
 	}
 	req.Header.Set("Authorization", "Bearer "+c.cfg.Token)
 	req.Header.Set("Accept", "application/json")
+	if body != nil {
+		// Without this the API sees a body it will not parse, and answers as
+		// if `name` had been omitted.
+		req.Header.Set("Content-Type", "application/json")
+	}
 
 	resp, err := c.httpClient.Do(req)
 	if err != nil {

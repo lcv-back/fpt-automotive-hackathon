@@ -24,8 +24,9 @@ type LineSource interface {
 type CarSkyGateway interface {
 	// ExportBlueprint calls GET /api/v1/blueprints/:id/export.
 	ExportBlueprint(id string) (json.RawMessage, error)
-	// CloneBlueprint calls POST /api/v1/blueprints/:id/clone.
-	CloneBlueprint(id string) (json.RawMessage, error)
+	// CloneBlueprint calls POST /api/v1/blueprints/:id/clone. name is the new
+	// blueprint's name and is required by the API, not optional.
+	CloneBlueprint(id, name string) (json.RawMessage, error)
 	// ListNodes calls GET /api/v1/deployments/:roomId/nodes.
 	ListNodes(roomID string) (json.RawMessage, error)
 	// AdbTunnelInfo calls GET /api/v1/deployments/:roomId/adb-tunnel.
