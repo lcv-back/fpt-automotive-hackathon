@@ -20,12 +20,17 @@ import (
 // call fails, we still return the backup so the caller can persist it: the
 // operator can safely retry the clone with no risk of having lost the
 // backup in the process.
-func SafeClone(gw repository.CarSkyGateway, blueprintID string) (backup, cloneResp json.RawMessage, err error) {
+// cloneName is required by the API; an empty one is rejected here rather than
+// letting CarSky answer 400 after the backup has already been taken.
+func SafeClone(gw repository.CarSkyGateway, blueprintID, cloneName string) (backup, cloneResp json.RawMessage, err error) {
+	if cloneName == "" {
+		return nil, nil, fmt.Errorf("clone name is required by the CarSky API")
+	}
 	backup, err = gw.ExportBlueprint(blueprintID)
 	if err != nil {
 		return nil, nil, fmt.Errorf("export backup before clone (refusing to clone without one): %w", err)
 	}
-	cloneResp, err = gw.CloneBlueprint(blueprintID)
+	cloneResp, err = gw.CloneBlueprint(blueprintID, cloneName)
 	if err != nil {
 		return backup, nil, fmt.Errorf("clone blueprint (backup already saved, safe to retry): %w", err)
 	}
