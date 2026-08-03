@@ -57,8 +57,18 @@ Invoke-WebRequest -Uri "https://hackathon-2.carsky.io/api/v1/openapi.json" `
 | `GET /deployments/{room}/logs/{node}` | log pod | 200 — nhưng xem cảnh báo mục 5 |
 | `GET /config/limits`, `/account-limits/effective/{acc}` | quota | `MAX_DEVICES=5`, `MAX_NODES_PER_BLUEPRINT=30`, `MAX_CONCURRENT_DEPLOYMENTS=2`, `MAX_SKYCRAFT_PER_BLUEPRINT=2` |
 
-**Chưa gọi:** `POST /blueprints/{id}/clone` (V2 phần clone) — lệnh ghi, tạo tài
-nguyên thật trên nền tảng dùng chung, chờ chốt trước khi chạy.
+**`POST /blueprints/{id}/clone` — đã chạy 03/08.** Kết quả ở
+`backend/carsky/blueprint-clone-response.json`: blueprint mới
+`6deadb05-c856-4dab-976b-432b0fac0658`, tên `VIVA-deploy-clone-0803`,
+`parentBlueprintId` trỏ đúng bản gốc.
+
+⚠️ **`name` là field bắt buộc**, và client cũ POST body rỗng nên lệnh clone
+chưa từng chạy được — xem PR `fix/carsky-clone-name`. Bài học chung: mọi
+endpoint POST trong client này đều viết từ tài liệu HTML chứ chưa gọi thật,
+nên **đối chiếu lại với `openapi.json` trước khi tin**.
+
+**Chưa gọi:** `POST /deployments` (deploy bản clone, phần cuối của V2) — xem
+mục 8.
 
 ## 4. 🚫 Cả họ endpoint điều khiển VM đang chết
 
@@ -117,3 +127,52 @@ nhận đã chạy được lệnh này.
 | `container` | 2 | TCU-NAD, SeatBelt ECU |
 | `eth-bridge` | 2 | IVI Switch, TCU Switch |
 | `device-proxy` | 1 | Device Proxy (`…-n14`) |
+
+## 8. Deploy bản clone — lệnh cụ thể, và vì sao chưa bấm
+
+Phần cuối của V2 (*"Clone Running"*) là một lệnh:
+
+```powershell
+$k = ((Get-Content backend\.env | Select-String '^CARSKY_API_KEY=') -split '=',2)[1]
+$body = @{
+  blueprintId = "6deadb05-c856-4dab-976b-432b0fac0658"   # bản clone
+  roomId      = "og4erd2wzaxe5xod8otuj"                  # device VIVA 2, dang khong co deployment
+  name        = "VIVA-deploy-clone-0803"
+} | ConvertTo-Json -Compress
+
+Invoke-WebRequest -Uri "https://hackathon-2.carsky.io/api/v1/deployments" -Method POST `
+  -Headers @{ "x-api-key" = $k; "Content-Type" = "application/json" } -Body $body
+```
+
+Hai điều phải biết trước khi bấm:
+
+- **Quota `MAX_CONCURRENT_DEPLOYMENTS_PER_ACCOUNT = 2`**, đội đang dùng 1 (room VIVA
+  đang chạy). Deploy bản clone là lấy nốt slot thứ hai — sau đó không deploy thêm
+  được gì cho tới khi xoá một cái.
+- Deploy vào **VIVA 2** thì không đụng gì tới room demo. Đừng deploy đè lên
+  `v37aa3knc6t1embelr5yi`.
+
+Gỡ khi cần: `DELETE /api/v1/deployments/{roomId}`.
+
+## 9. Tự động deploy khi merge vào `main` — làm được tới đâu
+
+Làm được, nhưng **không phải cho thứ quan trọng nhất**:
+
+| Việc | Tự động được? | Vì sao |
+|---|---|---|
+| Deploy/redeploy blueprint | ✅ | `POST /deployments` + `DELETE /deployments/{roomId}`, chỉ cần API key trong GitHub Secrets |
+| Cập nhật container `viva-asr` | ⚠️ một phần | Phải push image lên Zot trước; CI chưa có bước đó |
+| **Cài APK lên node Android** | ❌ | Cần `adb`, mà `adb-exec`/`shell` đang chết vì Conduit (mục 4). Không có đường HTTPS nào thay thế |
+
+Nghĩa là "CD lên CarSky" **không** giao được APK — tức là không giao được thứ cả
+demo phụ thuộc vào. Và ba lý do nữa để **không** bật auto-deploy theo push `main`:
+
+1. **Quota 2 deployment.** Một workflow chạy mỗi lần merge sẽ đụng trần rất nhanh.
+2. **Redeploy là phá room đang chạy.** Merge một PR docs lúc đang tổng duyệt mà
+   room bị dựng lại thì hỏng buổi duyệt.
+3. **Freeze 05/08 rồi demo.** Đúng giai đoạn cần môi trường đứng yên nhất.
+
+**Đề xuất:** workflow chạy tay (`workflow_dispatch`) có ô nhập `roomId` + `blueprintId`,
+chứ không phải `on: push`. Vẫn được tính là tự động hoá, mà không có nguy cơ một
+commit docs làm sập room lúc 21:00. Khi Conduit được bật thì thêm bước cài APK và
+lúc đó mới đáng bàn tới `on: push` cho nhánh release.
