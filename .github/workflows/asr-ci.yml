@@ -1,0 +1,50 @@
+name: asr-ci
+
+# Chỉ chạy khi asr/ đổi. Phần còn lại của repo là Kotlin/Go/markdown, không
+# cần dựng Python runtime cho mỗi commit.
+on:
+  push:
+    branches: [main]
+    paths:
+      - "asr/**"
+      - ".github/workflows/asr-ci.yml"
+  pull_request:
+    paths:
+      - "asr/**"
+      - ".github/workflows/asr-ci.yml"
+
+jobs:
+  test:
+    name: pytest (khong can model)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: asr
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          # Khớp base image của Dockerfile, để lỗi chỉ xuất hiện ở runtime
+          # thật thì cũng xuất hiện ở đây.
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: asr/requirements-dev.txt
+
+      # Cố ý KHÔNG cài requirements.txt: nó kéo theo faster-whisper +
+      # CTranslate2 (~100MB wheel) và vẫn chưa đủ để chạy — còn cần model đã
+      # convert. Test tầng HTTP chạy với fake transcriber, nên
+      # requirements-dev.txt là đủ và job này xong trong vài chục giây.
+      - name: cài dependency test
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements-dev.txt
+
+      - name: pytest
+        run: python -m pytest -q
+
+      # Bắt lỗi cú pháp ở phần KHÔNG được test import: model.py chỉ import
+      # faster_whisper bên trong hàm, nên một lỗi cú pháp ở đó sẽ lọt qua
+      # pytest và chỉ nổ khi container khởi động thật.
+      - name: kiểm cú pháp toàn bộ package
+        run: python -m compileall -q app scripts
