@@ -1,0 +1,48 @@
+E01 DEVICE INFO — PARTIAL
+=========================
+
+Status: PARTIAL
+Reason: CarSky web ADB shell is connected and the Device identity below was read
+directly from the running Device. A local `adb devices -l` capture through a
+`nydus-reach` tunnel is still pending, so this file does not by itself close G1.
+
+Capture time (Device UTC): 2026-08-03T16:13:25+0000
+Capture time (Asia/Saigon): 2026-08-03T23:13:25+0700
+Repository commit: 10aaba2a9d2683d26717fc05c9a5a7ca041037b7
+
+CarSky identity
+---------------
+Device: VIVA
+Connection shown by UI: Connected
+Room deployment: v37aa3knc6t1embelr5yi
+Namespace: room-lgpuafex
+Node: rmbexxtf5zvkmqzrk04gf-n1
+ADB widget: face-adb
+
+Device identity (read from CarSky web ADB shell)
+------------------------------------------------
+Serial: CUTTLEFISHCVD01
+Fingerprint: generic/aosp_trout_arm64/trout_arm64:14/UP1A.231005.007.A1/eng.quyetd.20260713.140518:userdebug/test-keys
+Model: arm64 trout
+Android release: 14
+Shell user: 2000:shell
+
+Commands executed (read-only)
+-----------------------------
+date +%Y-%m-%dT%H:%M:%S%z
+getprop ro.serialno
+getprop ro.build.fingerprint
+getprop ro.product.model
+getprop ro.build.version.release
+id -u
+id -un
+
+Visual source
+-------------
+device-info-carsky-web-adb.png
+
+Not yet captured
+----------------
+- Local `adb devices -l` output through `nydus-reach`.
+- APK filename/hash/flavor/install time (E02).
+- Install/launch/crash scan (E05).
