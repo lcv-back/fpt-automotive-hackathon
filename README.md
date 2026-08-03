@@ -47,9 +47,9 @@ vong2/03-contracts.md       interface và mapping intent → PropertyID → VSS 
 vong2/13-M7A-*.md           tình huống phức tạp và hành vi mong đợi
 vong2/14-KICH-BAN-*.md      kịch bản demo 3 phút và đường thoát lỗi
 vong2/15-QUYET-DINH-*.md    quyết định trục benchmark ASR
-vong2/18-N3-*.md            baseline manifest: nền tảng cấp gì, đội xây gì
-vong2/19-N4-*.md            quy trình ablation A1/A2/A3
-vong2/20-N5-*.md            bảng ba trạng thái integration + dữ liệu synthetic
+vong2/22-N3-*.md            baseline manifest: nền tảng cấp gì, đội xây gì
+vong2/23-N4-*.md            quy trình ablation A1/A2/A3
+vong2/24-N5-*.md            bảng ba trạng thái integration + dữ liệu synthetic
 ```
 
 ## Build và kiểm thử
@@ -157,9 +157,9 @@ Sau khi đăng ký rule, cần bổ sung mapper/action ở module sở hữu dom
 - [Q&A BGK theo Claim–Evidence Map](vong2/21-QA-BGK-VONG-2.md)
 - [Slide pitch Vòng 2](docs/VIVA_Pitch_Vong2.pptx)
 - [Plan cá nhân và các Device Integration Gate](vong2/07-PLAN-CA-NHAN-LONG.md)
-- [Baseline Manifest N3 — nền tảng cấp gì, đội xây gì](vong2/18-N3-BASELINE-MANIFEST.md)
-- [Ablation N4 — quy trình A1/A2/A3](vong2/19-N4-ABLATION.md)
-- [Bảng ba trạng thái integration N5](vong2/20-N5-TRANG-THAI-INTEGRATION.md)
+- [Baseline Manifest N3 — nền tảng cấp gì, đội xây gì](vong2/22-N3-BASELINE-MANIFEST.md)
+- [Ablation N4 — quy trình A1/A2/A3](vong2/23-N4-ABLATION.md)
+- [Bảng ba trạng thái integration N5](vong2/24-N5-TRANG-THAI-INTEGRATION.md)
 
 ## Mã nguồn mở và tài sản mô hình
 
