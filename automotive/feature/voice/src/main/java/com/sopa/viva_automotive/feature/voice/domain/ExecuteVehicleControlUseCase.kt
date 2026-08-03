@@ -2,6 +2,7 @@ package com.sopa.viva_automotive.feature.voice.domain
 
 import com.sopa.viva_automotive.core.common.units.TemperatureUnits
 import com.sopa.viva_automotive.core.database.settings.SettingsDataStore
+import com.sopa.viva_automotive.feature.voice.domain.delivery.DeliveryCommand
 import com.sopa.viva_automotive.feature.voice.domain.delivery.DeliverySkill
 import com.sopa.viva_automotive.feature.voice.domain.model.VehicleIntent
 import com.sopa.viva_automotive.vehicleservice.api.FanSpeed
@@ -30,7 +31,19 @@ class ExecuteVehicleControlUseCase @Inject constructor(
     private val deliverySkill: DeliverySkill,
 ) {
 
-    suspend operator fun invoke(intent: VehicleIntent): Result<String> = when (intent) {
+    suspend operator fun invoke(intent: VehicleIntent): Result<String> {
+        // Walking away from a pending "are you sure?" by issuing any other turn
+        // answers it as "no". This lives here, at the single point every intent
+        // flows through, because DeliverySkill.execute() only ever sees delivery
+        // intents — it cannot observe the non-delivery turn that must cancel the
+        // confirmation, which is how the two-turn guard was defeated before.
+        if (!retainsPendingConfirmation(intent)) {
+            deliverySkill.clearPendingConfirmation()
+        }
+        return dispatch(intent)
+    }
+
+    private suspend fun dispatch(intent: VehicleIntent): Result<String> = when (intent) {
         is VehicleIntent.SetTemperature -> setTemperature(intent.temperatureCelsius, intent.zone)
 
         is VehicleIntent.AdjustTemperature -> {
@@ -174,4 +187,18 @@ class ExecuteVehicleControlUseCase @Inject constructor(
         vehicleRepository.getProperty(propertyId, areaId).mapCatching {
             it.intValue() ?: error("Property $propertyId has no numeric value")
         }
+
+    companion object {
+        /**
+         * Whether [intent] should leave a pending delivery confirmation intact.
+         *
+         * Only the second turn of a `delivery_confirm` may answer the first;
+         * every other intent — including delivery_next_stop / delivery_order_status
+         * and any vehicle command — cancels the pending question. Extracted so the
+         * cross-turn guard can be tested without an Android `Context` (which
+         * constructing this use case would otherwise require via SettingsDataStore).
+         */
+        fun retainsPendingConfirmation(intent: VehicleIntent): Boolean =
+            intent is VehicleIntent.Delivery && intent.command is DeliveryCommand.Confirm
+    }
 }

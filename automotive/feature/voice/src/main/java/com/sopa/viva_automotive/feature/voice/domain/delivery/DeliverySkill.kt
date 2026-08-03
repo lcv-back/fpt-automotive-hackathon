@@ -37,14 +37,29 @@ class DeliverySkill @Inject constructor(
      * somebody's order.
      *
      * There is no time window here — the pending question is cleared by any
-     * other delivery command, and only the same order id can answer it. A
-     * clock would need injecting for one expiry rule; determinism is worth
+     * turn that is not a `delivery_confirm` (via [clearPendingConfirmation],
+     * called by the turn dispatcher), and only the same order id can answer it.
+     * A clock would need injecting for one expiry rule; determinism is worth
      * more in a demo. When SafetyGuard (T5/T6) lands it owns this flow and
      * this field goes away.
      */
     private var pendingConfirmation: String? = null
 
     private val lock = Any()
+
+    /**
+     * Cancels a pending confirmation because the driver moved on to a turn that
+     * was not a `delivery_confirm`.
+     *
+     * Called by [ExecuteVehicleControlUseCase] for every non-confirm intent,
+     * not from [execute]: a non-delivery intent (HVAC, door, status) never
+     * reaches this skill, so the skill cannot see the turn that must cancel.
+     * That blind spot is exactly what let a stale `pendingConfirmation` survive
+     * an intervening command and deliver on the next confirm without re-asking.
+     */
+    fun clearPendingConfirmation() = synchronized(lock) {
+        pendingConfirmation = null
+    }
 
     fun execute(command: DeliveryCommand): Result<String> = synchronized(lock) {
         when (command) {
