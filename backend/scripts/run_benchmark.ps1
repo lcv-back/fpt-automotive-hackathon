@@ -88,7 +88,7 @@ try {
     $verifyExit = $LASTEXITCODE
 
     $commit = (& git rev-parse --short HEAD 2>$null)
-    $dirty = if ((& git status --porcelain) -ne $null) { "DIRTY — numbers are not reproducible from this commit" } else { "clean" }
+    $dirty = if ((& git status --porcelain) -ne $null) { "DIRTY - numbers are not reproducible from this commit" } else { "clean" }
     $suiteHash = (Get-FileHash -Path $Suite -Algorithm SHA256).Hash.Substring(0, 12)
 
     @(
@@ -100,7 +100,7 @@ try {
         "log_source    : $(if ($Adb) { "adb logcat $Serial" } else { $Log })"
         "verify_exit   : $verifyExit (0 = no ungated regression)"
         ""
-        "ASR model/version and APK build id are NOT filled in automatically —"
+        "ASR model/version and APK build id are NOT filled in automatically -"
         "add them by hand before this run is quoted anywhere (N6 identity)."
     ) | Out-File -FilePath (Join-Path $outDir "run_manifest.txt") -Encoding utf8
 
