@@ -1,0 +1,14 @@
+{
+  "roomId": "v37aa3knc6t1embelr5yi",
+  "namespace": "room-lgpuafex",
+  "conduitUrl": "https://hackathon-2.carsky.io",
+  "nodes": [
+    {
+      "nodeKey": "rmbexxtf5zvkmqzrk04gf-n1",
+      "nodeType": "skycraft",
+      "displayName": "IVI - Android",
+      "phase": "Running",
+      "tunnelCmd": "nydus-reach tunnel adb --conduit https://hackathon-2.carsky.io --namespace room-lgpuafex --node rmbexxtf5zvkmqzrk04gf-n1"
+    }
+  ]
+}

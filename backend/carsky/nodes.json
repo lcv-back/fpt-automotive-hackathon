@@ -1,0 +1,149 @@
+[
+  {
+    "displayName": "TirePressure Sensor",
+    "message": null,
+    "name": "rmbexxtf5zvkmqzrk04gf-n0",
+    "nodeType": "gpio-panel",
+    "phase": "Running"
+  },
+  {
+    "displayName": "IVI - Android",
+    "message": null,
+    "name": "rmbexxtf5zvkmqzrk04gf-n1",
+    "nodeType": "skycraft",
+    "phase": "Running"
+  },
+  {
+    "displayName": "BCM ECU",
+    "message": null,
+    "name": "rmbexxtf5zvkmqzrk04gf-n10",
+    "nodeType": "script-node",
+    "phase": "Running"
+  },
+  {
+    "displayName": "Climate ECU",
+    "message": null,
+    "name": "rmbexxtf5zvkmqzrk04gf-n11",
+    "nodeType": "script-node",
+    "phase": "Running"
+  },
+  {
+    "displayName": "Drive Controls",
+    "message": null,
+    "name": "rmbexxtf5zvkmqzrk04gf-n12",
+    "nodeType": "gpio-panel",
+    "phase": "Running"
+  },
+  {
+    "displayName": "PWT Gateway",
+    "message": null,
+    "name": "rmbexxtf5zvkmqzrk04gf-n13",
+    "nodeType": "script-node",
+    "phase": "Running"
+  },
+  {
+    "displayName": "Device Proxy",
+    "message": null,
+    "name": "rmbexxtf5zvkmqzrk04gf-n14",
+    "nodeType": "device-proxy",
+    "phase": "Running"
+  },
+  {
+    "displayName": "SeatBelt Sensor",
+    "message": null,
+    "name": "rmbexxtf5zvkmqzrk04gf-n15",
+    "nodeType": "gpio-panel",
+    "phase": "Running"
+  },
+  {
+    "displayName": "TCU-NAD",
+    "message": null,
+    "name": "rmbexxtf5zvkmqzrk04gf-n16",
+    "nodeType": "container",
+    "phase": "Running"
+  },
+  {
+    "displayName": "Battery Sensor",
+    "message": null,
+    "name": "rmbexxtf5zvkmqzrk04gf-n17",
+    "nodeType": "gpio-panel",
+    "phase": "Running"
+  },
+  {
+    "displayName": "Central Broker (VSS)",
+    "message": null,
+    "name": "rmbexxtf5zvkmqzrk04gf-n18",
+    "nodeType": "kuksa-databroker",
+    "phase": "Running"
+  },
+  {
+    "displayName": "PWT CAN",
+    "message": null,
+    "name": "rmbexxtf5zvkmqzrk04gf-n19",
+    "nodeType": "can-bus",
+    "phase": "Running"
+  },
+  {
+    "displayName": "SeatBelt ECU",
+    "message": null,
+    "name": "rmbexxtf5zvkmqzrk04gf-n2",
+    "nodeType": "container",
+    "phase": "Running"
+  },
+  {
+    "displayName": "TCU Switch",
+    "message": null,
+    "name": "rmbexxtf5zvkmqzrk04gf-n20",
+    "nodeType": "eth-bridge",
+    "phase": "Running"
+  },
+  {
+    "displayName": "IVI Switch",
+    "message": null,
+    "name": "rmbexxtf5zvkmqzrk04gf-n3",
+    "nodeType": "eth-bridge",
+    "phase": "Running"
+  },
+  {
+    "displayName": "IVI Gateway",
+    "message": null,
+    "name": "rmbexxtf5zvkmqzrk04gf-n4",
+    "nodeType": "script-node",
+    "phase": "Running"
+  },
+  {
+    "displayName": "VCU (\tVehicle Control Unit)",
+    "message": null,
+    "name": "rmbexxtf5zvkmqzrk04gf-n5",
+    "nodeType": "script-node",
+    "phase": "Running"
+  },
+  {
+    "displayName": "BCM Gateway",
+    "message": null,
+    "name": "rmbexxtf5zvkmqzrk04gf-n6",
+    "nodeType": "script-node",
+    "phase": "Running"
+  },
+  {
+    "displayName": "BCM CAN",
+    "message": null,
+    "name": "rmbexxtf5zvkmqzrk04gf-n7",
+    "nodeType": "can-bus",
+    "phase": "Running"
+  },
+  {
+    "displayName": "BMS ECU",
+    "message": null,
+    "name": "rmbexxtf5zvkmqzrk04gf-n8",
+    "nodeType": "script-node",
+    "phase": "Running"
+  },
+  {
+    "displayName": "TCU Gateway",
+    "message": null,
+    "name": "rmbexxtf5zvkmqzrk04gf-n9",
+    "nodeType": "script-node",
+    "phase": "Running"
+  }
+]
