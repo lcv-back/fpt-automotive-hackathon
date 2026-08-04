@@ -1,11 +1,14 @@
 package com.sopa.viva_automotive.vehicleservice.impl
 
 import com.sopa.viva_automotive.vehicleservice.api.CarPropertyResult
+import com.sopa.viva_automotive.vehicleservice.api.PropertyStatus
 import com.sopa.viva_automotive.vehicleservice.api.SafetyGuard
+import com.sopa.viva_automotive.vehicleservice.api.VehicleAreas
 import com.sopa.viva_automotive.vehicleservice.api.VehicleProperties
 import com.sopa.viva_automotive.vehicleservice.api.VehicleRepository
 import com.sopa.viva_automotive.vehicleservice.api.VehicleSafetyState
 import com.sopa.viva_automotive.vehicleservice.api.VehicleWriteRequest
+import com.sopa.viva_automotive.vehicleservice.api.VehicleWriteContext
 import com.sopa.viva_automotive.vehicleservice.api.Verdict
 import kotlinx.coroutines.flow.Flow
 
@@ -48,7 +51,6 @@ class SafetyConfirmationRequiredException(
 class GuardedVehicleRepository(
     private val delegate: VehicleRepository,
     private val guard: SafetyGuard,
-    private val stateProvider: () -> VehicleSafetyState,
 ) : VehicleRepository {
 
     override fun observeProperty(propertyId: Int): Flow<CarPropertyResult> =
@@ -57,10 +59,22 @@ class GuardedVehicleRepository(
     override suspend fun getProperty(propertyId: Int, areaId: Int): Result<CarPropertyResult> =
         delegate.getProperty(propertyId, areaId)
 
-    override suspend fun setProperty(propertyId: Int, areaId: Int, value: Any): Result<Unit> {
-        val request = VehicleWriteRequest(propertyId, areaId, value)
-        return when (val verdict = guard.evaluate(request, stateProvider())) {
-            is Verdict.Allow -> delegate.setProperty(propertyId, areaId, value)
+    override suspend fun setProperty(
+        propertyId: Int,
+        areaId: Int,
+        value: Any,
+        context: VehicleWriteContext,
+    ): Result<Unit> {
+        val request = VehicleWriteRequest(
+            propertyId = propertyId,
+            areaId = areaId,
+            value = value,
+            confidence = context.confidence,
+            source = context.source,
+            isConfirmed = context.isConfirmed,
+        )
+        return when (val verdict = guard.evaluate(request, safetyStateFor(request))) {
+            is Verdict.Allow -> delegate.setProperty(propertyId, areaId, value, context)
 
             is Verdict.Deny -> Result.failure(
                 SafetyDeniedException(verdict.rule, verdict.reasonVi, verdict.suggestion),
@@ -75,7 +89,36 @@ class GuardedVehicleRepository(
         }
     }
 
+    /**
+     * Door unlock is the only v1 rule that needs live vehicle state. Read it
+     * from the unguarded delegate in the same suspend operation as the write;
+     * callers cannot accidentally inject a stale or synthetic speed snapshot.
+     *
+     * AAOS exposes `PERF_VEHICLE_SPEED` in m/s while the policy contract uses
+     * km/h, so this is the single conversion boundary. Any read/status/type
+     * failure becomes `speedKmh = null`, which `DefaultSafetyGuard` denies via
+     * `G1_STALE_STATE` before the delegate setter can run.
+     */
+    private suspend fun safetyStateFor(request: VehicleWriteRequest): VehicleSafetyState {
+        if (!request.isDoorUnlock()) return VehicleSafetyState()
+
+        val speed = delegate
+            .getProperty(VehicleProperties.PERF_VEHICLE_SPEED, VehicleAreas.GLOBAL)
+            .getOrNull()
+            ?.takeIf { it.status == PropertyStatus.AVAILABLE }
+
+        return VehicleSafetyState(
+            speedKmh = speed?.floatValue()?.times(METERS_PER_SECOND_TO_KMH),
+            timestampNanos = speed?.timestampNanos ?: 0L,
+        )
+    }
+
+    private fun VehicleWriteRequest.isDoorUnlock(): Boolean =
+        propertyId == VehicleProperties.DOOR_LOCK && value == false
+
     companion object {
+        private const val METERS_PER_SECOND_TO_KMH = 3.6f
+
         /**
          * Property mà guard quan tâm — dùng cho log/kiểm thử, không dùng để lọc
          * đầu vào: guard tự quyết định luật nào áp cho property nào.

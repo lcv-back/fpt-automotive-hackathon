@@ -8,5 +8,10 @@ interface VehicleRepository {
 
     suspend fun getProperty(propertyId: Int, areaId: Int): Result<CarPropertyResult>
 
-    suspend fun setProperty(propertyId: Int, areaId: Int, value: Any): Result<Unit>
+    suspend fun setProperty(
+        propertyId: Int,
+        areaId: Int,
+        value: Any,
+        context: VehicleWriteContext = VehicleWriteContext(),
+    ): Result<Unit>
 }

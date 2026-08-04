@@ -29,10 +29,25 @@ data class VehicleWriteRequest(
     val value: Any,
     /**
      * Độ tin cậy của bước nhận dạng, nếu lệnh đến từ giọng nói. `null` nghĩa là
-     * lệnh đến từ thao tác chạm trên HMI — người dùng bấm thì không có gì để
-     * nghi ngờ về "máy nghe nhầm", nên `G3_LOW_CONFIDENCE` không áp dụng.
+     * upstream chưa cung cấp confidence; nguồn lệnh được phân biệt riêng bằng
+     * [source], không suy đoán từ trường này.
      */
     val confidence: Float? = null,
+    val source: VehicleCommandSource = VehicleCommandSource.HMI,
+    val isConfirmed: Boolean = false,
+)
+
+/** Nguồn của lệnh ghi, dùng để áp policy xác nhận mà không làm hỏng HMI. */
+enum class VehicleCommandSource { HMI, VOICE, SYSTEM }
+
+/**
+ * Metadata bổ sung theo từng lần ghi. Giá trị mặc định giữ tương thích cho các
+ * caller HMI hiện có; đường voice phải khai báo `VOICE` một cách tường minh.
+ */
+data class VehicleWriteContext(
+    val source: VehicleCommandSource = VehicleCommandSource.HMI,
+    val confidence: Float? = null,
+    val isConfirmed: Boolean = false,
 )
 
 /**
@@ -45,7 +60,8 @@ data class VehicleWriteRequest(
  * một luật chạy trên giá trị mặc định bịa ra.
  */
 data class VehicleSafetyState(
-    val speedKmh: Float,
+    /** `null` means the current speed could not be read and must not be guessed. */
+    val speedKmh: Float? = null,
     val gear: String? = null,
     val parkingBrake: Boolean? = null,
     val ignition: String? = null,

@@ -4,6 +4,7 @@ import com.sopa.viva_automotive.vehicleservice.api.SafetyRules
 import com.sopa.viva_automotive.vehicleservice.api.VehicleAreas
 import com.sopa.viva_automotive.vehicleservice.api.VehicleProperties
 import com.sopa.viva_automotive.vehicleservice.api.VehicleSafetyState
+import com.sopa.viva_automotive.vehicleservice.api.VehicleCommandSource
 import com.sopa.viva_automotive.vehicleservice.api.VehicleWriteRequest
 import com.sopa.viva_automotive.vehicleservice.api.Verdict
 import org.junit.Assert.assertEquals
@@ -18,11 +19,17 @@ class SafetyGuardTest {
 
     private val guard = DefaultSafetyGuard()
 
-    private fun unlockDoor(confidence: Float? = null) = VehicleWriteRequest(
+    private fun unlockDoor(
+        confidence: Float? = null,
+        source: VehicleCommandSource = VehicleCommandSource.VOICE,
+        isConfirmed: Boolean = false,
+    ) = VehicleWriteRequest(
         propertyId = VehicleProperties.DOOR_LOCK,
         areaId = VehicleAreas.DOOR_ROW_1_LEFT,
         value = false,
         confidence = confidence,
+        source = source,
+        isConfirmed = isConfirmed,
     )
 
     private fun lockDoor() = VehicleWriteRequest(
@@ -65,6 +72,23 @@ class SafetyGuardTest {
     }
 
     @Test
+    fun `HMI tap duoc xem la xac nhan truc tiep khi xe dung yen`() {
+        val verdict = guard.evaluate(
+            unlockDoor(source = VehicleCommandSource.HMI),
+            stopped,
+        )
+
+        assertEquals(Verdict.Allow, verdict)
+    }
+
+    @Test
+    fun `voice unlock da xac nhan thi duoc Allow khi xe dung yen`() {
+        val verdict = guard.evaluate(unlockDoor(isConfirmed = true), stopped)
+
+        assertEquals(Verdict.Allow, verdict)
+    }
+
+    @Test
     fun `G1_GEAR_LOCK chi kich hoat khi doc duoc so`() {
         val notParked = VehicleSafetyState(speedKmh = 0f, gear = "D")
         val denied = guard.evaluate(unlockDoor(), notParked)
@@ -97,7 +121,13 @@ class SafetyGuardTest {
     fun `cham tay tren HMI khong bi luat do tin cay dung toi`() {
         // confidence = null nghia la nguoi dung bam nut, khong co gi de nghi ngo
         // ve chuyen "may nghe nham".
-        assertTrue(guard.evaluate(unlockDoor(confidence = null), stopped) is Verdict.Confirm)
+        assertEquals(
+            Verdict.Allow,
+            guard.evaluate(
+                unlockDoor(confidence = null, source = VehicleCommandSource.HMI),
+                stopped,
+            ),
+        )
     }
 
     @Test

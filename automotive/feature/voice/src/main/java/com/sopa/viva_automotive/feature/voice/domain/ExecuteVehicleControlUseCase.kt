@@ -7,8 +7,10 @@ import com.sopa.viva_automotive.feature.voice.domain.delivery.DeliverySkill
 import com.sopa.viva_automotive.feature.voice.domain.model.VehicleIntent
 import com.sopa.viva_automotive.vehicleservice.api.FanSpeed
 import com.sopa.viva_automotive.vehicleservice.api.VehicleAreas
+import com.sopa.viva_automotive.vehicleservice.api.VehicleCommandSource
 import com.sopa.viva_automotive.vehicleservice.api.VehicleProperties
 import com.sopa.viva_automotive.vehicleservice.api.VehicleRepository
+import com.sopa.viva_automotive.vehicleservice.api.VehicleWriteContext
 import com.sopa.viva_automotive.vehicleservice.api.VehicleZone
 import javax.inject.Inject
 import kotlin.math.roundToInt
@@ -92,7 +94,12 @@ class ExecuteVehicleControlUseCase @Inject constructor(
 
         is VehicleIntent.SetDoorLock ->
             vehicleRepository
-                .setProperty(VehicleProperties.DOOR_LOCK, VehicleAreas.DOOR_ROW_1_LEFT, intent.locked)
+                .setProperty(
+                    VehicleProperties.DOOR_LOCK,
+                    VehicleAreas.DOOR_ROW_1_LEFT,
+                    intent.locked,
+                    VehicleWriteContext(source = VehicleCommandSource.VOICE),
+                )
                 .map { VehicleControlResponses.driverDoor(intent.locked) }
 
         is VehicleIntent.QueryStatus -> queryStatus(intent.kind)

@@ -11,6 +11,7 @@ import com.sopa.viva_automotive.vehicleservice.api.CarPropertyResult
 import com.sopa.viva_automotive.vehicleservice.api.PropertyStatus
 import com.sopa.viva_automotive.vehicleservice.api.VehicleProperties
 import com.sopa.viva_automotive.vehicleservice.api.VehicleRepository
+import com.sopa.viva_automotive.vehicleservice.api.VehicleWriteContext
 import dagger.hilt.android.qualifiers.ApplicationContext
 import java.util.concurrent.ConcurrentHashMap
 import javax.inject.Inject
@@ -94,7 +95,12 @@ class RealVehicleRepository @Inject constructor(
             }.withPermissionHint(propertyId)
         }
 
-    override suspend fun setProperty(propertyId: Int, areaId: Int, value: Any): Result<Unit> =
+    override suspend fun setProperty(
+        propertyId: Int,
+        areaId: Int,
+        value: Any,
+        context: VehicleWriteContext,
+    ): Result<Unit> =
         withContext(ioDispatcher) {
             runCatching {
                 val manager = awaitManager()

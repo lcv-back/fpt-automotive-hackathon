@@ -3,6 +3,7 @@ package com.sopa.viva_automotive.vehicleservice.impl
 import com.sopa.viva_automotive.vehicleservice.api.SafetyGuard
 import com.sopa.viva_automotive.vehicleservice.api.SafetyRules
 import com.sopa.viva_automotive.vehicleservice.api.VehicleProperties
+import com.sopa.viva_automotive.vehicleservice.api.VehicleCommandSource
 import com.sopa.viva_automotive.vehicleservice.api.VehicleSafetyState
 import com.sopa.viva_automotive.vehicleservice.api.VehicleWriteRequest
 import com.sopa.viva_automotive.vehicleservice.api.Verdict
@@ -90,7 +91,16 @@ class DefaultSafetyGuard @Inject constructor() : SafetyGuard {
     private fun doorDenyRules(request: VehicleWriteRequest, state: VehicleSafetyState): Verdict? {
         if (!isDoorUnlock(request)) return null
 
-        if (state.speedKmh > MAX_UNLOCK_SPEED_KMH) {
+        val speedKmh = state.speedKmh
+        if (speedKmh == null || !speedKmh.isFinite() || speedKmh < 0f) {
+            return Verdict.Deny(
+                rule = SafetyRules.STALE_STATE,
+                reasonVi = "Mình chưa đọc được tốc độ hiện tại nên chưa thể mở khoá cửa.",
+                suggestion = "Bạn kiểm tra trạng thái xe rồi thử lại nhé.",
+            )
+        }
+
+        if (speedKmh > MAX_UNLOCK_SPEED_KMH) {
             return Verdict.Deny(
                 rule = SafetyRules.SPEED_LOCK,
                 reasonVi = "Xe đang chạy, mình chưa mở cửa được.",
@@ -114,6 +124,7 @@ class DefaultSafetyGuard @Inject constructor() : SafetyGuard {
     /** G2_CONFIRM_DOOR — mở khoá cửa luôn phải hỏi, kể cả khi xe đã dừng hẳn. */
     private fun doorConfirmRule(request: VehicleWriteRequest): Verdict? {
         if (!isDoorUnlock(request)) return null
+        if (request.source != VehicleCommandSource.VOICE || request.isConfirmed) return null
         return Verdict.Confirm(
             rule = SafetyRules.CONFIRM_DOOR,
             questionVi = "Bạn có chắc muốn mở khoá cửa không?",
