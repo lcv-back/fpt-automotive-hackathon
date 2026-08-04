@@ -58,9 +58,15 @@ go run ./cmd/viva-tools harness compare `
 |---|---|
 | Trỏ `BuildConfig.ASR_BASE_URL` sang endpoint cloud thay vì Container Node | Không sửa code app — contract §2 đã bắt buộc đọc URL từ `BuildConfig` |
 
+**⚙️ 04/08 — đã có nửa đầu của bảng.** Image `viva-asr` build và chạy được lần đầu;
+36 clip tiếng Việt cho `server_ms` **p50=439 · p95=667**, RTF median **0.167**
+(`evidence/asr/`). Đây là chặng ASR **đo trên CPU máy dev**, chưa phải node CarSky
+và chưa phải giọng người thật — nhưng đủ để nói một điều cho L9: nếu chặng ASR một
+mình đã chiếm ~670ms ở p95 thì ngân sách 1500ms cho cả đường còn lại **rất chặt**.
+
 | Chỉ số | asr_container | asr_cloud | Ghi chú |
 |---|---|---|---|
-| p50 / p95 `asr_processing` | *chưa đo* | *chưa đo* | |
+| p50 / p95 `asr_processing` | **439 / 667 ms** *(local, không phải CarSky)* | *chưa đo* | |
 | p50 / p95 `e2e_computed` | *chưa đo* | *chưa đo* | Ngưỡng cam kết: p95 < 1500ms |
 | Số lượt `Error:asr_done` | *chưa đo* | *chưa đo* | Timeout phải nằm trong mẫu, không được lọc ra |
 | WER / intent accuracy | *chưa đo* | *chưa đo* | Từ `results.csv` của `harness verify` |
