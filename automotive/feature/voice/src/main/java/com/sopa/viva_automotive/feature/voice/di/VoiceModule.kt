@@ -7,6 +7,8 @@ import com.sopa.viva_automotive.feature.voice.data.vosk.VoskSpeechRecognitionEng
 import com.sopa.viva_automotive.feature.voice.domain.delivery.DeliveryRepository
 import com.sopa.viva_automotive.feature.voice.domain.delivery.InMemoryDeliveryRepository
 import com.sopa.viva_automotive.feature.voice.domain.embedding.SemanticIntentMatcher
+import com.viva.voice.intent.GrammarIntentRouter
+import com.viva.voice.intent.IntentRouter
 import com.viva.voice.tts.AndroidTtsSpeaker
 import com.viva.voice.tts.TtsSpeaker
 import dagger.Binds
@@ -45,6 +47,17 @@ abstract class VoiceModule {
     ): DeliveryRepository
 
     companion object {
+        /**
+         * The T0 grammar tier, bound here instead of being constructed inside
+         * `ProcessVoiceCommandUseCase` so the N4 ablation can replace it with a
+         * no-op router and measure what the grammar tier is actually holding up
+         * (`16-QUYET-DINH-DUONG-NLU.md`). Stateless apart from its rule list,
+         * so one instance is enough.
+         */
+        @Provides
+        @Singleton
+        fun provideIntentRouter(): IntentRouter = GrammarIntentRouter()
+
         /**
          * Application-scoped: `TextToSpeech` init costs hundreds of
          * milliseconds, and paying it inside a turn would land straight in the

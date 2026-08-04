@@ -7,6 +7,7 @@ import com.sopa.viva_automotive.feature.voice.domain.delivery.DeliveryCommand
 import com.sopa.viva_automotive.feature.voice.domain.model.VehicleIntent
 import com.sopa.viva_automotive.feature.voice.domain.model.VehicleIntentTypes
 import com.sopa.viva_automotive.vehicleservice.api.VehicleZone
+import com.viva.voice.intent.GrammarIntentRouter
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -21,7 +22,11 @@ class ProcessVoiceCommandUseCaseTest {
     fun setUp() = runTest {
         val repository = CommandMappingRepository(FakeCommandMappingDao())
         repository.seedIfEmpty()
-        useCase = ProcessVoiceCommandUseCase(repository, FakeSemanticIntentMatcher())
+        useCase = ProcessVoiceCommandUseCase(
+            repository,
+            FakeSemanticIntentMatcher(),
+            GrammarIntentRouter(),
+        )
     }
 
     @Test
@@ -66,7 +71,7 @@ class ProcessVoiceCommandUseCaseTest {
         val semantic = FakeSemanticIntentMatcher(
             mapOf("turn off aircon" to VehicleIntentTypes.AC_OFF),
         )
-        val nlu = ProcessVoiceCommandUseCase(repository, semantic)
+        val nlu = ProcessVoiceCommandUseCase(repository, semantic, GrammarIntentRouter())
         assertEquals(VehicleIntent.SetAc(false), nlu("turn off aircon"))
     }
 
