@@ -205,6 +205,29 @@ loại, và `ETHERNET` không nằm trong đó — dù blueprint do chính nền
 → **Pin ETHERNET chỉ tạo được trong UI CarSky.** Muốn thêm container node có mạng
 thì: tạo node bằng API (hoặc UI), rồi **vào UI thêm pin + nối dây**.
 
+`PATCH /pins/{pinId}` cũng **404** — nên sau khi pin được tạo trong UI, cũng không
+sửa được `properties.address` bằng API. Địa chỉ IP tĩnh phải đặt luôn trong UI.
+
+### ✅ Đã chạy được: tên đầy đủ + digest, xác nhận 04/08
+
+Sau khi thêm pin trong UI và deploy bản clone, **22/22 node `Running`**, trong đó
+node `VIVA ASR` khai image dạng:
+
+```
+registry.hackathon-2.carsky.io/viva/viva-asr@sha256:63c2c56a...
+```
+
+Nên câu hỏi *"khai `localhost:5000/...` hay tên đầy đủ"* **đã tự trả lời: tên đầy đủ
+pull được**, không cần hỏi BTC. Và nền tảng **chấp nhận dạng digest**, nên khoá
+artifact theo digest (thay vì `:latest`) là làm được thật — với `viva-asr` thì digest
+khoá luôn cả model đã convert nằm trong image.
+
+Bằng chứng: `evidence/carsky/v7-manifest.txt` + `v7-asr-node-phases.json`.
+
+⚠️ Điều này **không** chứng minh gì về latency: container nằm trên mạng `10.99.0.x`
+trong room, và không có đường gửi request vào từ ngoài (Conduit chết, chưa có
+`nydus-reach`). Số 439/667 ms vẫn là CPU máy dev.
+
 ### ⚠️ Hệ quả cho V2: file backup JSON KHÔNG phải đường khôi phục
 
 Đã kiểm bằng thực nghiệm: lấy **chính** `backend/carsky/blueprint-VIVA-deploy-backup.json`
