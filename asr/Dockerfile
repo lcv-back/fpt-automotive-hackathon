@@ -23,9 +23,28 @@ ARG ASR_QUANTIZATION=int8
 # CPU-only torch: the converter just needs to read the weights, and the CUDA
 # wheels are ~2 GB larger for no benefit. GPU quota on CarSky is still an open
 # question (04-KE-HOACH-CAP-NHAT-28-07.md), so the runtime defaults to CPU too.
+# Hai ràng buộc phiên bản dưới đây đều tìm ra bằng cách build thật rồi đọc lỗi,
+# đừng "dọn dẹp" chúng nếu chưa build lại:
+#
+#  1. ctranslate2 ≥ 4.6.0 — wheel 4.4.0/4.5.0 mang cờ executable stack và kernel
+#     WSL2 của Docker Desktop từ chối nạp:
+#       ImportError: libctranslate2-*.so: cannot enable executable stack
+#     Đã kiểm từng bản trong container sạch: 4.4.0 lỗi · 4.6.0 OK · 4.8.1 OK.
+#
+#  2. transformers dòng 5.x — converter của ctranslate2 4.8.x gọi
+#     `from_pretrained(..., dtype=...)`. transformers 4.47 chỉ biết `torch_dtype`
+#     nên báo:
+#       TypeError: WhisperForConditionalGeneration.__init__() got an unexpected
+#       keyword argument 'dtype'
+#
+#  3. torch ≥ 2.6 — `vinai/PhoWhisper-tiny` phát hành trọng số dạng
+#     `pytorch_model.bin` (không có safetensors), nên transformers phải gọi
+#     `torch.load`, và nó chặn mọi torch < 2.6 vì CVE-2025-32434:
+#       ValueError: Due to a serious vulnerability issue in `torch.load` ...
+#     Nếu sau này đổi sang một model có safetensors thì ràng buộc này biến mất.
 RUN pip install --no-cache-dir \
       --extra-index-url https://download.pytorch.org/whl/cpu \
-      ctranslate2==4.5.0 transformers==4.47.1 torch==2.5.1
+      ctranslate2==4.8.1 transformers==5.14.1 torch==2.9.1
 
 RUN ct2-transformers-converter \
       --model "${ASR_HF_MODEL}" \

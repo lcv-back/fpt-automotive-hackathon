@@ -109,6 +109,31 @@ is split out of `requirements.txt`.
 |---|---|
 | HTTP contract (routes, headers, status codes, body shape) | ✅ 20 tests green locally |
 | PCM16 decode, confidence aggregation | ✅ unit tested |
-| Dockerfile | ⚠️ **not built yet** — no Docker daemon on the dev machine at the time of writing. Build it before relying on it. |
-| Real transcription quality / latency (RTF) on CarSky | ❌ not measured. Needs the container node (V7). Do not quote a latency number until it comes out of the harness. |
+| Dockerfile | ✅ **builds and runs** (04/08). It took four attempts and three real version constraints — see below. |
+| Transcription on real Vietnamese audio | ✅ 36 clips through the running container: RTF median **0.167**, `server_ms` p50 **439** / p95 **667**, WER 0.411 on synthesised speech. Evidence: `evidence/asr/`. |
+| Latency on **CarSky** | ❌ not measured — the numbers above are this dev machine's CPU. Needs the container node (V7). |
 | CPU architecture of CarSky container nodes | ❌ unconfirmed — the image assumes x86_64 Linux. |
+
+### Three version constraints found by building it, not by reading docs
+
+Each cost one failed build. They are pinned with the reason in `Dockerfile` and
+`requirements.txt`; do not "tidy them up" without rebuilding.
+
+| Constraint | Symptom if violated |
+|---|---|
+| `ctranslate2 >= 4.6` | `ImportError: libctranslate2-*.so: cannot enable executable stack` — 4.4/4.5 wheels carry an exec-stack flag the WSL2 kernel refuses. Verified per version: 4.4.0 ✗, 4.6.0 ✓, 4.8.1 ✓ |
+| `transformers` 5.x | `TypeError: WhisperForConditionalGeneration.__init__() got an unexpected keyword argument 'dtype'` — the ct2 4.8 converter uses the new kwarg name |
+| `torch >= 2.6` | `ValueError: ... vulnerability issue in torch.load ... upgrade torch to at least v2.6` (CVE-2025-32434). This one is a property of **the model**: `vinai/PhoWhisper-tiny` ships `pytorch_model.bin`, not safetensors. Swap to a safetensors model and the constraint disappears. |
+| `huggingface_hub < 1.0` | Container starts, then `/health` stays 503 with `ModuleNotFoundError: No module named 'requests'` — hub 1.x dropped `requests`, faster-whisper 1.1.1 still imports it |
+
+### ⚠️ How to read the accuracy number
+
+WER 0.411 sounds bad; the transcripts say something more specific. Errors are
+mostly near-homophones (`đặt` → `đặc`, `độ C` → `đỗ xê`) and a frequently dropped
+first word. Two consequences:
+
+- The clips are **synthesised speech**, downsampled 22.05 → 16 kHz by linear
+  interpolation — crude, and it can only hurt. Real 16 kHz audio should do better.
+- The intent router matches on keywords, so **WER overstates the damage**. The
+  number that matters for this product is intent accuracy end-to-end, and that
+  comes from the harness (V10/V12), not from here.
