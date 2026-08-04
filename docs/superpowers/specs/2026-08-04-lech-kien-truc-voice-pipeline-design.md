@@ -34,15 +34,15 @@ vi demo* (2đ) trừ điểm trực tiếp, và BGK Vòng 2 chính là mentor c�
 | Q2 | **Sửa claim ở mọi tài liệu đã "xong"**, kể cả write-up và slide; đồng thời dùng chính phát hiện này làm chất liệu cho mục bắt buộc *"AI sai ở đâu"* | Để lại mâu thuẫn giữa các file cùng nộp còn tệ hơn không viết gì. Và checklist nộp bài bắt buộc có mục đó — đây là ví dụ thật, có mã làm chứng |
 | Q3 | **Phân tầng**: một file nội bộ giữ lập luận đầy đủ, bảy điểm trích ngắn vào bản nộp | Viết một lần, dùng nhiều chỗ. Bản nộp chỉ cần kết luận + đường trỏ về |
 
-Ngoại lệ duy nhất của Q1: sửa comment và README.
+Ngoại lệ duy nhất của Q1: sửa tài liệu Markdown và slide; không đổi cả comment trong `.kt`.
 
 ## 3. Tám phát hiện
 
-Mọi dòng dưới đây đã kiểm chứng bằng đọc mã hoặc grep, không phải suy đoán.
+Mọi dòng dưới đây đã kiểm chứng bằng đọc mã hoặc `rg`, không phải suy đoán.
 
 | # | Phát hiện | Bằng chứng |
 |---|---|---|
-| **F1** | Package `audio/` và `asr/` của `android/voice` **không được tham chiếu ở bất kỳ đâu** trong `automotive/`. Chỉ `trace/`, `tts/`, `intent/` được cắm vào app | grep `VadSegmenter\|VadEndpointer\|PushToTalkRecorder\|AsrClient\|GrammarIntentRouter` trên `automotive/` chỉ trúng `GrammarIntentRouter` tại `ProcessVoiceCommandUseCase.kt:10,19` |
+| **F1** | Package `audio/` và `asr/` của `android/voice` **không được tham chiếu ở bất kỳ đâu** trong `automotive/`. Chỉ `trace/`, `tts/`, `intent/` được cắm vào app | `rg` các symbol trên `automotive/` chỉ trúng `GrammarIntentRouter` tại `ProcessVoiceCommandUseCase.kt:10,19` |
 | **F2** | App không có VAD endpointer riêng; điểm cuối câu do Vosk tự quyết; Vosk tự mở một `AudioRecord` độc lập | `VoiceAssistantService.kt:93-96` (comment nói thẳng) · `VoskSpeechRecognitionEngine.kt:105` |
 | **F3** | `SpeechRecognitionEngine.transcribe()` không nhận PCM → **không có cách nào** đưa cùng một audio cho hai engine | `data/SpeechRecognitionEngine.kt` |
 | **F4** | `SafetyGuard` **không tồn tại trong mã sản phẩm**. Nó chỉ có trong ngữ pháp verdict, README, `benchmark_v1.csv` và harness Go | `VoiceTurnReport.kt:46` — *"There is no `SafetyGuard` in this build"* |
@@ -59,17 +59,18 @@ Ghi lại để plan Vòng 3 không ước lượng sai:
    Thực tế `VadEndpointer` **đã là** state machine streaming — `accept(probability,
    frameStartSample)` chạy từng frame 512 mẫu (`VadSegmenter.kt:55`). Thứ còn thiếu chỉ
    là **driver** đọc mic sống và phát segment ra dần. Công việc nhỏ hơn review ước lượng.
-2. Review đề nghị thêm pre-roll 200–300 ms như một tính năng mới. Trường cấu hình **đã
-   có**: `VadConfig.speechPadMs`, đang đặt `30` (`VadSegmenter.kt:10`). Đây là việc tune
-   tham số bằng audio thật, không phải việc viết mã.
+2. Review đề nghị thêm pre-roll 200–300 ms. `VadConfig.speechPadMs=30` và phép lùi
+   `candidateStart` đã có (`VadSegmenter.kt:10,65`), nhưng live driver vẫn cần circular
+   buffer để giữ các frame trước trigger. Đây là cả việc tích hợp buffer lẫn tune tham số.
 
 ### 3.2. Hệ quả ngoài phạm vi voice — chuyển cho Tùng
 
 F4 và F5 làm hai thứ của người khác mất nền:
 
 - **Ablation A1** của `23-N4` (*"Tắt `SafetyGuard`"*) không có gì để tắt.
-- Hai câu `B09`/`B10` trong `benchmark_v1.csv` kỳ vọng `Deny:G1_SPEED_LOCK`, mà build
-  hiện tại không bao giờ sinh ra được.
+- B09, B10 và B20 trong `benchmark_v1.csv` phụ thuộc guard: lần lượt kỳ vọng
+  `Confirm:G2_CONFIRM_DOOR`, `Deny:G1_SPEED_LOCK`, `Deny:G3_UNSUPPORTED`, mà build hiện tại
+  không sinh ra được.
 
 Long **báo**, không nhận việc. Việc báo phải xảy ra ở standup 21:30 ngày 04/08: nếu Tùng
 còn kịp đưa `SafetyGuard` vào trước 23:59 ngày 05/08 thì A1 cứu được; sau freeze thì
@@ -108,7 +109,7 @@ File 25 viết một lần và dài. Bảy chỗ còn lại mỗi chỗ 2–5 d�
 
 | # | File | Sửa gì | Xong khi |
 |---|---|---|---|
-| **S1** | `vong2/24-N5` | Tách dòng "Voice core" thành hai dòng: *(a)* nằm trong APK — grammar 10 intent, TTS, audio focus, trace; *(b)* module có unit test nhưng **chưa nằm trên đường chạy** — push-to-talk, Silero VAD, `AsrClient`. Thêm dòng `SafetyGuard` nhãn **Kế hoạch**. Ghi Device là Cuttlefish ảo | Không còn dòng nào gộp thứ đang chạy với thứ chưa cắm |
+| **S1** | `vong2/24-N5` | Tách dòng "Voice core": *(a)* nằm trong APK — grammar, TTS, audio focus, trace; *(b)* push-to-talk/Silero VAD **Mô phỏng**, có unit test nhưng chưa nằm trên đường chạy; *(c)* `AsrClient` container **Kế hoạch**; thêm `SafetyGuard` theo snapshot sau phản hồi Tùng. Ghi Device là Cuttlefish ảo | Không còn dòng nào gộp thứ đang chạy với thứ chưa cắm hoặc gộp hai nhãn khác nhau |
 | **S2** | `vong2/18-N1` | Cột team-owned của claim **C-VOICE** đang gộp cả ba thứ chưa cắm. Tách ra. Sửa lý do trạng thái VÀNG: không phải *"chờ M6/Device"* mà là *"chưa nằm trên đường chạy"* — Device mở cũng không làm ba thứ đó xanh | Mỗi mảnh team-owned trỏ đúng loại evidence của nó (unit test / build / Device) |
 | **S3** | `vong2/20-WRITE-UP` dòng 28–31 và 75–76 | Mô tả lại pipeline **đúng như APK chạy**. Giữ mô tả module như *kiến trúc đích*, nhưng gọi tên rõ đó là đích, không phải hiện trạng | Người đọc write-up rồi cài APK không thấy khác nhau |
 | **S4** | `vong2/20-WRITE-UP` — **mục mới** | ⚠️ Write-up hiện **không có** mục *"AI sai ở đâu"*: §9 chỉ có prompt và MCP-driven testing, thiếu hai trong bốn ý mà checklist nộp bài bắt buộc. Thêm mục mới sau §9: AI sinh nhanh **hai nhánh song song** khớp nhau trên giấy nhưng lệch nhau trong mã; đội bắt được bằng rà soát chéo trước hạn; chọn **khai đúng thay vì vá vội** trước freeze, và ghi phần vá vào roadmap Vòng 3 | Mục mới nêu được: sai gì · phát hiện bằng cách nào · xử lý ra sao · vì sao không vá ngay |
@@ -121,7 +122,7 @@ File 25 viết một lần và dài. Bảy chỗ còn lại mỗi chỗ 2–5 d�
 | # | Việc | Phụ thuộc | Ghi chú |
 |---|---|---|---|
 | **R1** | Một đường capture duy nhất, fan-out cho cả hai engine | — | Không dùng chữ ký `transcribe(pcm16, sampleRate)` kiểu one-shot mà review đề xuất: nó hợp với PhoWhisper (batch) nhưng **làm thoái hoá Vosk**, vốn là engine streaming có partial. Thiết kế đúng: *một mic → `Flow<PCM frame>` → fan-out*; Vosk tiêu thụ dòng liên tục, container nhận segment do VAD cắt |
-| **R2** | Driver streaming cho `VadEndpointer`; tune `speechPadMs` bằng audio thật | R1 | State machine đã có (mục 3.1) |
+| **R2** | Driver streaming cho `VadEndpointer`, circular pre-roll buffer; tune `speechPadMs` bằng audio thật | R1 | State machine đã có; live driver/buffer chưa có (mục 3.1) |
 | **R3** | Bộ audio benchmark: 5 người nói × 22 câu × 3 điều kiện = 330 lượt, cộng 20–30 phút audio không lệnh để đo false trigger | R1 | **Khai đúng tên**: Device là Cuttlefish ảo (F8), nên đây là *audio thu ngoài rồi phát lại/inject*, **không phải "cabin thật"**. Gọi sai là tái phạm đúng lỗi F1–F3 |
 | **R4** | Hiệu chỉnh confidence | R3, F4, F5 | Review bỏ sót hai tiền đề. Thứ tự đúng: `TranscriptionEvent.Final` mang được confidence → `SafetyGuard` tồn tại → lập bảng `confidence → transcript đúng/sai → intent đúng/sai` → chọn ngưỡng theo chi phí: lệnh vô hại chấp nhận thấp hơn, `door_lock` và `delivery_*` yêu cầu cao hơn hoặc hỏi xác nhận |
 | **R5** | A/B ba cấu hình audio: raw `VOICE_RECOGNITION` / platform AEC-NS / enhancement bổ sung | R3 | Chọn theo WER và intent accuracy, không theo cảm nhận "nghe sạch hơn" |

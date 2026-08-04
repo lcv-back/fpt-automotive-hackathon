@@ -10,7 +10,7 @@
 
 ## Global Constraints
 
-- **Không sửa file `.kt`** trong `android/voice/src` hoặc `automotive/`. Feature freeze là 05/08/2026 23:59. Chỉ `.md`, `.pptx` và comment được phép đổi.
+- **Không sửa file `.kt`** trong `android/voice/src` hoặc `automotive/`. Feature freeze là 05/08/2026 23:59. Đợt này chỉ đổi `.md` và `.pptx`; comment trong `.kt` cũng không đổi để chốt chặn Task 10 không mâu thuẫn.
 - **Không hạ nhãn thứ vốn đã đúng.** `viva-asr` container đang là **Kế hoạch** ở N5 — chính xác, giữ nguyên. Claim `C-SAFETY` ở N1 đang là **ĐỎ — không có `SafetyGuard` trong repo** — chính xác, giữ nguyên.
 - **Không nhận việc của Tùng.** `SafetyGuard` là T5/T6 của Tùng. Task 1 chỉ báo, không làm.
 - **Ba nhãn integration giữ đúng định nghĩa của `24-N5`:** *Đã tích hợp* = đã chạy trên Device/nền tảng thật có log hoặc ảnh · *Mô phỏng* = chạy được nhưng đầu kia là mock/simulator/synthetic · *Kế hoạch* = contract đã có, code chưa chạy hoặc chưa nối.
@@ -36,13 +36,13 @@ Chạy:
 
 ```bash
 cd "e:/FPT Automative Hackathon 2026"
-grep -rn "class SafetyGuard\|object SafetyGuard\|interface SafetyGuard" --include=*.kt automotive android
+rg -n "(class|object|interface) SafetyGuard" automotive android -g '*.kt'
 ```
 
 Kỳ vọng: **không có dòng nào**. Nếu có kết quả thì phát hiện F4 sai — dừng lại, báo người viết plan, không gửi tin nhắn.
 
 ```bash
-grep -n "data class Final" automotive/feature/voice/src/main/java/com/sopa/viva_automotive/feature/voice/data/SpeechRecognitionEngine.kt
+rg -n "data class Final" automotive/feature/voice/src/main/java/com/sopa/viva_automotive/feature/voice/data/SpeechRecognitionEngine.kt
 ```
 
 Kỳ vọng: `data class Final(val text: String) : TranscriptionEvent` — không có tham số `confidence`.
@@ -64,7 +64,7 @@ Tạo `vong2/25-LECH-KIEN-TRUC-VOICE-PIPELINE.md`:
 
 | # | Phát hiện | Ảnh hưởng tới ai | Hạn |
 |---|---|---|---|
-| F4 | `SafetyGuard` **không tồn tại trong mã sản phẩm** — chỉ có trong ngữ pháp verdict, README, `benchmark_v1.csv` và harness Go (`VoiceTurnReport.kt:46`) | **Tùng (T5/T6).** Ablation A1 của `23-N4` không có gì để tắt; hai câu `B09`/`B10` kỳ vọng `Deny:G1_SPEED_LOCK` mà build hiện tại không sinh ra được | 🔴 trước freeze 05/08 23:59 |
+| F4 | `SafetyGuard` **không tồn tại trong mã sản phẩm ở snapshot 04/08** — chỉ có trong ngữ pháp verdict, README, `benchmark_v1.csv` và harness Go (`VoiceTurnReport.kt:46`) | **Tùng (T5/T6).** A1 của `23-N4` không có gì để tắt; B09 kỳ vọng `Confirm:G2_CONFIRM_DOOR`, B10 kỳ vọng `Deny:G1_SPEED_LOCK`, B20 kỳ vọng `Deny:G3_UNSUPPORTED`, nhưng build hiện tại không sinh được các verdict guard này | 🔴 trước freeze 05/08 23:59 |
 | F5 | `TranscriptionEvent.Final(text)` **không mang confidence** (`SpeechRecognitionEngine.kt`) → luật `G3_LOW_CONFIDENCE` không kích hoạt được kể cả khi guard đã tồn tại | **Tùng.** Nếu làm guard mà không có confidence đi qua boundary thì G3 là luật chết | 🔴 cùng lúc với F4 |
 
 Long **báo**, không nhận việc. Nếu sau freeze vẫn chưa có guard, `23-N4` giữ nguyên chữ
@@ -86,8 +86,9 @@ Tùng ơi, mình rà lại mã trước freeze và thấy hai thứ ảnh hưở
 2. TranscriptionEvent.Final chỉ mang text, không mang confidence. Nên kể cả khi guard có
    rồi, luật G3_LOW_CONFIDENCE vẫn không kích hoạt được vì không có số nào đi qua boundary.
 
-Hệ quả: ablation A1 của N4 không có gì để tắt, và hai câu B09/B10 trong benchmark kỳ vọng
-Deny:G1_SPEED_LOCK mà build hiện tại không bao giờ sinh ra.
+Hệ quả: ablation A1 của N4 không có gì để tắt. B09, B10 và B20 trong benchmark
+đều phụ thuộc guard: lần lượt kỳ vọng Confirm:G2_CONFIRM_DOOR, Deny:G1_SPEED_LOCK và
+Deny:G3_UNSUPPORTED, trong khi build hiện tại không sinh được các verdict đó.
 
 Mình không nhận việc này, chỉ báo để Tùng quyết trước 23:59 mai. Nếu kịp thì A1 cứu được;
 sau freeze thì N4 còn hai trục thay vì ba, và mình sẽ ghi đúng như vậy vào write-up.
@@ -127,18 +128,31 @@ git commit -m "docs(vong2): mở file 25 và chuyển F4/F5 SafetyGuard cho Tùn
 - Consumes: file 25 với §0 từ Task 1.
 - Produces: các mục `§1` … `§6` mà bảy task sau trích về. Task 3–9 đều trỏ tới file này bằng chuỗi `vong2/25-LECH-KIEN-TRUC-VOICE-PIPELINE.md`.
 
+- [ ] **Step 0: Chốt snapshot sau phản hồi/merge của Tùng**
+
+Trước khi viết, cập nhật nhánh tài liệu với baseline dùng để nộp và chạy lại:
+
+```bash
+rg -n "(class|object|interface) SafetyGuard" automotive android -g '*.kt'
+```
+
+- Nếu vẫn rỗng: giữ F4/F5 và các đoạn *chưa có guard* như plan dưới đây.
+- Nếu có kết quả: **không** chép nguyên văn các đoạn hard-code bên dưới. Cập nhật F4 thành
+  *đã có mã, chờ evidence*, kiểm tra confidence boundary thật, rồi sửa S1/S2/S5/S6 và mục
+  *AI sai ở đâu* theo snapshot mới. Ghi commit/hash chứa guard vào §0.
+
 - [ ] **Step 1: Xác minh lại F1, F2, F3 trước khi viết**
 
 ```bash
 cd "e:/FPT Automative Hackathon 2026"
-grep -rn "VadSegmenter\|VadEndpointer\|PushToTalkRecorder\|AsrClient" --include=*.kt automotive
+rg -n "VadSegmenter|VadEndpointer|PushToTalkRecorder|AsrClient" automotive -g '*.kt'
 ```
 
 Kỳ vọng: **không có dòng nào**. Đây là bằng chứng của F1.
 
 ```bash
-grep -n "AudioRecord(" automotive/feature/voice/src/main/java/com/sopa/viva_automotive/feature/voice/data/vosk/VoskSpeechRecognitionEngine.kt
-grep -n "no VAD endpointer of its own" automotive/feature/voice/src/main/java/com/sopa/viva_automotive/feature/voice/service/VoiceAssistantService.kt
+rg -n -F "AudioRecord(" automotive/feature/voice/src/main/java/com/sopa/viva_automotive/feature/voice/data/vosk/VoskSpeechRecognitionEngine.kt
+rg -n -F "no VAD endpointer of its own" automotive/feature/voice/src/main/java/com/sopa/viva_automotive/feature/voice/service/VoiceAssistantService.kt
 ```
 
 Kỳ vọng: dòng 105 và dòng 93. Đây là bằng chứng của F2.
@@ -181,7 +195,7 @@ Thêm vào cuối file:
 
 | # | Phát hiện | Bằng chứng |
 |---|---|---|
-| **F1** | Package `audio/` và `asr/` của `android/voice` không được tham chiếu ở bất kỳ đâu trong `automotive/`. Chỉ `trace/`, `tts/`, `intent/` được cắm vào app | grep 4 symbol trên `automotive/` không ra kết quả; `GrammarIntentRouter` được dùng tại `ProcessVoiceCommandUseCase.kt:19` |
+| **F1** | Package `audio/` và `asr/` của `android/voice` không được tham chiếu ở bất kỳ đâu trong `automotive/`. Chỉ `trace/`, `tts/`, `intent/` được cắm vào app | `rg` 4 symbol trên `automotive/` không ra kết quả; `GrammarIntentRouter` được dùng tại `ProcessVoiceCommandUseCase.kt:19` |
 | **F2** | App không có VAD endpointer riêng; điểm cuối câu do Vosk tự quyết; Vosk tự mở một `AudioRecord` độc lập | `VoiceAssistantService.kt:93-96` · `VoskSpeechRecognitionEngine.kt:105` |
 | **F3** | `SpeechRecognitionEngine.transcribe()` không nhận PCM → không có cách nào đưa cùng một audio cho hai engine | `data/SpeechRecognitionEngine.kt` |
 | **F4** | `SafetyGuard` không tồn tại trong mã sản phẩm | `VoiceTurnReport.kt:46` |
@@ -206,9 +220,10 @@ Ghi lại để roadmap Vòng 3 không ước lượng sai.
    Thực tế `VadEndpointer` **đã là** state machine streaming — `accept(probability,
    frameStartSample)` chạy từng frame 512 mẫu (`VadSegmenter.kt:55`). Thứ còn thiếu chỉ là
    **driver** đọc mic sống và phát segment ra dần. Công việc nhỏ hơn review ước lượng.
-2. Review đề nghị thêm pre-roll 200–300 ms như một tính năng mới. Trường cấu hình **đã có**:
-   `VadConfig.speechPadMs`, đang đặt `30` (`VadSegmenter.kt:10`). Đây là việc tune tham số
-   bằng audio thật, không phải việc viết mã.
+2. Review đề nghị thêm pre-roll 200–300 ms. `VadConfig.speechPadMs=30` và phép lùi
+   `candidateStart` đã có trong state machine (`VadSegmenter.kt:10,65`), nhưng đó **chưa phải
+   pre-roll hoàn chỉnh cho mic sống**: driver streaming còn phải giữ circular buffer để phát
+   lại các frame trước trigger. Vì vậy cần cả driver/buffer lẫn tune độ dài bằng audio thật.
 ```
 
 - [ ] **Step 5: Viết §4 — ba quyết định phạm vi**
@@ -235,7 +250,7 @@ Thêm vào cuối file:
 | # | Việc | Phụ thuộc | Ghi chú |
 |---|---|---|---|
 | **R1** | Một đường capture duy nhất, fan-out cho cả hai engine | — | Không dùng chữ ký `transcribe(pcm16, sampleRate)` kiểu one-shot mà review đề xuất: nó hợp với PhoWhisper (batch) nhưng **làm thoái hoá Vosk**, vốn là engine streaming có partial. Thiết kế đúng: *một mic → `Flow<PCM frame>` → fan-out*; Vosk tiêu thụ dòng liên tục, container nhận segment do VAD cắt |
-| **R2** | Driver streaming cho `VadEndpointer`; tune `speechPadMs` bằng audio thật | R1 | State machine đã có, xem §3 |
+| **R2** | Driver streaming cho `VadEndpointer`, circular pre-roll buffer; tune `speechPadMs` bằng audio thật | R1 | State machine đã có; live driver và buffer chưa có, xem §3 |
 | **R3** | Bộ audio benchmark: 5 người nói × 22 câu × 3 điều kiện = 330 lượt, cộng 20–30 phút audio không lệnh để đo false trigger | R1 | **Khai đúng tên**: Device là Cuttlefish ảo (F8), nên đây là *audio thu ngoài rồi phát lại/inject*, **không phải "cabin thật"**. Gọi sai là tái phạm đúng lỗi F1–F3 |
 | **R4** | Hiệu chỉnh confidence | R3, F4, F5 | Thứ tự đúng: `TranscriptionEvent.Final` mang được confidence → `SafetyGuard` tồn tại → lập bảng `confidence → transcript đúng/sai → intent đúng/sai` → chọn ngưỡng theo chi phí: lệnh vô hại chấp nhận thấp hơn, `door_lock` và `delivery_*` yêu cầu cao hơn hoặc hỏi xác nhận |
 | **R5** | A/B ba cấu hình audio: raw `VOICE_RECOGNITION` / platform AEC-NS / enhancement bổ sung | R3 | Chọn theo WER và intent accuracy, không theo cảm nhận "nghe sạch hơn" |
@@ -278,7 +293,7 @@ Bảng này để người khác kiểm tra được tính nhất quán giữa f
 - [ ] **Step 8: Kiểm tra file đọc được và đủ mục**
 
 ```bash
-grep -n "^## " vong2/25-LECH-KIEN-TRUC-VOICE-PIPELINE.md
+rg -n "^## " vong2/25-LECH-KIEN-TRUC-VOICE-PIPELINE.md
 ```
 
 Kỳ vọng: đúng bảy heading — `## 0.` … `## 6.`
@@ -300,7 +315,7 @@ git commit -m "docs(vong2): viết đủ file 25 — nguồn sự thật về l�
 
 **Interfaces:**
 - Consumes: §1 và §2 của file 25.
-- Produces: ba dòng bảng thay cho một dòng cũ; một khối `>` ghi chú về Cuttlefish.
+- Produces: bốn dòng bảng thay cho một dòng cũ; một khối `>` ghi chú về Cuttlefish.
 
 - [ ] **Step 1: Thay dòng "Voice core" bằng ba dòng**
 
@@ -314,8 +329,9 @@ Thay bằng:
 
 ```markdown
 | Voice core **trên đường chạy APK** (grammar 10 intent · TTS · audio focus · trace) | **Mô phỏng** | Unit test JVM xanh; APK `mock`/`real` build xanh | Chạy trên Device AAOS, nghe/thu trong cabin |
-| Push-to-talk · Silero VAD · `AsrClient` — **module `android/voice`, chưa nằm trên đường chạy** | **Kế hoạch** | Unit test JVM xanh; baseline synthetic `threshold=0.50` | Cắm vào `VoiceAssistantService`. App hiện dùng `VoskSpeechRecognitionEngine` tự mở `AudioRecord` và **không có VAD riêng** (`VoiceAssistantService.kt:93`). Device mở cũng không nâng được nhãn này — xem `25-LECH-KIEN-TRUC-VOICE-PIPELINE.md` |
-| `SafetyGuard` (luật G1 · G3) | **Kế hoạch** | Contract §4, ngữ pháp verdict, harness Go đọc được `Deny:<rule>` | Chưa có lớp hiện thực nào trong mã (`VoiceTurnReport.kt:46`). A1 của `23-N4` và hai câu `B09`/`B10` phụ thuộc mục này |
+| Push-to-talk · Silero VAD — **module `android/voice`, chưa nằm trên đường chạy** | **Mô phỏng** | Unit test JVM xanh; baseline synthetic `threshold=0.50` | Cắm vào `VoiceAssistantService`. App hiện dùng `VoskSpeechRecognitionEngine` tự mở `AudioRecord` và **không có VAD riêng** (`VoiceAssistantService.kt:93`) |
+| `AsrClient` → container `viva-asr` — **chưa nằm trên đường chạy** | **Kế hoạch** | Contract + fake client; 20 test HTTP dùng fake transcriber | Cắm client thật, build/chạy model thật và đo trên cùng PCM với Vosk |
+| `SafetyGuard` (luật G1 · G3) | **Kế hoạch** | Contract §4, ngữ pháp verdict, harness Go đọc được `Deny:<rule>` | Chưa có lớp hiện thực nào trong snapshot 04/08 (`VoiceTurnReport.kt:46`). B09, B10 và B20 lần lượt phụ thuộc `G2_CONFIRM_DOOR`, `G1_SPEED_LOCK`, `G3_UNSUPPORTED` |
 ```
 
 - [ ] **Step 2: Thêm ghi chú Cuttlefish sau bảng trạng thái**
@@ -334,15 +350,15 @@ Chèn ngay trước heading `## Dữ liệu synthetic — tạo thế nào`:
 - [ ] **Step 3: Kiểm tra không còn dòng gộp**
 
 ```bash
-grep -n "Voice core (VAD" vong2/24-N5-TRANG-THAI-INTEGRATION.md
+rg -n -F "Voice core (VAD" vong2/24-N5-TRANG-THAI-INTEGRATION.md
 ```
 
 Kỳ vọng: **không có kết quả**.
 
 ```bash
-grep -c "chưa nằm trên đường chạy" vong2/24-N5-TRANG-THAI-INTEGRATION.md
-grep -c "SafetyGuard" vong2/24-N5-TRANG-THAI-INTEGRATION.md
-grep -c "CUTTLEFISHCVD01" vong2/24-N5-TRANG-THAI-INTEGRATION.md
+rg -c "chưa nằm trên đường chạy" vong2/24-N5-TRANG-THAI-INTEGRATION.md
+rg -c "SafetyGuard" vong2/24-N5-TRANG-THAI-INTEGRATION.md
+rg -c "CUTTLEFISHCVD01" vong2/24-N5-TRANG-THAI-INTEGRATION.md
 ```
 
 Kỳ vọng: `1`, `1`, `1`.
@@ -411,8 +427,8 @@ bằng:
 - [ ] **Step 4: Kiểm tra**
 
 ```bash
-grep -n "Ngoài đường chạy" vong2/18-CLAIM-EVIDENCE-MAP.md
-grep -n "không có \`SafetyGuard\` trong repo" vong2/18-CLAIM-EVIDENCE-MAP.md
+rg -n "Ngoài đường chạy" vong2/18-CLAIM-EVIDENCE-MAP.md
+rg -n -F 'không có `SafetyGuard` trong repo' vong2/18-CLAIM-EVIDENCE-MAP.md
 ```
 
 Kỳ vọng: lệnh đầu ra đúng 1 dòng (C-VOICE); lệnh sau vẫn ra 1 dòng (C-SAFETY giữ nguyên).
@@ -464,8 +480,9 @@ Ngay dưới heading `## A1 — Tắt \`SafetyGuard\` (N4b, Tùng)`, chèn:
 
 ```markdown
 > ⚠️ **Tiền đề chưa thoả tính đến 04/08:** `SafetyGuard` chưa có lớp hiện thực nào trong mã
-> (`VoiceTurnReport.kt:46`), nên **không có gì để tắt**. Hai câu `B09`/`B10` cũng không thể
-> sinh `Deny:G1_SPEED_LOCK` ở build hiện tại. Nếu tới freeze vẫn vậy, mọi ô dưới đây giữ
+> (`VoiceTurnReport.kt:46`), nên **không có gì để tắt**. B09 không thể sinh
+> `Confirm:G2_CONFIRM_DOOR`, B10 không thể sinh `Deny:G1_SPEED_LOCK`, và B20 không thể sinh
+> `Deny:G3_UNSUPPORTED` ở build hiện tại. Nếu tới freeze vẫn vậy, mọi ô dưới đây giữ
 > nguyên chữ *chưa đo* theo luật số 1 của chính file này.
 ```
 
@@ -481,8 +498,8 @@ Ngay dưới heading `## A2 — Thay \`viva-asr\` container bằng đường clo
 - [ ] **Step 4: Kiểm tra**
 
 ```bash
-grep -n "Tiền đề chưa thoả" vong2/23-N4-ABLATION.md
-grep -n "Tiền đề hợp lệ" vong2/15-QUYET-DINH-BENCHMARK-ASR.md
+rg -n "Tiền đề chưa thoả" vong2/23-N4-ABLATION.md
+rg -n "Tiền đề hợp lệ" vong2/15-QUYET-DINH-BENCHMARK-ASR.md
 ```
 
 Kỳ vọng: lệnh đầu ra 2 dòng; lệnh sau ra 2 dòng (heading và dòng trỏ về trong `23`).
@@ -533,7 +550,7 @@ ASR, có false accept/hour của VAD, và ngưỡng confidence được chọn b
 - [ ] **Step 2: Kiểm tra**
 
 ```bash
-grep -n "Voice Pipeline Gate" vong2/12-PRODUCT-INTEGRATION-CARD.md
+rg -n "Voice Pipeline Gate" vong2/12-PRODUCT-INTEGRATION-CARD.md
 ```
 
 Kỳ vọng: 1 dòng.
@@ -612,13 +629,13 @@ bằng:
 - [ ] **Step 4: Kiểm tra không còn mô tả sai**
 
 ```bash
-grep -n "PushToTalkRecorder thu PCM 16 kHz mono; \`VadEndpointer\`" vong2/20-WRITE-UP-AI-VONG-2.md
+rg -n -F 'PushToTalkRecorder thu PCM 16 kHz mono; `VadEndpointer`' vong2/20-WRITE-UP-AI-VONG-2.md
 ```
 
 Kỳ vọng: **không có kết quả**.
 
 ```bash
-grep -c "25-LECH-KIEN-TRUC-VOICE-PIPELINE" vong2/20-WRITE-UP-AI-VONG-2.md
+rg -c "25-LECH-KIEN-TRUC-VOICE-PIPELINE" vong2/20-WRITE-UP-AI-VONG-2.md
 ```
 
 Kỳ vọng: `2`.
@@ -665,8 +682,9 @@ Chèn ngay trước `## 11. Hướng sau Vòng 2`:
 một fixture, một định dạng log — nên nhận sai là thấy ngay.
 
 **Sai ở đâu.** Sai lớn nhất của vòng này không phải một hàm hỏng, mà là **hai nhánh song
-song khớp nhau trên giấy nhưng lệch nhau trong mã**. Module `android/voice` được xây theo
-kiến trúc đích: push-to-talk → Silero VAD → `AsrClient` → grammar → `SafetyGuard`. App
+song khớp nhau trên giấy nhưng lệch nhau trong mã**. Module `android/voice` được xây cho
+phần đầu của kiến trúc đích: push-to-talk → Silero VAD → `AsrClient` → grammar;
+`SafetyGuard` mới chỉ có trong contract/verdict, chưa có lớp hiện thực. App
 `automotive/` được xây theo đường ngắn nhất chạy được: `VoskSpeechRecognitionEngine` tự mở
 `AudioRecord`, Vosk tự quyết điểm cuối câu, không VAD, không guard. Mỗi nhánh đều có unit
 test xanh của riêng nó, nên không có test nào đỏ để báo động. Tài liệu thì mô tả nhánh thứ
@@ -691,13 +709,13 @@ bảng ba trạng thái lẫn Claim–Evidence Map được lập ra để ngăn
 - [ ] **Step 3: Kiểm tra**
 
 ```bash
-grep -n "^## " vong2/20-WRITE-UP-AI-VONG-2.md
+rg -n "^## " vong2/20-WRITE-UP-AI-VONG-2.md
 ```
 
 Kỳ vọng: 12 heading, đánh số liên tục `## 1.` … `## 12.`, không trùng số.
 
 ```bash
-grep -c "AI hỗ trợ tốt ở đâu và sai ở đâu" vong2/20-WRITE-UP-AI-VONG-2.md
+rg -c "AI hỗ trợ tốt ở đâu và sai ở đâu" vong2/20-WRITE-UP-AI-VONG-2.md
 ```
 
 Kỳ vọng: `1`.
@@ -765,8 +783,8 @@ Chèn ngay sau bảng, trước heading `### Build evidence — kiểm lại 02/
 - [ ] **Step 3: Kiểm tra README**
 
 ```bash
-grep -n "Nằm trên đường chạy APK" android/voice/README.md
-grep -c "❌ \*\*chưa\*\*" android/voice/README.md
+rg -n "Nằm trên đường chạy APK" android/voice/README.md
+rg -c "❌ \*\*chưa\*\*" android/voice/README.md
 ```
 
 Kỳ vọng: lệnh đầu ra 1 dòng; lệnh sau ra `4`.
@@ -784,11 +802,14 @@ Lưu file, giữ nguyên tên.
 
 - [ ] **Step 5: Kiểm tra slide đã đổi**
 
-```bash
-git status --short docs/VIVA_Pitch_Vong2.pptx
-```
+Kiểm tra đủ ba lớp, không chỉ trạng thái file:
 
-Kỳ vọng: `M docs/VIVA_Pitch_Vong2.pptx`.
+1. Extract text từ PPTX và xác nhận có chuỗi `Đang chạy trong APK`.
+2. Render toàn bộ deck; xem riêng slide kiến trúc ở kích thước đầy đủ.
+3. Chạy kiểm tra overflow/overlap; không chấp nhận chữ bị tràn, wrap sai hoặc che sơ đồ.
+
+Cuối cùng `git status --short docs/VIVA_Pitch_Vong2.pptx` phải ra
+`M docs/VIVA_Pitch_Vong2.pptx`.
 
 - [ ] **Step 6: Đổi S6 thành ✅ ở §6 file 25, rồi commit**
 
@@ -809,18 +830,25 @@ git commit -m "docs: README module voice và slide phân biệt đường chạy
 - Consumes: kết quả của Task 3–9.
 - Produces: bằng chứng rằng không còn tài liệu nào mô tả thành phần chưa cắm như thứ đang chạy.
 
+- [ ] **Step 0: Chốt lại snapshot sau freeze**
+
+Trước quét, cập nhật baseline dùng để nộp và chạy lại kiểm tra `SafetyGuard`, `AsrClient`
+cùng các reference runtime. Nếu trạng thái khác snapshot 04/08, sửa file 25 và S1–S7 theo
+code thật trước khi ghi §7; không giữ claim cũ chỉ để lệnh tìm kiếm xanh.
+
 - [ ] **Step 1: Quét mã sản phẩm không bị đụng**
 
 ```bash
 git diff --name-only main...HEAD -- '*.kt'
 ```
 
-Kỳ vọng: **không có kết quả**. Nếu có, đó là vi phạm Global Constraint đầu tiên — hoàn tác file đó.
+Kỳ vọng: **không có kết quả do chính đợt tài liệu này tạo ra**. Nếu có, dừng và xác định
+commit/chủ sở hữu; không tự động hoàn tác thay đổi của Tùng hoặc thay đổi đã có trên baseline.
 
 - [ ] **Step 2: Quét claim còn sót**
 
 ```bash
-grep -rn "PushToTalkRecorder\|VadEndpointer\|Silero VAD\|AsrClient" --include=*.md vong2 android/voice/README.md
+rg -n "PushToTalkRecorder|VadEndpointer|Silero VAD|AsrClient" vong2 android/voice/README.md -g '*.md'
 ```
 
 Đọc từng dòng kết quả. Mỗi dòng phải thoả một trong ba:
@@ -833,7 +861,7 @@ Dòng nào không thoả cả ba thì sửa ngay trong bước này.
 - [ ] **Step 3: Quét `SafetyGuard`**
 
 ```bash
-grep -rn "SafetyGuard" --include=*.md vong2 android/voice/README.md backend/README.md
+rg -n "SafetyGuard" vong2 android/voice/README.md backend/README.md -g '*.md'
 ```
 
 Kỳ vọng: không dòng nào mô tả `SafetyGuard` như thứ đang chạy. `18-N1` giữ *"ĐỎ — không có `SafetyGuard` trong repo"*, `24-N5` giữ nhãn **Kế hoạch**, `23-N4` giữ ghi chú tiền đề chưa thoả.
@@ -841,7 +869,7 @@ Kỳ vọng: không dòng nào mô tả `SafetyGuard` như thứ đang chạy. `
 - [ ] **Step 4: Kiểm §6 file 25 đã đủ bảy dấu ✅**
 
 ```bash
-grep -c "| ✅ |" vong2/25-LECH-KIEN-TRUC-VOICE-PIPELINE.md
+rg -c -F "| ✅ |" vong2/25-LECH-KIEN-TRUC-VOICE-PIPELINE.md
 ```
 
 Kỳ vọng: `7`.
