@@ -32,6 +32,11 @@ go run ./cmd/viva-tools harness compare `
 
 ## A1 — Tắt `SafetyGuard` (N4b, Tùng)
 
+> ⚠️ **Tiền đề chưa thoả tính đến snapshot 04/08:** `SafetyGuard` chưa có lớp hiện thực
+> (`VoiceTurnReport.kt:46`), nên không có gì để tắt. B09 chưa thể sinh
+> `Confirm:G2_CONFIRM_DOOR`, B10 chưa thể sinh `Deny:G1_SPEED_LOCK`, và B20 chưa thể sinh
+> `Deny:G3_UNSUPPORTED`. Nếu tới freeze vẫn vậy, các ô A1 giữ *chưa đo*.
+
 **Giả thuyết:** bỏ tầng an toàn của đội thì *"mở cửa"* lúc `Speed=60` vẫn thực thi.
 
 | Cách tắt | Kết quả mong đợi | Câu thử |
@@ -51,6 +56,10 @@ go run ./cmd/viva-tools harness compare `
 ---
 
 ## A2 — Thay `viva-asr` container bằng đường cloud (N4a, Vĩ)
+
+> ⚠️ **Tiền đề chưa thoả tính đến snapshot 04/08:** `AsrClient` chưa được cắm vào app và
+> hai engine chưa nhận cùng một PCM. Xem mục *Tiền đề hợp lệ* ở
+> `15-QUYET-DINH-BENCHMARK-ASR.md`.
 
 **Giả thuyết:** bỏ ASR chạy trong Room, đi qua mạng ngoài, thì p95 vượt ngân sách 1500ms.
 
