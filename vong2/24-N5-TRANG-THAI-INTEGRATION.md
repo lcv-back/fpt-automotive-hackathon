@@ -22,7 +22,10 @@ Ranh giới hay bị nhầm nhất: *"unit test xanh"* là **Mô phỏng**, khô
 
 | Thành phần | Nhãn | Bằng chứng hiện có | Còn thiếu gì để lên nhãn cao hơn |
 |---|---|---|---|
-| Voice core (VAD · grammar 10 intent · TTS · audio focus · trace) | **Mô phỏng** | Unit test JVM xanh; APK `mock`/`real` build xanh | Chạy trên Device AAOS, nghe/thu trong cabin |
+| Voice core **trên đường chạy APK** (grammar 10 intent · TTS · audio focus · trace) | **Mô phỏng** | Unit test JVM xanh; APK `mock`/`real` build xanh | Chạy trên Device AAOS và thu log thật |
+| Push-to-talk · Silero VAD — **module chưa nằm trên đường chạy APK** | **Mô phỏng** | Unit test JVM xanh; baseline synthetic `threshold=0.50` | Cắm driver mic/VAD vào `VoiceAssistantService`; app hiện không có VAD riêng (`VoiceAssistantService.kt:93`) |
+| `AsrClient` → container `viva-asr` — **chưa nằm trên đường chạy APK** | **Kế hoạch** | Contract + fake client; 20 test HTTP dùng fake transcriber | Cắm client thật, build/chạy model thật và đo trên cùng PCM với Vosk |
+| `SafetyGuard` (G1 · G2 · G3) | **Kế hoạch** | Contract §4, ngữ pháp verdict, harness Go đọc được `Deny:<rule>` | Chưa có lớp hiện thực trong snapshot 04/08 (`VoiceTurnReport.kt:46`). B09, B10 và B20 phụ thuộc guard |
 | `LatencyTrace` + format `VIVA_TRACE` | **Đã tích hợp** *(ở mức contract)* | 2 fixture `android/voice/fixtures/*.log`, harness parse đúng, `go test` khẳng định | Log **từ Device thật** thay vì fixture |
 | Benchmark harness `viva-tools` | **Đã tích hợp** | `go test ./...` xanh; chạy thật trên fixture ra CSV; `harness verify` ra 4/4 PASS | Chạy trên capture thật của Device |
 | Bộ 22 câu benchmark + PASS/FAIL | **Mô phỏng** | Suite đã có, runner đã chạy; số liệu mới chỉ từ fixture | Một lần chạy đủ 22 câu trên Device |
@@ -38,6 +41,11 @@ Ranh giới hay bị nhầm nhất: *"unit test xanh"* là **Mô phỏng**, khô
 | CCU | **Mô phỏng** | Mentor cho phép giả lập | M5 echo `HvacCommand` → `HvacStatus`. **Không bao giờ khai "full-stack tới CCU"** |
 | Media (`media_*`) và `volume_adjust` | **Kế hoạch** | Grammar nhận đúng intent; chưa có adapter | D7 · D8 |
 | DTC / UDS | **Không làm ở Vòng 2** | `uds_dtc_simulator.py` còn trong repo | Đã bỏ 29/07 (T10). Giữ contract cho Vòng 3, **không khai là tính năng** |
+
+> **Device dùng để lấy evidence là máy ảo Cuttlefish.** `evidence/c2/device-info.txt` ghi
+> serial `CUTTLEFISHCVD01` và fingerprint `aosp_trout_arm64`. Nó đủ để kiểm quyền, property
+> và cài đặt app trên AAOS, nhưng không phải cabin hay xe thật. Mọi audio qua đường này phải
+> khai là *audio thu ngoài rồi phát lại/inject*, không gọi là “đo trong cabin”.
 
 ## Dữ liệu synthetic — tạo thế nào
 

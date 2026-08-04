@@ -30,6 +30,20 @@ không che giấu thay đổi này và không dựng một đường giả chỉ
 hai deployment ASR đang tồn tại—Vosk on-device và `viva-asr` container—trên cùng dữ liệu, cùng mức nhiễu và
 cùng cách tính p50/p95. Kết quả sẽ quyết định đường mặc định; đường còn lại được giữ làm fallback có điều kiện.”
 
+## Tiền đề hợp lệ — chưa thoả ở snapshot 04/08
+
+Trục so sánh chỉ có nghĩa khi hai engine nhận **cùng một audio** và **cùng một định nghĩa
+điểm cuối câu**. Hiện chưa thoả:
+
+| Tiền đề | Trạng thái | Bằng chứng |
+|---|---|---|
+| Hai engine nhận cùng PCM | ❌ | `SpeechRecognitionEngine.transcribe()` không nhận PCM; Vosk tự mở `AudioRecord` (`VoskSpeechRecognitionEngine.kt:105`) |
+| Cùng định nghĩa endpoint | ❌ | APK không có VAD endpointer riêng; điểm cuối do Vosk tự quyết (`VoiceAssistantService.kt:93`) |
+| Container `viva-asr` đã cắm | ❌ | `AsrClient` chưa được tham chiếu trong `automotive/` |
+
+Vì vậy không công bố số benchmark cho trục này ở Vòng 2; ô tương ứng trong `23-N4` giữ
+*chưa đo*. R1 tại `25-LECH-KIEN-TRUC-VOICE-PIPELINE.md` là tiền đề phải đóng trước.
+
 ## Trạng thái
 
 - **Quyết định + wording:** hoàn tất.

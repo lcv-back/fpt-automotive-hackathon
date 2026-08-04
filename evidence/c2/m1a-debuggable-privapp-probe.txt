@@ -1,0 +1,64 @@
+M1a DEBUGGABLE / PRIVILEGED-APP PROBE — PARTIAL
+================================================
+
+Status: PARTIAL
+Source: live CarSky web ADB shell on Device VIVA
+Device serial: CUTTLEFISHCVD01
+Probe time (Device UTC): 2026-08-03T16:50:22+0000
+Probe time (Asia/Saigon): 2026-08-03T23:50:22+0700
+Repository commit: 9999fb0
+
+Commands executed (read-only)
+-----------------------------
+getprop ro.debuggable
+getprop ro.secure
+ls /system/priv-app
+ls /system/priv-app | wc -l
+ls -ld /system/priv-app
+test -w /system/priv-app
+
+Observed output
+---------------
+ro.debuggable=1
+ro.secure=1
+privileged-app entries=61
+/system/priv-app: drwxr-xr-x, owner root:root
+current shell can write /system/priv-app: no
+
+The full directory listing completed successfully. Visible entries included
+CarService, CarShell, CarSettings, ExperimentalCarService, PackageInstaller,
+TeleService and TelephonyProvider.
+
+What this proves
+----------------
+- The supplied image is debuggable (`ro.debuggable=1`) and the build
+  fingerprint is `userdebug/test-keys` (see E01).
+- The standard privileged-app partition and existing privileged packages are
+  present on the Device.
+- Installing the team's app as a privileged app is platform-compatible in
+  principle.
+
+What this does NOT prove
+------------------------
+- The current shell is not root and cannot write `/system/priv-app`.
+- `adb root` and `adb remount` have not been executed successfully yet.
+- No team APK or allowlist has been pushed, installed or launched by this probe.
+- M1a remains open until property write/readback evidence exists.
+
+Repository alignment
+--------------------
+The existing allowlist is:
+`automotive/app/privapp-permissions-com.sopa.viva_automotive.xml`
+
+It targets the real app package `com.sopa.viva_automotive` and grants several
+car permissions required by that app. Unless a separate privileged service
+APK is an explicit architecture decision, the service/SafetyGuard work should
+join this package instead of introducing a second `com.viva.cockpit` package.
+
+Open permission mismatch
+------------------------
+`automotive/app/src/main/AndroidManifest.xml` requests
+`android.car.permission.CAR_SPEED`, but the existing privileged allowlist does
+not include it. SafetyGuard needs a trustworthy speed read for G1_SPEED_LOCK,
+so the team must either add `CAR_SPEED` to the allowlist or prove on this image
+that the permission is granted through another supported mechanism.

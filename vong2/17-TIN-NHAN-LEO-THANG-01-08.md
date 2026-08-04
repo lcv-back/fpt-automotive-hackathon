@@ -1,5 +1,10 @@
 # Tin nhắn leo thang — 01/08/2026
 
+> ⚠️ **Bản ghi lịch sử, không dùng làm trạng thái hiện tại.** Dòng “VAD đã nối vào app” trong
+> tin nhắn ngày 01/08 đã được kiểm tra lại và xác định là sai: APK hiện dùng Vosk tự mở
+> `AudioRecord`, không có VAD endpointer riêng. Nguồn sự thật hiện tại là
+> `25-LECH-KIEN-TRUC-VOICE-PIPELINE.md`.
+
 Hai việc quá hạn từ 31/07 và một câu hỏi chặn gửi mentor. **Gửi hôm nay, không đợi standup 21:30.**
 
 ---

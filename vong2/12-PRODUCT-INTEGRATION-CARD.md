@@ -72,6 +72,21 @@ Các con số trên là **mục tiêu/giả thuyết**, chưa phải kết quả
 
 **Tiêu chí qua gate:** 3/3 lệnh đúng mapping, không có lệnh bị xác nhận “Đã…” trước `Applied`, log không crash, và có ít nhất một trace CarSky hoàn chỉnh cho mỗi intent. Nếu quyền VHAL thất bại, mở lại quyết định packaging/service với mentor thay vì thay bằng mock rồi khai là thật.
 
+**Validation gate thứ hai — Voice Pipeline Gate:**
+
+Gate trên trả lời *“lệnh có xuống được xe không”*. Gate này trả lời *“câu nói có lên đúng
+intent trong nhiễu không”* — hiện chưa có dữ liệu nào trả lời:
+
+1. Một micro, một dòng PCM, fan-out cho Vosk và container `viva-asr`; hiện Vosk tự mở mic.
+2. Bộ audio 5 người × 22 câu × 3 điều kiện, cộng 20–30 phút audio không có lệnh. Với
+   Cuttlefish, đây là audio thu ngoài rồi phát lại/inject, không phải cabin thật.
+3. Truyền và hiệu chỉnh confidence trên bộ audio đó rồi mới chọn ngưỡng `SafetyGuard`;
+   ngưỡng 0.6 hiện chưa validate.
+
+**Tiêu chí qua gate:** có WER và intent accuracy trên cùng audio cho hai đường ASR, có false
+accept/hour của VAD, và threshold confidence được chọn bằng số. Chi tiết ở
+`25-LECH-KIEN-TRUC-VOICE-PIPELINE.md` §5.
+
 ---
 
 ## Nguồn nội bộ
