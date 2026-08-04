@@ -1,0 +1,37 @@
+clip,reference,hypothesis,wer,confidence,audio_ms,server_ms,round_trip_ms,rtf
+tts_clarify_fan_level,"Bạn muốn đặt quạt ở mức mấy, từ không đến năm?",nguấn đặc quạt ở mức mấy từ không đến năm.,0.2727,0.6619,3248.9,473,512.2,0.1456
+tts_clarify_temperature_range,Nhiệt độ hỗ trợ từ mười sáu đến ba mươi hai độ C. Bạn muốn đặt bao nhiêu độ?,tử nhiệt độ hỗ trợ từ cm độ xuê bản muốn đặt bao nhiêu độ.,0.4737,0.749,4583.5,434,460.3,0.0947
+tts_clarify_warmer,Bạn muốn tăng nhiệt độ điều hòa lên bao nhiêu độ?,bạn muốn tăng nhiệt độ điều hòa lên bao nhiêu độ.,0.0,0.8489,2938.9,667,674.9,0.227
+tts_command_failed,Mình chưa thực hiện được yêu cầu. Bạn thử lại giúp mình nhé.,hình chưa thực hiện được yêu cầu bạn thử lại giúp mình nhé.,0.0769,0.7699,3983.8,444,453.9,0.1115
+tts_deny_door_while_moving,"Xe đang chạy, mình chưa mở cửa được.",sẽ đang chạy mình chưa mở cửa được.,0.125,0.7616,2769.1,391,516.8,0.1412
+tts_did_not_hear_repeat,Mình chưa nghe rõ. Bạn nói lại giúp mình nhé.,nghe rõ bạn nói lại giúp mình nhé.,0.2,0.779,3579.1,379,399.1,0.1059
+tts_did_not_hear_try_again,Mình chưa nghe rõ. Bạn thử lại giúp mình nhé.,nghe rõ bạn thử lại giúp mình nhé.,0.2,0.7892,3499.0,406,434.9,0.116
+tts_driver_door_locked,Đã khóa cửa tài xế.,khóa cửa tài xế.,0.2,0.7853,1964.2,410,419.1,0.2087
+tts_driver_door_unlocked,Đã mở khóa cửa tài xế.,khóa cửa tài xế.,0.3333,0.8379,2144.2,463,475.3,0.2159
+tts_fan_0,Đã đặt quạt mức 0.,đã đặc quạt mức không.,0.4,0.6511,1784.2,467,476.9,0.2617
+tts_fan_1,Đã đặt quạt mức 1.,đã được quạt mức một.,0.4,0.7053,1659.1,363,371.3,0.2188
+tts_fan_2,Đã đặt quạt mức 2.,đã đặc quạt mức hai.,0.4,0.5809,1754.2,443,450.7,0.2525
+tts_fan_3,Đã đặt quạt mức 3.,đã đặc quật mười ba.,0.8,0.5615,1754.2,330,336.9,0.1881
+tts_fan_4,Đã đặt quạt mức 4.,đã đặt quạt mức bốn.,0.2,0.6501,1799.1,390,508.8,0.2168
+tts_fan_5,Đã đặt quạt mức 5.,đã đặc quạt mức năm.,0.4,0.6014,1769.2,327,336.5,0.1848
+tts_media_next,Đã chuyển bài.,đã chuyển bài.,0.0,0.5863,1529.2,416,436.8,0.272
+tts_temp_16,Đã đặt nhiệt độ mục tiêu 16 độ C.,mới là dạng nhiệt độ mục tiêu mười sáu độ c.,0.5556,0.5826,2894.0,1472,1493.1,0.5086
+tts_temp_17,Đã đặt nhiệt độ mục tiêu 17 độ C.,đặc nhiệt độ mục tiêu mười bảy đỗ xê.,0.6667,0.7969,2759.0,463,471.1,0.1678
+tts_temp_18,Đã đặt nhiệt độ mục tiêu 18 độ C.,được nhiệt độ mục tiêu mười tám độ c.,0.4444,0.8209,2834.0,423,435.1,0.1493
+tts_temp_19,Đã đặt nhiệt độ mục tiêu 19 độ C.,được nhiệt độ mục tiêu mười chín đỗ c.,0.5556,0.7418,2844.1,448,458.4,0.1575
+tts_temp_20,Đã đặt nhiệt độ mục tiêu 20 độ C.,được nhiệt độ mục tiêu hai mươi độ c.,0.4444,0.762,2824.1,432,470.7,0.153
+tts_temp_21,Đã đặt nhiệt độ mục tiêu 21 độ C.,đã đặc nhiệt độ mục tiêu hai mươi mốt độ c.,0.4444,0.8449,2939.0,453,487.6,0.1541
+tts_temp_22,Đã đặt nhiệt độ mục tiêu 22 độ C.,đã đặc nhiệt độ mục tiêu hai mươi hai độ c.,0.4444,0.822,3014.0,425,435.9,0.141
+tts_temp_23,Đã đặt nhiệt độ mục tiêu 23 độ C.,đã đặc nhiệt độ mục tiêu hai mươi ba độ c.,0.4444,0.8468,2939.0,492,501.4,0.1674
+tts_temp_24,Đã đặt nhiệt độ mục tiêu 24 độ C.,đã đặc nhiệt độ mục tiêu hai mươi từ đỗ xê.,0.6667,0.8516,3049.1,454,465.7,0.1489
+tts_temp_25,Đã đặt nhiệt độ mục tiêu 25 độ C.,đã đặc nhiệt độ mục tiêu hai mươi lăm đỗ xê.,0.6667,0.8351,2894.0,482,489.6,0.1666
+tts_temp_26,Đã đặt nhiệt độ mục tiêu 26 độ C.,đã đặc nhiệt độ mục tiêu hai mươi sáu đổ xê.,0.6667,0.8338,3079.0,839,864.7,0.2725
+tts_temp_27,Đã đặt nhiệt độ mục tiêu 27 độ C.,đã đặc nhiệt độ mục tiêu hai mươi bảy độ c.,0.4444,0.8317,2944.0,600,624.1,0.2038
+tts_temp_28,Đã đặt nhiệt độ mục tiêu 28 độ C.,đã đặc nhiệt độ mục tiêu hai mươi tám độ c.,0.4444,0.8105,3024.1,564,604.0,0.1865
+tts_temp_29,Đã đặt nhiệt độ mục tiêu 29 độ C.,đã đặc nhiệt độ mục tiêu hai mươi chín độ c.,0.4444,0.7867,3034.0,468,477.4,0.1543
+tts_temp_30,Đã đặt nhiệt độ mục tiêu 30 độ C.,đã đặc nhiệt độ mục tiêu ba mười lộ c.,0.4444,0.7626,2854.0,465,536.1,0.1629
+tts_temp_31,Đã đặt nhiệt độ mục tiêu 31 độ C.,đã đặc nhiệt độ mục tiêu ba mười mốt độ c.,0.4444,0.7968,2973.9,432,482.6,0.1453
+tts_temp_32,Đã đặt nhiệt độ mục tiêu 32 độ C.,đã đặc nhiệt độ mục tiêu ba mươi hai độ xê.,0.5556,0.8262,3044.0,414,464.4,0.136
+tts_volume_down,Đã giảm âm lượng.,đã giảm âm lượng.,0.0,0.7396,1609.2,425,472.5,0.2641
+tts_volume_up,Đã tăng âm lượng.,.,1.0,0.4068,1589.2,328,375.3,0.2064
+tts_wrong_wake_phrase,Từ gọi của trợ lý là Viva ơi hoặc Vivi ơi. Bạn thử lại nhé.,thư gọi của trợ lý là vị và gây hoặc vị vị huynh vãn thử lại nhé.,0.5333,0.7887,4878.9,435,489.2,0.0892

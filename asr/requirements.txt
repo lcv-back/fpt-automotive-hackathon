@@ -3,3 +3,15 @@
 # tested — N6 artifact identity.
 -r requirements-http.txt
 faster-whisper==1.1.1
+
+# Pin tường minh, không để faster-whisper tự chọn: wheel ctranslate2 4.4.0/4.5.0
+# mang cờ executable stack và kernel WSL2 từ chối nạp (`cannot enable executable
+# stack`). 4.6.0 trở lên thì hết — đã kiểm từng bản trong container sạch.
+ctranslate2==4.8.1
+
+# huggingface_hub dòng 1.x đã bỏ `requests` khỏi dependency, trong khi
+# faster-whisper 1.1.1 vẫn import nó → container khởi động lên rồi chết lúc nạp
+# model với `ModuleNotFoundError: No module named 'requests'`, và /health đứng
+# ở 503 mãi. Giữ dòng 0.x — đúng bản mà faster-whisper 1.1.1 được viết cho —
+# thay vì chỉ thêm `requests` rồi hy vọng các API khác của hub 1.x không đổi.
+huggingface_hub<1.0

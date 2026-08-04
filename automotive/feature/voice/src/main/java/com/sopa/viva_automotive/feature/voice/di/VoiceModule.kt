@@ -4,7 +4,11 @@ import android.content.Context
 import com.sopa.viva_automotive.feature.voice.data.SpeechRecognitionEngine
 import com.sopa.viva_automotive.feature.voice.data.embedding.OnnxEmbeddingIntentMatcher
 import com.sopa.viva_automotive.feature.voice.data.vosk.VoskSpeechRecognitionEngine
+import com.sopa.viva_automotive.feature.voice.domain.delivery.DeliveryRepository
+import com.sopa.viva_automotive.feature.voice.domain.delivery.InMemoryDeliveryRepository
 import com.sopa.viva_automotive.feature.voice.domain.embedding.SemanticIntentMatcher
+import com.viva.voice.intent.GrammarIntentRouter
+import com.viva.voice.intent.IntentRouter
 import com.viva.voice.tts.AndroidTtsSpeaker
 import com.viva.voice.tts.TtsSpeaker
 import dagger.Binds
@@ -31,7 +35,29 @@ abstract class VoiceModule {
         impl: OnnxEmbeddingIntentMatcher,
     ): SemanticIntentMatcher
 
+    /**
+     * Singleton because the route is mutable state: the stop the driver just
+     * confirmed must still be delivered on the next turn, and a per-injection
+     * instance would silently reset it.
+     */
+    @Binds
+    @Singleton
+    abstract fun bindDeliveryRepository(
+        impl: InMemoryDeliveryRepository,
+    ): DeliveryRepository
+
     companion object {
+        /**
+         * The T0 grammar tier, bound here instead of being constructed inside
+         * `ProcessVoiceCommandUseCase` so the N4 ablation can replace it with a
+         * no-op router and measure what the grammar tier is actually holding up
+         * (`16-QUYET-DINH-DUONG-NLU.md`). Stateless apart from its rule list,
+         * so one instance is enough.
+         */
+        @Provides
+        @Singleton
+        fun provideIntentRouter(): IntentRouter = GrammarIntentRouter()
+
         /**
          * Application-scoped: `TextToSpeech` init costs hundreds of
          * milliseconds, and paying it inside a turn would land straight in the
