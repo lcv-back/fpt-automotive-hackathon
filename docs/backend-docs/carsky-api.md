@@ -176,3 +176,55 @@ demo phụ thuộc vào. Và ba lý do nữa để **không** bật auto-deploy 
 chứ không phải `on: push`. Vẫn được tính là tự động hoá, mà không có nguy cơ một
 commit docs làm sập room lúc 21:00. Khi Conduit được bật thì thêm bước cài APK và
 lúc đó mới đáng bàn tới `on: push` cho nhánh release.
+
+## 10. 🚫 API công khai KHÔNG tạo được pin `ETHERNET` — và hệ quả cho V2
+
+Phát hiện 04/08 khi làm V7 (thêm Container Node `viva-asr`).
+
+**Tạo node thì được.** `POST /blueprints/{id}/nodes` trả **201**, và chấp nhận cả
+image dạng **digest**:
+
+```
+registry.hackathon-2.carsky.io/viva/viva-asr@sha256:63c2c56a...
+```
+
+**Nhưng không nối được vào mạng.** Container node cần một pin `ETHERNET` (đúng như
+`TCU-NAD` đang có: `pinType=ETHERNET, direction=OUTPUT, properties.address=10.99.0.22`)
+rồi nối vào pin của `IVI Switch`. Cả ba đường đều bị chặn:
+
+| Đường | Kết quả |
+|---|---|
+| `POST /nodes/{nodeId}/pins` | **404 Route not found** — spec có ghi, server không có route |
+| `POST /blueprints/{id}/batch` với `addPin` | **400** `Invalid option: expected one of "VHAL"\|"KUKSA"\|"CAN"\|"LIN"\|"VIDEO"\|"GPIO"\|"GENERIC"` |
+| `POST /blueprints/import` | **400**, cùng lỗi enum |
+
+Server **tự** kiểm enum, không phải spec cũ: cả ba nơi đều trả về đúng danh sách 7
+loại, và `ETHERNET` không nằm trong đó — dù blueprint do chính nền tảng sinh ra thì
+đang dùng nó.
+
+→ **Pin ETHERNET chỉ tạo được trong UI CarSky.** Muốn thêm container node có mạng
+thì: tạo node bằng API (hoặc UI), rồi **vào UI thêm pin + nối dây**.
+
+### ⚠️ Hệ quả cho V2: file backup JSON KHÔNG phải đường khôi phục
+
+Đã kiểm bằng thực nghiệm: lấy **chính** `backend/carsky/blueprint-VIVA-deploy-backup.json`
+(do `GET /blueprints/{id}/export` sinh ra) đẩy ngược vào `POST /blueprints/import`
+→ **400**, vì chứa pin `ETHERNET` mà import từ chối. Nền tảng **không import lại được
+bản export của chính nó**.
+
+`04-KE-HOACH-CAP-NHAT-28-07.md` mô tả quy trình an toàn *"export backup → clone →
+chỉ sửa clone"*. Quy trình đó vẫn đúng, nhưng phải hiểu lại vai trò từng thứ:
+
+| Thứ | Vai trò thật |
+|---|---|
+| `POST /blueprints/{id}/clone` | **Đây mới là đường rollback.** Bản sao server-side, giữ nguyên mọi thứ kể cả pin ETHERNET |
+| File JSON export | **Tài liệu và bằng chứng**, không phải ảnh chụp khôi phục được. Vẫn đáng commit (nó ghi lại topology, image, địa chỉ IP), nhưng đừng dựa vào nó để phục hồi lúc gấp |
+
+Nói cách khác: trước khi sửa blueprint, thứ phải làm là **clone**, không phải tải JSON về.
+
+### Câu hỏi gửi BTC
+
+> `POST /blueprints/{id}/batch` (và `/import`) chỉ nhận `pinType` trong
+> `VHAL|KUKSA|CAN|LIN|VIDEO|GPIO|GENERIC`, nhưng blueprint do nền tảng sinh ra lại có
+> pin `ETHERNET`. Vậy đội thêm Container Node có mạng bằng API kiểu gì, hay bắt buộc
+> phải qua UI? Và có chủ đích để `import` không nhận lại được bản `export` không ạ?
