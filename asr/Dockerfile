@@ -15,7 +15,13 @@
 ARG PYTHON_VERSION=3.11-slim
 
 # ---------------------------------------------------------------- model stage
-FROM python:${PYTHON_VERSION} AS model-builder
+#
+# `--platform=$BUILDPLATFORM` giữ stage này chạy trên kiến trúc của MÁY BUILD,
+# kể cả khi đang build image cho arm64. Model CTranslate2 sau khi convert chỉ là
+# file dữ liệu, không phụ thuộc kiến trúc — nên không có lý do gì để chạy torch
+# + converter dưới emulator QEMU (chậm hơn hàng chục lần và dễ hết bộ nhớ).
+# Chỉ tầng runtime mới thực sự cần build đúng arch.
+FROM --platform=$BUILDPLATFORM python:${PYTHON_VERSION} AS model-builder
 
 ARG ASR_HF_MODEL=vinai/PhoWhisper-tiny
 ARG ASR_QUANTIZATION=int8
