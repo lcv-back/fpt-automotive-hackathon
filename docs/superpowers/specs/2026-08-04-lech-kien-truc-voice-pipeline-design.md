@@ -111,9 +111,10 @@ File 25 viết một lần và dài. Bảy chỗ còn lại mỗi chỗ 2–5 d�
 | **S1** | `vong2/24-N5` | Tách dòng "Voice core" thành hai dòng: *(a)* nằm trong APK — grammar 10 intent, TTS, audio focus, trace; *(b)* module có unit test nhưng **chưa nằm trên đường chạy** — push-to-talk, Silero VAD, `AsrClient`. Thêm dòng `SafetyGuard` nhãn **Kế hoạch**. Ghi Device là Cuttlefish ảo | Không còn dòng nào gộp thứ đang chạy với thứ chưa cắm |
 | **S2** | `vong2/18-N1` | Cột team-owned của claim **C-VOICE** đang gộp cả ba thứ chưa cắm. Tách ra. Sửa lý do trạng thái VÀNG: không phải *"chờ M6/Device"* mà là *"chưa nằm trên đường chạy"* — Device mở cũng không làm ba thứ đó xanh | Mỗi mảnh team-owned trỏ đúng loại evidence của nó (unit test / build / Device) |
 | **S3** | `vong2/20-WRITE-UP` dòng 28–31 và 75–76 | Mô tả lại pipeline **đúng như APK chạy**. Giữ mô tả module như *kiến trúc đích*, nhưng gọi tên rõ đó là đích, không phải hiện trạng | Người đọc write-up rồi cài APK không thấy khác nhau |
-| **S4** | `vong2/20-WRITE-UP`, mục *"AI sai ở đâu"* | Viết mới: AI sinh nhanh **hai nhánh song song** khớp nhau trên giấy nhưng lệch nhau trong mã; đội bắt được bằng rà soát chéo trước hạn; chọn **khai đúng thay vì vá vội** trước freeze, và ghi phần vá vào roadmap Vòng 3 | Đoạn văn nêu được: sai gì · phát hiện bằng cách nào · xử lý ra sao · vì sao không vá ngay |
+| **S4** | `vong2/20-WRITE-UP` — **mục mới** | ⚠️ Write-up hiện **không có** mục *"AI sai ở đâu"*: §9 chỉ có prompt và MCP-driven testing, thiếu hai trong bốn ý mà checklist nộp bài bắt buộc. Thêm mục mới sau §9: AI sinh nhanh **hai nhánh song song** khớp nhau trên giấy nhưng lệch nhau trong mã; đội bắt được bằng rà soát chéo trước hạn; chọn **khai đúng thay vì vá vội** trước freeze, và ghi phần vá vào roadmap Vòng 3 | Mục mới nêu được: sai gì · phát hiện bằng cách nào · xử lý ra sao · vì sao không vá ngay |
 | **S5** | `vong2/15` và `vong2/23-N4` | Thêm **tiền đề hợp lệ** vào trục Vosk vs container: chỉ có nghĩa khi hai engine nhận cùng PCM và cùng định nghĩa endpoint — hiện chưa (F3). A1 ghi rõ chưa có guard để tắt (F4) | Không ai đọc `15` rồi tưởng số benchmark chỉ còn chờ chạy |
 | **S6** | `android/voice/README.md` và slide | README: thêm cột *"nằm trên đường chạy app?"* vào bảng trạng thái. Slide kiến trúc: thêm 1 dòng phân biệt *đang chạy* / *đích* | Bảng README không còn dấu ✅ đứng một mình cho thứ chưa cắm |
+| **S7** | `vong2/12-N2` §5 | Thêm gate thứ hai — *Voice Pipeline Gate* — vào ô "bước kiểm chứng tiếp theo", lấy nội dung từ R1/R3/R4. Hiện ô này chỉ có Device Integration Gate về quyền VHAL | Ô "bước kiểm chứng tiếp theo" nêu được cả rào cản platform lẫn rào cản voice |
 
 ## 6. Roadmap Vòng 3
 
@@ -172,7 +173,7 @@ Tổng ~4.25h, nằm gọn trong quỹ hiện có.
 ## 10. Tiêu chí hoàn thành
 
 - [ ] `vong2/25-LECH-KIEN-TRUC-VOICE-PIPELINE.md` tồn tại, có đủ 6 mục §1–§6.
-- [ ] S1–S6 đã sửa xong, mỗi cái đạt cột "Xong khi" của nó.
+- [ ] S1–S7 đã sửa xong, mỗi cái đạt cột "Xong khi" của nó.
 - [ ] Không còn tài liệu nào mô tả `PushToTalkRecorder`, `VadEndpointer`, `AsrClient` hay
       `SafetyGuard` như thứ đang chạy trong APK.
 - [ ] Write-up có mục *"AI sai ở đâu"* dùng chính phát hiện này, nêu đủ bốn ý: sai gì ·
