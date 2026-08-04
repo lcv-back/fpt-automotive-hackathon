@@ -90,6 +90,55 @@ go run ./cmd/viva-tools harness compare `
 
 ---
 
+## A4 — Tắt tầng grammar T0 ✅ **ĐÃ ĐO 04/08**
+
+**Giả thuyết** (`16-QUYET-DINH-DUONG-NLU.md`): bỏ grammar thì mọi lệnh phụ thuộc
+ngưỡng cosine, và các câu bị từ chối ở bước 4 mất chốt chặn.
+
+**Cách tắt:** `ProcessVoiceCommandUseCase` nhận `IntentRouter` qua constructor
+(production wiring bind `GrammarIntentRouter` trong `VoiceModule`). Nhánh ablation
+thay bằng router trả `Unsupported(canFallback = true)` cho mọi câu → tất cả rơi
+xuống keyword + embedding. **Không cần Device.**
+
+```
+cd automotive
+.\gradlew :feature:voice:testDebugUnitTest --tests "*GrammarAblationTest*"
+```
+
+Đầu vào là **chính** `backend/suites/benchmark_v1.csv` — test đọc thẳng file đó,
+không chép lại danh sách, nên bảng ablation và bảng benchmark không thể nói về hai
+tập câu khác nhau.
+
+| Kết quả trên 22 câu | Số câu |
+|---|---|
+| `COMMAND_LOST` — lệnh lõi ngừng hoạt động | **12** |
+| `REFUSAL_LOST` — câu đáng lẽ bị từ chối lại thành lệnh xe thật | **2** |
+| `changed` — mất câu hỏi lại / mất lý do từ chối | 2 |
+| `same` | 6 |
+
+**Hai dòng đáng trích nhất:**
+
+| Câu | Có grammar | Bỏ grammar |
+|---|---|---|
+| *"đặt nhiệt độ 40 độ"* | `Clarification` — ngoài dải 16–32°C, hỏi lại | **`SetTemperature(40.0)`** — giá trị ngoài dải đi thẳng xuống lệnh xe |
+| *"bật điều hòa"* (1 trong 5 lệnh đã cắt 29/07) | `Clarification` — từ chối lịch sự, nói rõ phạm vi | **`SetAc(true)`** — thực thi |
+
+Tức là grammar không chỉ là "bộ nhận câu": nó đang giữ **miền giá trị hợp lệ** và
+**ranh giới phạm vi**. Bỏ nó thì cả hai biến mất cùng lúc.
+
+Mất luôn cả phần hỏi lại: *"quạt mạnh lên"* từ câu hỏi *"mức mấy, từ 0 đến 5?"*
+thành `Unknown`; *"Siri ơi hạ điều hòa xuống 24 độ"* từ lời giải thích wake phrase
+thành `Unknown` chung chung.
+
+**Artifact:** `evidence/ablation/a4-grammar-ablation.csv` + `a4-run-manifest.txt`
+(có commit, JDK, lệnh chạy).
+
+> ⚠️ **Giới hạn phải khai khi trích.** Embedding thật (MiniLM ONNX) không nạp được
+> trong unit test JVM, nên nhánh no-grammar ở đây chỉ còn keyword mapping. Bảng này
+> **đánh giá thấp** mức hư hại: trên máy thật, embedding còn có thể suy ra một lệnh
+> xe cho những câu ở đây rơi vào `Unknown`. Đây là ablation tầng JVM, **không phải**
+> bằng chứng chạy trên Device.
+
 ## Ba luật khi viết kết quả vào write-up
 
 1. **Không ngoại suy.** Ô *chưa đo* để nguyên chữ "chưa đo" trong bản nộp nếu đến 06/08 vẫn chưa chạy được.
