@@ -50,16 +50,21 @@ cd automotive
 
 ## Đang có gì
 
-| Package | Task | Trạng thái |
-|---|---|---|
-| `trace/` | **L2** `LatencyTrace` + log format `VIVA_TRACE\|` | ✅ code + test + log mẫu |
-| `audio/` | **L3a** push-to-talk `AudioRecord` + WAV | ✅ code + test |
-| `audio/` | **L3b/L3c** Silero VAD ONNX + endpointer | ✅ code/model/unit test + synthetic baseline; cabin/Device là integration gate riêng |
-| `asr/` | **L4** `AsrClient` + `FakeAsrClient` | 🟡 contract + fake; endpoint thật chưa cắm |
-| `intent/` | **L5a/L5b** grammar T0 — đủ 10 intent lõi | ✅ code + test router; 5 biến thể đã cắt được từ chối rõ ràng |
-| `agent/` | Voice ↔ app/service boundary | 🟡 code + test viết; chờ Dương cắm adapter |
-| `tts/` | **L6** Android vi-VN TTS + 36 pre-rendered clips + final cue | ✅ code/assets/unit test + APK build; nghe Device là integration gate riêng |
-| `tts/` | **L7** transient audio focus cho TTS | 🟡 code/unit test/APK build xanh; ducking với media thật còn chờ Device |
+| Package | Task | Trạng thái | Nằm trên đường chạy APK? |
+|---|---|---|---|
+| `trace/` | **L2** `LatencyTrace` + log format `VIVA_TRACE\|` | ✅ code + test + log mẫu | ✅ có |
+| `audio/` | **L3a** push-to-talk `AudioRecord` + WAV | ✅ code + test | ❌ **chưa** — app dùng `VoskSpeechRecognitionEngine` |
+| `audio/` | **L3b/L3c** Silero VAD ONNX + endpointer | ✅ code/model/unit test + synthetic baseline; cabin/Device là integration gate riêng | ❌ **chưa** — app không có VAD riêng (`VoiceAssistantService.kt:93`) |
+| `asr/` | **L4** `AsrClient` + `FakeAsrClient` | 🟡 contract + fake; endpoint thật chưa cắm | ❌ **chưa** |
+| `intent/` | **L5a/L5b** grammar T0 — đủ 10 intent lõi | ✅ code + test router; 5 biến thể đã cắt được từ chối rõ ràng | ✅ có — `ProcessVoiceCommandUseCase.kt:19` |
+| `agent/` | Voice ↔ app/service boundary | 🟡 code + test viết; chờ Dương cắm adapter | ❌ **chưa** |
+| `tts/` | **L6** Android vi-VN TTS + 36 pre-rendered clips + final cue | ✅ code/assets/unit test + APK build; nghe Device là integration gate riêng | ✅ có |
+| `tts/` | **L7** transient audio focus cho TTS | 🟡 code/unit test/APK build xanh; ducking với media thật còn chờ Device | ✅ có |
+
+> **Cột thứ tư quan trọng hơn cột thứ ba.** Dấu ✅ ở *Trạng thái* nghĩa là mã/test đã có,
+> không có nghĩa thành phần đang chạy trong APK. `audio/`, `asr/` và `agent/` hiện là module
+> độc lập; đường chạy thật đi qua `VoskSpeechRecognitionEngine`. Chi tiết ở
+> `vong2/25-LECH-KIEN-TRUC-VOICE-PIPELINE.md`.
 
 ### Build evidence — kiểm lại 02/08/2026
 

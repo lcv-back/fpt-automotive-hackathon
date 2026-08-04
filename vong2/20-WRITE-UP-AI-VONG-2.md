@@ -8,6 +8,8 @@ lệnh xe có kiểu dữ liệu rõ ràng và chỉ xác nhận thành công sa
 
 Phần đội tự xây đã có bằng chứng ở mức source/JVM: push-to-talk, Silero VAD ONNX, hai biên ASR có thể thay thế,
 router grammar cho 10 intent lõi, TTS tiếng Việt có 36 câu dự phòng, audio focus và trace latency theo từng chặng.
+Push-to-talk, Silero VAD và `AsrClient` hiện là **module có test nhưng chưa nằm trên đường chạy APK**;
+đường chạy thật dùng Vosk tự thu và tự endpoint. Xem `25-LECH-KIEN-TRUC-VOICE-PIPELINE.md`.
 Tại snapshot E12, 139 test JVM chạy xanh, hai biến thể APK `mockDebug` và `realDebug` build thành công. Các claim
 về CarSky, VHAL/CAN thật, SafetyGuard và p95 chỉ được nâng trạng thái sau khi có evidence từ Device.
 
@@ -27,9 +29,12 @@ Luồng voice của VIVA gồm sáu chặng có thể quan sát:
 
 `speech_start → speech_end → asr_done → intent_done → guard_done → exec_done → tts_start`
 
-1. `PushToTalkRecorder` thu PCM 16 kHz mono; `VadEndpointer` dùng Silero VAD ONNX để chốt cuối câu.
-2. `AsrClient` là boundary có thể thay thế. Đường local hiện dùng Vosk on-device; đường container `viva-asr` được
-   giữ làm vế so sánh khi endpoint của đội sẵn sàng.
+1. **Đường chạy hiện tại:** `VoskSpeechRecognitionEngine` mở `AudioRecord` với source
+   `VOICE_RECOGNITION` và để Vosk tự quyết điểm cuối câu. APK không có VAD endpointer riêng
+   (`VoiceAssistantService.kt:93`); `speech_start` là lúc bắt đầu nghe, không phải onset VAD.
+2. **Kiến trúc đích đã có module/test nhưng chưa cắm:** `PushToTalkRecorder` thu PCM 16 kHz,
+   `VadEndpointer` dùng Silero VAD ONNX, và `AsrClient` là boundary cho container `viva-asr`.
+   Khoảng lệch và roadmap đóng nó nằm ở `25-LECH-KIEN-TRUC-VOICE-PIPELINE.md`.
 3. `GrammarIntentRouter` ánh xạ câu tiếng Việt vào 10 intent lõi. Grammar là lựa chọn có chủ đích cho các lệnh xe:
    nhanh, chạy offline, dễ kiểm thử và không tự sinh hành động ngoài contract.
 4. Intent được chuyển qua gateway thực thi. `LatencyTrace` ghi từng mốc và verdict để không biến timeout hoặc lỗi
@@ -61,8 +66,9 @@ Ba tình huống sau chỉ được đánh dấu hoàn tất khi có đúng depe
 
 Proposal ban đầu nêu so sánh edge-only và hybrid. Sau spike, đội loại cloud LLM khỏi core flow vì network dependency
 trái với mục tiêu offline và làm tăng rủi ro vượt ngân sách phản hồi 1,5 giây. Đội không dựng một đường giả để giữ
-claim cũ. Ablation được đổi sang hai deployment ASR đang tồn tại: Vosk on-device và `viva-asr` container, trên cùng
-dữ liệu, cùng mức nhiễu, cùng cách tính WER/intent accuracy và p50/p95.
+claim cũ. Trục ablation mục tiêu là Vosk on-device và `viva-asr` container, nhưng snapshot
+04/08 chưa thoả tiền đề cùng PCM/cùng endpoint và container chưa cắm. Vì vậy Vòng 2 chưa
+công bố số so sánh; thiết kế đo giữ cùng dữ liệu, mức nhiễu, WER/intent accuracy và p50/p95.
 
 Đường mặc định chỉ được chọn sau benchmark. Cold run và steady-state phải tách riêng; timeout/lỗi vẫn nằm trong mẫu;
 model, config và commit phải cùng identity với APK/video được nộp.
@@ -72,8 +78,8 @@ model, config và commit phải cùng identity với APK/video được nộp.
 | Thành phần | Phân loại | Bằng chứng hiện có |
 |---|---|---|
 | AAOS/Car APIs, AudioRecord, Android TTS | Platform cung cấp | Source/build |
-| Push-to-talk + WAV + Silero VAD ONNX | Team-owned | Unit test JVM |
-| ASR boundary + Vosk engine | Team-owned/tích hợp thư viện | Unit test/build; Device pending |
+| Push-to-talk + WAV + Silero VAD ONNX | Team-owned — **module chưa nằm trên đường chạy APK** | Unit test JVM |
+| ASR: Vosk trên đường chạy; `AsrClient` container chưa cắm | Team-owned/tích hợp thư viện | Unit test/build; Device pending |
 | Grammar router 10 intent + extension point | Team-owned | Unit test JVM |
 | Latency trace + verdict/error attribution | Team-owned | Golden fixture + unit test |
 | TTS fallback 36 câu + audio focus | Team-owned | Resource/test JVM; duck thật pending |
@@ -126,13 +132,33 @@ MCP-driven testing là hướng **kế hoạch**, chưa phải evidence ở snap
 `send_signals`, phát/replay câu thử, chụp HMI bằng `screenshot`, kiểm text bằng `find_text` và lưu PASS/FAIL cùng trace.
 Cho đến khi chuỗi này chạy trên đúng Device, các unit test và mock hiện tại chỉ chứng minh tầng source/JVM.
 
-## 10. Hướng sau Vòng 2
+## 10. AI hỗ trợ tốt ở đâu và sai ở đâu
+
+**AI hỗ trợ tốt ở đâu.** AI rút ngắn các việc có ranh giới rõ và có oracle để kiểm: mở
+rộng grammar cho 10 intent cùng test biến thể; dựng logic endpointer quanh Silero; và viết
+parser/aggregator cho `VIVA_TRACE` khớp fixture. Với những việc này, test hoặc format log có
+thể phủ định ngay một kết quả sai.
+
+**AI sai ở đâu.** Quy trình phát triển có AI hỗ trợ đã tạo ra hai nhánh hợp lý khi đọc riêng
+nhưng không nối với nhau. `android/voice` có push-to-talk, Silero VAD và `AsrClient`; app
+`automotive/` lại đi đường ngắn chạy được: Vosk tự mở `AudioRecord`, tự endpoint, rồi vào
+grammar. `SafetyGuard` chỉ tồn tại trong contract/verdict. Unit test của từng module đều xanh,
+nên không test cục bộ nào phát hiện rằng `audio/` và `asr/` không được app tham chiếu.
+
+**Phát hiện và xử lý.** Đội tìm ngược từng symbol từ `android/voice` sang `automotive/`, rồi
+đối chiếu comment runtime tại `VoiceAssistantService.kt:93`. Bài học là unit test xanh chỉ
+chứng minh component đúng, không chứng minh component được dùng. Trước freeze, đội chọn khai
+đúng thay vì vá vội: tách nhãn integration, sửa Claim–Evidence Map, write-up và slide; ghi
+tiền đề benchmark chưa thoả; đưa một capture stream dùng chung, live VAD driver và audio
+benchmark vào roadmap tại `25-LECH-KIEN-TRUC-VOICE-PIPELINE.md`.
+
+## 11. Hướng sau Vòng 2
 
 DTC/UDS được giữ như hướng Vehicle Middleware cho Vòng 3, nơi cross-vertical có dòng điểm riêng. Ở Vòng 2, đội ưu
 tiên hoàn tất core flow, SafetyGuard, benchmark và evidence thay vì mở rộng bề ngang. Sau khi có Device evidence,
 framework grammar/skill có thể mở rộng sang coaching, OTA hoặc tác vụ giao vận mà không thay core voice pipeline.
 
-## 11. Tài liệu truy vết
+## 12. Tài liệu truy vết
 
 - Claim–Evidence Map: `vong2/18-CLAIM-EVIDENCE-MAP.md`
 - Product & Integration Card: `vong2/12-PRODUCT-INTEGRATION-CARD.md`
