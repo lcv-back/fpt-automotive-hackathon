@@ -7,6 +7,7 @@ import com.sopa.viva_automotive.vehicleservice.api.LightSwitch
 import com.sopa.viva_automotive.vehicleservice.api.VehicleAreas
 import com.sopa.viva_automotive.vehicleservice.api.VehicleProperties
 import com.sopa.viva_automotive.vehicleservice.api.VehicleRepository
+import com.sopa.viva_automotive.vehicleservice.api.VehicleWriteContext
 import java.util.concurrent.atomic.AtomicBoolean
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -57,7 +58,12 @@ class MockVehicleRepository @Inject constructor(
                 IllegalArgumentException("No mock value for property=$propertyId area=$areaId"),
             )
 
-    override suspend fun setProperty(propertyId: Int, areaId: Int, value: Any): Result<Unit> {
+    override suspend fun setProperty(
+        propertyId: Int,
+        areaId: Int,
+        value: Any,
+        context: VehicleWriteContext,
+    ): Result<Unit> {
         val key = Key(propertyId, areaId)
         if (key !in state.value) {
             return Result.failure(
