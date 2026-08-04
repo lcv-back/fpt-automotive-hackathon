@@ -113,3 +113,21 @@ Không đổi `PhoWhisper-tiny` sang model lớn hơn trước khi có R1, R3 v�
 | S5 | `15-QUYET-DINH-BENCHMARK-ASR.md` · `23-N4-ABLATION.md` | Tiền đề benchmark; A1 chưa có guard | ✅ |
 | S6 | `android/voice/README.md` · `docs/VIVA_Pitch_Vong2.pptx` | Phân biệt đường chạy và kiến trúc đích | ✅ |
 | S7 | `12-PRODUCT-INTEGRATION-CARD.md` §5 | Voice Pipeline Gate | ✅ |
+
+## 7. Kết quả quét nhất quán
+
+Chạy ngày 04/08/2026 sau khi S1–S7 đã commit. Snapshot mã vẫn khớp §2: không có
+`SafetyGuard`, `TranscriptionEvent.Final` chỉ mang `text`, và `automotive/` không tham chiếu
+`PushToTalkRecorder`, `VadEndpointer` hay `AsrClient`.
+
+| Kiểm tra | Kết quả |
+|---|---|
+| `git diff --name-only main...HEAD -- '*.kt'` | rỗng — không mã sản phẩm nào bị sửa trong nhánh tài liệu |
+| Claim `PushToTalkRecorder` / `VadEndpointer` / `AsrClient` trong tài liệu hiện hành | đều được tách thành *chưa cắm* / *kiến trúc đích*; bản ghi 01/08 có cảnh báo đã lỗi thời |
+| Claim `SafetyGuard` | không tài liệu hiện hành nào mô tả như thứ đang chạy; trạng thái vẫn là **Kế hoạch/Đỏ** |
+| Bảy điểm trích S1–S7 | ✅ đủ 7/7 |
+| Slide 3–4 | đã trích text, render toàn bộ 10 slide và chạy kiểm tra overflow; không phát hiện tràn nội dung |
+
+Ngoại lệ vận hành còn mở: tin nhắn §0 đã được soạn nguyên văn nhưng chưa gửi, vì phiên này
+không có kênh nhắn nhóm. Sau khi gửi, ghi phản hồi của Tùng ngay dưới tin nhắn và chạy lại
+ba kiểm tra snapshot trước khi thay đổi bất kỳ trạng thái nào.
