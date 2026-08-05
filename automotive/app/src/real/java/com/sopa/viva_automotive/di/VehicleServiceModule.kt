@@ -28,6 +28,10 @@ abstract class VehicleServiceModule {
         fun provideVehicleRepository(
             delegate: RealVehicleRepository,
             guard: DefaultSafetyGuard,
-        ): VehicleRepository = GuardedVehicleRepository(delegate, guard)
+        ): VehicleRepository = GuardedVehicleRepository(delegate, guard) { message ->
+            // Lệnh bị chặn phải để lại dấu vết đọc được bằng `adb logcat -s
+            // VivaSafetyGuard:I` — xem GuardedVehicleRepository.logVerdict.
+            android.util.Log.i(GuardedVehicleRepository.SAFETY_TAG, message)
+        }
     }
 }
