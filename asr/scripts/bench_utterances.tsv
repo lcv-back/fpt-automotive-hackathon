@@ -1,0 +1,21 @@
+raw_name	text_vi	bench_id	expect_intent
+cmd_b01_hvac_set_temp	Viva ơi hạ điều hòa xuống 24 độ	B01	hvac_set_temp
+cmd_b02_hvac_set_temp	hạ điều hòa xuống 22 độ	B02	hvac_set_temp
+cmd_b03_hvac_set_temp	đặt nhiệt độ 26 độ	B03	hvac_set_temp
+cmd_b04_clarify	đặt nhiệt độ 40 độ	B04	clarify
+cmd_b05_hvac_set_fan	quạt mức 2	B05	hvac_set_fan
+cmd_b06_clarify	quạt mạnh lên	B06	clarify
+cmd_b07_hvac_set_fan	quạt mức 3	B07	hvac_set_fan
+cmd_b08_door_lock	khóa cửa	B08	door_lock
+cmd_b09_door_lock	mở cửa	B09	door_lock
+cmd_b11_volume_adjust	tăng âm lượng	B11	volume_adjust
+cmd_b12_volume_adjust	giảm âm lượng	B12	volume_adjust
+cmd_b13_media_play	phát nhạc	B13	media_play
+cmd_b14_media_next	chuyển bài	B14	media_next
+cmd_b15_media_pause	dừng nhạc	B15	media_pause
+cmd_b16_delivery_next_stop	chặng tiếp theo là gì	B16	delivery_next_stop
+cmd_b17_delivery_order_status	đơn A12 thế nào	B17	delivery_order_status
+cmd_b18_delivery_confirm	xác nhận giao thành công đơn A12	B18	delivery_confirm
+cmd_b20_unknown	đặt bàn ăn tối	B20	unknown
+cmd_b21_clarify	Siri ơi hạ điều hòa xuống 24 độ	B21	clarify
+cmd_b22_clarify	bật điều hòa	B22	clarify
