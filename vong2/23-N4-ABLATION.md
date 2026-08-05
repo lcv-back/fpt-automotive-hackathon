@@ -15,7 +15,7 @@ cd backend
 
 # 1. Chạy baseline (hệ đầy đủ) và biến thể, mỗi lần một artifact set
 .\scripts\run_benchmark.ps1 -Variant full     -Adb
-.\scripts\run_benchmark.ps1 -Variant no-guard -Adb
+.\scripts\run_benchmark.ps1 -Variant no-guard -Adb   # ⚠️ xem cảnh báo ngay dưới
 
 # 2. Lập bảng before/after
 go run ./cmd/viva-tools harness compare `
@@ -28,14 +28,35 @@ go run ./cmd/viva-tools harness compare `
 `--verdicts-out` là cột sống của A1: nó đếm `Deny:G1_SPEED_LOCK` ở hai lần chạy.
 Điều đó chỉ hoạt động vì `verdict` mang theo mã luật (`03-contracts.md` §1.2).
 
+> 🔴 **`-Variant` mới chỉ là cái nhãn — nó KHÔNG tắt guard.** Kiểm 05/08:
+> `run_benchmark.ps1` chỉ dùng `$Variant` để đặt tên thư mục artifact (dòng 56) và đóng
+> dấu vào `run_manifest.txt` rồi truyền cho harness (dòng 73, 80). Nó không đổi APK đang
+> chạy. Trong app cũng chưa có đường tắt nào: `app/src/{mock,real}/.../VehicleServiceModule.kt:30`
+> đều bind thẳng `DefaultSafetyGuard`, không có build flag hay binding no-op.
+>
+> **Hệ quả:** chạy đúng hai dòng trên hôm nay sẽ ra **hai lần chạy giống hệt nhau** với hai
+> nhãn khác nhau, và bảng before/after sẽ cho thấy guard "không thay đổi gì" — đó là số
+> sai đội nhà tự tạo ra, tệ hơn hẳn việc để trống *chưa đo*. **Đừng chạy cột `no_guard`
+> cho tới khi có cơ chế tắt thật**, và nếu không kịp thì cột đó giữ *chưa đo* — cột `full`
+> vẫn chạy và vẫn có giá trị riêng.
+
 ---
 
 ## A1 — Tắt `SafetyGuard` (N4b, Tùng)
 
-> ⚠️ **Tiền đề chưa thoả tính đến snapshot 04/08:** `SafetyGuard` chưa có lớp hiện thực
-> (`VoiceTurnReport.kt:46`), nên không có gì để tắt. B09 chưa thể sinh
-> `Confirm:G2_CONFIRM_DOOR`, B10 chưa thể sinh `Deny:G1_SPEED_LOCK`, và B20 chưa thể sinh
-> `Deny:G3_UNSUPPORTED`. Nếu tới freeze vẫn vậy, các ô A1 giữ *chưa đo*.
+> ✅ **Tiền đề đã thoả một nửa (cập nhật 05/08).** `SafetyGuard` **đã có trong mã sản
+> phẩm** từ PR #20: `vehicle-service/api/SafetyGuard.kt`, `impl/DefaultSafetyGuard.kt`,
+> `impl/GuardedVehicleRepository.kt`, cắm vào cả hai biến thể app. PR #23 nối tiếp phán
+> quyết ra dòng trace, nên B09 sinh được `Confirm:G2_CONFIRM_DOOR` và B10 sinh được
+> `Deny:G1_SPEED_LOCK`.
+>
+> 🔴 **Thứ còn thiếu là cơ chế tắt** cho cột `no_guard` — xem cảnh báo ở mục *Công cụ*.
+> Không có nó thì A1 chỉ đo được cột `full`.
+>
+> ⚠️ B20 (`Deny:G3_UNSUPPORTED`) vẫn chưa sinh được, vì hai lý do độc lập: câu ngoài phạm
+> vi rơi vào `VehicleIntent.Unknown` nên **không bao giờ chạm tới guard** (không có
+> `setProperty` nào được gọi), và `SafetyRules` cũng không có mã `G3_UNSUPPORTED`. Đúng
+> như ghi chú sẵn trong `benchmark_v1.csv`: hôm nay B20 ra `Error:nlu_done`.
 
 **Giả thuyết:** bỏ tầng an toàn của đội thì *"mở cửa"* lúc `Speed=60` vẫn thực thi.
 

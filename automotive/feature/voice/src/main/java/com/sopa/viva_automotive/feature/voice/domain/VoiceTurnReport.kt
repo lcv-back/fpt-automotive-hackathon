@@ -82,12 +82,13 @@ object VoiceTurnReport {
 
     /** What the assistant says out loud when a turn does not end in success. */
     fun failureSpeech(intent: VehicleIntent, error: Throwable?): String = when {
-        // The driver hears why the car refused, plus what to do about it —
-        // "Xe đang chạy, mình chưa mở cửa được. Bạn dừng hẳn rồi nói lại nhé."
-        // A bare COMMAND_FAILED here would make the safety layer sound like a
-        // bug in the demo.
-        error is SafetyDeniedException ->
-            listOfNotNull(error.reasonVi, error.suggestion).joinToString(" ")
+        // `reasonVi` alone, deliberately: PrerenderedPrompts.rawNameFor() is an
+        // exact-text lookup, and "Xe đang chạy, mình chưa mở cửa được." is one
+        // of the bundled clips (tts_deny_door_while_moving). Appending
+        // `suggestion` would miss that entry and, on an AAOS image with no vi-VN
+        // voice, degrade the refusal to a bare notification ping. The suggestion
+        // still reaches the driver as HMI text via the exception message.
+        error is SafetyDeniedException -> error.reasonVi
         error is SafetyConfirmationRequiredException -> error.questionVi
 
         // The question itself is the answer the driver needs to hear.

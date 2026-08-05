@@ -127,7 +127,12 @@ class DefaultSafetyGuard @Inject constructor() : SafetyGuard {
         if (request.source != VehicleCommandSource.VOICE || request.isConfirmed) return null
         return Verdict.Confirm(
             rule = SafetyRules.CONFIRM_DOOR,
-            questionVi = "Bạn có chắc muốn mở khoá cửa không?",
+            // Câu hỏi phải nói luôn *cách* trả lời: ngữ pháp không có intent
+            // có/không (`GrammarIntentRouter.kt:54` chỉ khớp "mở cửa" /
+            // "mở khóa cửa"), nên tài xế nói "có" sẽ rơi vào Unknown và huỷ
+            // luôn câu hỏi. Nhắc lại lệnh mới là câu trả lời hợp lệ.
+            questionVi = "Bạn có chắc muốn mở khoá cửa không? " +
+                "Nói lại “mở cửa” để xác nhận.",
         )
     }
 

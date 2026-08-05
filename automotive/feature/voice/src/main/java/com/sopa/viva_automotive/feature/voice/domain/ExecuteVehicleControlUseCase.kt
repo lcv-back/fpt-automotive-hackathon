@@ -6,6 +6,8 @@ import com.sopa.viva_automotive.feature.voice.domain.delivery.DeliveryCommand
 import com.sopa.viva_automotive.feature.voice.domain.delivery.DeliverySkill
 import com.sopa.viva_automotive.feature.voice.domain.model.VehicleIntent
 import com.sopa.viva_automotive.vehicleservice.api.FanSpeed
+import com.sopa.viva_automotive.vehicleservice.api.SafetyConfirmationRequiredException
+import com.sopa.viva_automotive.vehicleservice.api.SafetyRules
 import com.sopa.viva_automotive.vehicleservice.api.VehicleAreas
 import com.sopa.viva_automotive.vehicleservice.api.VehicleCommandSource
 import com.sopa.viva_automotive.vehicleservice.api.VehicleProperties
@@ -33,6 +35,23 @@ class ExecuteVehicleControlUseCase @Inject constructor(
     private val deliverySkill: DeliverySkill,
 ) {
 
+    /**
+     * Set when `SafetyGuard` answered an unlock with `G2_CONFIRM_DOOR` and the
+     * driver has not moved on to another turn yet. The next unlock turn carries
+     * `isConfirmed = true` and is allowed through.
+     *
+     * Held here rather than in the guard because the guard is stateless by
+     * design: it sees one write at a time and cannot tell a first request from
+     * an answer to its own question. Same two-turn shape as
+     * `DeliverySkill.pendingConfirmation`, and same reason for no expiry clock —
+     * determinism beats a timer in a demo.
+     *
+     * The unlock still re-runs every deny rule on the second turn, so a car that
+     * started moving between the question and the answer is denied by
+     * `G1_SPEED_LOCK`: confirming is not a bypass.
+     */
+    private var pendingDoorUnlock = false
+
     suspend operator fun invoke(intent: VehicleIntent): Result<String> {
         // Walking away from a pending "are you sure?" by issuing any other turn
         // answers it as "no". This lives here, at the single point every intent
@@ -41,6 +60,9 @@ class ExecuteVehicleControlUseCase @Inject constructor(
         // confirmation, which is how the two-turn guard was defeated before.
         if (!retainsPendingConfirmation(intent)) {
             deliverySkill.clearPendingConfirmation()
+        }
+        if (!retainsPendingDoorUnlock(intent)) {
+            pendingDoorUnlock = false
         }
         return dispatch(intent)
     }
@@ -92,15 +114,7 @@ class ExecuteVehicleControlUseCase @Inject constructor(
                 .setProperty(VehicleProperties.HVAC_POWER_ON, VehicleAreas.GLOBAL, intent.on)
                 .map { if (intent.on) "Climate system on" else "Climate system off" }
 
-        is VehicleIntent.SetDoorLock ->
-            vehicleRepository
-                .setProperty(
-                    VehicleProperties.DOOR_LOCK,
-                    VehicleAreas.DOOR_ROW_1_LEFT,
-                    intent.locked,
-                    VehicleWriteContext(source = VehicleCommandSource.VOICE),
-                )
-                .map { VehicleControlResponses.driverDoor(intent.locked) }
+        is VehicleIntent.SetDoorLock -> setDoorLock(intent.locked)
 
         is VehicleIntent.QueryStatus -> queryStatus(intent.kind)
 
@@ -136,6 +150,29 @@ class ExecuteVehicleControlUseCase @Inject constructor(
             Result.failure(
                 CommandValidationException("Sorry, I didn't understand \"${intent.utterance}\""),
             )
+    }
+
+    /**
+     * Second turn of an unlock carries the confirmation the guard asked for.
+     *
+     * Locking is never gated, so [pendingDoorUnlock] is always false by the time
+     * a lock reaches here — [invoke] cleared it.
+     */
+    private suspend fun setDoorLock(locked: Boolean): Result<String> {
+        val result = vehicleRepository.setProperty(
+            VehicleProperties.DOOR_LOCK,
+            VehicleAreas.DOOR_ROW_1_LEFT,
+            locked,
+            VehicleWriteContext(
+                source = VehicleCommandSource.VOICE,
+                isConfirmed = pendingDoorUnlock,
+            ),
+        )
+        // Re-armed only by G2_CONFIRM_DOOR. A denial clears it: after "xe đang
+        // chạy" the driver has to ask again from the start, and a repeat is a
+        // fresh request rather than an answer to a question that was never asked.
+        pendingDoorUnlock = armsDoorConfirmation(result.exceptionOrNull())
+        return result.map { VehicleControlResponses.driverDoor(locked) }
     }
 
     private suspend fun setTemperature(celsius: Double, zone: VehicleZone): Result<String> {
@@ -207,5 +244,28 @@ class ExecuteVehicleControlUseCase @Inject constructor(
          */
         fun retainsPendingConfirmation(intent: VehicleIntent): Boolean =
             intent is VehicleIntent.Delivery && intent.command is DeliveryCommand.Confirm
+
+        /**
+         * Whether [intent] leaves a pending door-unlock confirmation intact.
+         *
+         * Only repeating the unlock answers the question — the grammar has no
+         * yes/no intent (`GrammarIntentRouter.kt:54` matches "mở cửa" / "mở khóa
+         * cửa"), so "có" would route to [VehicleIntent.Unknown] and cancel the
+         * confirmation. Locking the door cancels it too: that is the driver
+         * changing their mind, not confirming.
+         */
+        fun retainsPendingDoorUnlock(intent: VehicleIntent): Boolean =
+            intent is VehicleIntent.SetDoorLock && !intent.locked
+
+        /**
+         * Whether [error] is the guard asking about a door unlock specifically.
+         *
+         * Deliberately not "any confirmation": `G3_LOW_CONFIDENCE` also returns
+         * `Confirm`, but it asks the driver to *repeat the command*, not to
+         * approve it. Arming on it would let a misheard unlock through on the
+         * repeat without the safety question ever being asked.
+         */
+        fun armsDoorConfirmation(error: Throwable?): Boolean =
+            error is SafetyConfirmationRequiredException && error.rule == SafetyRules.CONFIRM_DOOR
     }
 }

@@ -57,9 +57,13 @@ class VoiceTurnReportTest {
     }
 
     @Test
-    fun `a denied turn speaks the reason and the way out, not COMMAND_FAILED`() {
+    fun `a denied turn speaks the reason verbatim so the pre-rendered clip still matches`() {
+        // PrerenderedPrompts.rawNameFor() is an exact-text lookup and this
+        // sentence is tts_deny_door_while_moving. Appending the suggestion would
+        // miss the clip and leave a device with no vi-VN voice playing a bare
+        // ping instead of the refusal.
         assertEquals(
-            "Xe đang chạy, mình chưa mở cửa được. Bạn dừng hẳn rồi nói lại nhé.",
+            "Xe đang chạy, mình chưa mở cửa được.",
             VoiceTurnReport.failureSpeech(
                 VehicleIntent.SetDoorLock(locked = false),
                 SafetyDeniedException(
