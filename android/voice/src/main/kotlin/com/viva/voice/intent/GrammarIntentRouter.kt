@@ -1,5 +1,6 @@
 package com.viva.voice.intent
 
+import java.text.Normalizer
 import java.util.Locale
 
 /**
@@ -17,13 +18,25 @@ class GrammarIntentRouter(
 
     override fun route(text: String): RouteResult {
         val normalized = normalize(text)
-        if (UNSUPPORTED_WAKE.containsMatchIn(normalized)) {
+        if (UNSUPPORTED_WAKE.containsMatchIn(fold(normalized))) {
             return RouteResult.Unsupported(
                 "Từ gọi của trợ lý là “Viva ơi” hoặc “Vivi ơi”. Bạn thử lại nhé.",
                 canFallback = false,
             )
         }
-        val command = normalized.replaceFirst(SUPPORTED_WAKE, "").trim()
+
+        // Hai bản của cùng một câu, dùng vào hai việc khác nhau:
+        //  · `spoken` giữ nguyên dấu — dùng để lấy slot (tên bài hát, mã đơn),
+        //    vì trả về "nhac tru tinh" thay vì "nhạc trữ tình" là làm hỏng dữ liệu.
+        //  · `command` bỏ dấu — dùng cho MỌI phép so khớp.
+        //
+        // Vì sao bỏ dấu: Vosk `vn-0.4` là model nhỏ, nó thường bắt đúng âm tiết
+        // nhưng sai thanh điệu — "mở cửa" ra "mơ cưa", "khóa cửa" ra "khoa cua".
+        // Router cũ so khớp từng chữ nên sai một dấu là trượt sạch, rơi xuống
+        // embedding rồi thành Unknown: ASR chỉ lệch một chút mà tài xế nhận
+        // nguyên câu từ chối. Bỏ dấu hai vế cứu đúng nhóm lỗi đó.
+        val spoken = normalized.replaceFirst(SUPPORTED_WAKE_SPOKEN, "").trim()
+        val command = fold(normalized).replaceFirst(SUPPORTED_WAKE, "").trim()
         if (command.isEmpty()) {
             return RouteResult.NeedsClarification("Bạn muốn mình thực hiện việc gì?")
         }
@@ -34,12 +47,12 @@ class GrammarIntentRouter(
             )
         }
 
-        if (command.contains("lạnh quá")) {
+        if (command.has("lạnh quá")) {
             return RouteResult.NeedsClarification(
                 "Bạn muốn tăng nhiệt độ điều hòa lên bao nhiêu độ?",
             )
         }
-        if (command.contains("nóng quá")) {
+        if (command.has("nóng quá")) {
             return RouteResult.NeedsClarification(
                 "Bạn muốn giảm nhiệt độ điều hòa xuống bao nhiêu độ?",
             )
@@ -48,42 +61,45 @@ class GrammarIntentRouter(
         if (isTemperatureCommand(command)) {
             return routeTemperature(command)
         }
-        if (command.contains("quạt")) {
+        if (command.has("quạt")) {
             return routeFan(command)
         }
-        if (command.contains("mở cửa") || command.contains("mở khóa cửa")) {
+        if (command.has("mở cửa", "mở khóa cửa")) {
             return matched("door_lock", mapOf("lock" to false))
         }
-        if (command.contains("khóa cửa")) {
+        if (command.has("khóa cửa")) {
             return matched("door_lock", mapOf("lock" to true))
         }
-        if (command.contains("tăng âm lượng")) {
+        if (command.has("tăng âm lượng")) {
             return matched("volume_adjust", mapOf("delta" to 1))
         }
-        if (command.contains("giảm âm lượng")) {
+        if (command.has("giảm âm lượng")) {
             return matched("volume_adjust", mapOf("delta" to -1))
         }
-        if (command.contains("dừng nhạc") || command.contains("tạm dừng nhạc")) {
+        if (command.has("dừng nhạc", "tạm dừng nhạc")) {
             return matched("media_pause")
         }
-        if (command.contains("chuyển bài") || command.contains("bài tiếp theo")) {
+        if (command.has("chuyển bài", "bài tiếp theo")) {
             return matched("media_next")
         }
-        if (command.startsWith("phát nhạc") || command.startsWith("phát playlist")) {
-            val query = command.removePrefix("phát ").takeUnless { it == "nhạc" }
+        if (command.startsWith(fold("phát nhạc")) || command.startsWith(fold("phát playlist"))) {
+            // Slot lấy từ `spoken`, không lấy từ bản bỏ dấu: trả về tên bài hát
+            // mất dấu là làm hỏng dữ liệu chứ không phải chuẩn hoá nó.
+            val query = spoken.removePrefix("phát ").takeUnless { it == "nhạc" }
             return matched("media_play", query?.let { mapOf("query" to it) }.orEmpty())
         }
-        if (command.contains("chặng tiếp theo") || command.contains("điểm dừng tiếp theo")) {
+        if (command.has("chặng tiếp theo", "điểm dừng tiếp theo")) {
             return matched("delivery_next_stop")
         }
-        if (command.contains("đơn") && DELIVERY_STATUS_CUES.any(command::contains)) {
+        if (command.has("đơn") && command.has(*DELIVERY_STATUS_CUES)) {
             return matched("delivery_order_status", orderIdSlot(command))
         }
-        if (command.contains("xác nhận") && command.contains("giao")) {
+        if (command.has("xác nhận") && command.has("giao")) {
             return matched("delivery_confirm", orderIdSlot(command))
         }
+        // Extension rule được viết dựa trên câu CÓ dấu, nên nhận `spoken`.
         extensionRules.forEach { rule ->
-            rule.route(command)?.let { return it }
+            rule.route(spoken)?.let { return it }
         }
         return RouteResult.Unsupported()
     }
@@ -113,9 +129,9 @@ class GrammarIntentRouter(
     }
 
     private fun isTemperatureCommand(command: String): Boolean {
-        if (command.contains("nhiệt độ")) return true
-        if (!command.contains("điều hòa")) return false
-        return NUMBER.containsMatchIn(command) || TEMPERATURE_CUES.any { cue -> command.contains(cue) }
+        if (command.has("nhiệt độ")) return true
+        if (!command.has("điều hòa")) return false
+        return NUMBER.containsMatchIn(command) || command.has(*TEMPERATURE_CUES)
     }
 
     private fun routeFan(command: String): RouteResult {
@@ -137,6 +153,13 @@ class GrammarIntentRouter(
             ),
         )
 
+    /**
+     * So khớp bỏ dấu. Literal trong mã vẫn viết có dấu cho người đọc; việc bỏ
+     * dấu xảy ra ở đây, đúng một chỗ.
+     */
+    private fun String.has(vararg phrases: String): Boolean =
+        phrases.any { phrase -> contains(fold(phrase)) }
+
     private fun normalize(raw: String): String = raw
         .lowercase(Locale.ROOT)
         .replace(PUNCTUATION, " ")
@@ -144,6 +167,22 @@ class GrammarIntentRouter(
         .trim()
 
     companion object {
+        /**
+         * Bỏ dấu tiếng Việt: tách tổ hợp bằng NFD rồi xoá dấu phụ, và `đ` → `d`
+         * (NFD không tách chữ này).
+         *
+         * Chỉ chạm vào chữ cái, nên áp lên **mẫu regex** cũng an toàn: mọi ký
+         * tự điều khiển của regex đi qua nguyên vẹn.
+         */
+        internal fun fold(raw: String): String =
+            Normalizer.normalize(raw, Normalizer.Form.NFD)
+                .replace(COMBINING_MARKS, "")
+                .replace("đ", "d")
+
+        private fun foldedRegex(pattern: String) = Regex(fold(pattern))
+
+        private val COMBINING_MARKS = Regex("""\p{Mn}+""")
+
         private const val MIN_TEMPERATURE_C = 16
         private const val MAX_TEMPERATURE_C = 32
         private const val MIN_FAN_LEVEL = 0
@@ -153,16 +192,19 @@ class GrammarIntentRouter(
         private val NUMBER = Regex("""(\d{1,2})""")
         private val PUNCTUATION = Regex("""[,.!?;:]""")
         private val WHITESPACE = Regex("""\s+""")
-        private val SUPPORTED_WAKE = Regex("""^(?:viva|vivi)\s+ơi(?:\s+|$)""")
-        private val UNSUPPORTED_WAKE = Regex("""^(?:siri|alexa|hey google)\s+ơi?(?:\s+|$)""")
+        /** Dùng trên câu đã bỏ dấu. */
+        private val SUPPORTED_WAKE = foldedRegex("""^(?:viva|vivi)\s+ơi(?:\s+|$)""")
+        /** Cùng mẫu nhưng dùng trên câu còn dấu, để cắt tiền tố khỏi `spoken`. */
+        private val SUPPORTED_WAKE_SPOKEN = Regex("""^(?:viva|vivi)\s+ơi(?:\s+|$)""")
+        private val UNSUPPORTED_WAKE = foldedRegex("""^(?:siri|alexa|hey google)\s+ơi?(?:\s+|$)""")
         private val ORDER_ID = Regex("""\b([a-z]\d{1,6})\b""")
-        private val DELIVERY_STATUS_CUES = listOf("thế nào", "trạng thái", "đến đâu")
+        private val DELIVERY_STATUS_CUES = arrayOf("thế nào", "trạng thái", "đến đâu")
         private val REMOVED_COMMANDS = listOf(
-            Regex("""\b(?:bật|tắt)\s+(?:điều hòa|ac)\b"""),
-            Regex("""đặt\s+âm lượng"""),
-            Regex("""\b(?:bài trước|quay lại bài trước)\b"""),
-            Regex("""\b(?:dtc|mã lỗi|xe có lỗi)\b"""),
+            foldedRegex("""\b(?:bật|tắt)\s+(?:điều hòa|ac)\b"""),
+            foldedRegex("""đặt\s+âm lượng"""),
+            foldedRegex("""\b(?:bài trước|quay lại bài trước)\b"""),
+            foldedRegex("""\b(?:dtc|mã lỗi|xe có lỗi)\b"""),
         )
-        private val TEMPERATURE_CUES = listOf("đặt", "hạ", "tăng", "giảm", "xuống", "lên", "độ")
+        private val TEMPERATURE_CUES = arrayOf("đặt", "hạ", "tăng", "giảm", "xuống", "lên", "độ")
     }
 }
