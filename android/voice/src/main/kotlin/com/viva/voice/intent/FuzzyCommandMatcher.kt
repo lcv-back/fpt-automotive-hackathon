@@ -47,6 +47,8 @@ class FuzzyCommandMatcher {
         val intent: String,
         val keywords: List<String>,
         val minScore: Double,
+        /** Từ mà nếu xuất hiện thì template này KHÔNG được khớp. */
+        val excludes: List<String> = emptyList(),
         val slots: (List<String>) -> Map<String, Any> = { emptyMap() },
     )
 
@@ -75,6 +77,10 @@ class FuzzyCommandMatcher {
 
     /** Tỉ lệ từ khoá nghe ra được, so theo âm. */
     private fun score(template: Template, tokens: List<String>): Double {
+        val blocked = template.excludes.any { excluded ->
+            tokens.any { token -> PhoneticKey.matchesStrict(token, excluded) }
+        }
+        if (blocked) return 0.0
         val hit = template.keywords.count { keyword ->
             tokens.any { token -> PhoneticKey.matchesStrict(token, keyword) }
         }
@@ -127,7 +133,9 @@ class FuzzyCommandMatcher {
             // Truy vấn trạng thái chỉ ĐỌC, không ghi gì xuống xe, nên ngưỡng
             // thấp là hợp lý: đoán sai thì tài xế nghe một con số không hỏi,
             // chứ xe không làm gì cả.
-            Template("vehicle_status_speed", listOf("tốc", "độ"), COMFORT),
+            // Cùng lý do như ở router: "tốc độ quạt" là mức quạt. Template
+            // này chỉ được khớp khi câu KHÔNG nhắc tới quạt — xem `excludes`.
+            Template("vehicle_status_speed", listOf("tốc", "độ"), COMFORT, excludes = listOf("quạt")),
             Template("vehicle_status_fuel", listOf("xăng"), COMFORT),
             Template("vehicle_status_battery", listOf("pin"), COMFORT),
         )
