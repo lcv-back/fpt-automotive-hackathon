@@ -67,8 +67,21 @@ object CoreIntentMapper {
         "delivery_confirm" ->
             AutomotiveVoiceAction.Delivery(DeliveryCommand.Confirm(intent.text("orderId")))
 
+        // Truy vấn trạng thái — chỉ đọc, không ghi property nào.
+        //
+        // Trước 05/08 mapper không có nhánh này, nên dù router có nhận ra thì
+        // câu vẫn rơi về Unknown. Người dùng thấy đúng triệu chứng đó: hỏi điều
+        // hòa/quạt thì được, hỏi xăng/pin/tốc độ thì không.
+        "vehicle_status_speed" -> statusQuery(VehicleIntent.StatusQueryKind.SPEED)
+        "vehicle_status_fuel" -> statusQuery(VehicleIntent.StatusQueryKind.FUEL)
+        "vehicle_status_battery" -> statusQuery(VehicleIntent.StatusQueryKind.BATTERY)
+        "vehicle_status_temperature" -> statusQuery(VehicleIntent.StatusQueryKind.TEMPERATURE)
+
         else -> null
     }
+
+    private fun statusQuery(kind: VehicleIntent.StatusQueryKind) =
+        AutomotiveVoiceAction.VehicleControl(VehicleIntent.QueryStatus(kind))
 
     private fun Intent.number(name: String): Number? = slots[name] as? Number
 

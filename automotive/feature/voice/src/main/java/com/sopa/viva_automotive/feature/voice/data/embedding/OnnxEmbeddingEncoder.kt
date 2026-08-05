@@ -77,8 +77,12 @@ class OnnxEmbeddingEncoder @Inject constructor(
                 // nên một câu đặt bàn ăn được định tuyến thành truy vấn tốc độ
                 // rồi thực thi. Trả null để tầng trên hiểu là "không nhận ra",
                 // thay vì trao cho nó một vector trông có vẻ tự tin.
-                if (encoding.isAllUnknown) {
-                    Log.d(TAG, "Bỏ nhúng \"$text\": mọi token đều [UNK]")
+                if (encoding.unknownRatio > MAX_UNKNOWN_RATIO) {
+                    Log.d(
+                        TAG,
+                        "Bỏ nhúng \"$text\": ${encoding.unknownTokens}/${encoding.contentTokens} " +
+                            "token không đọc được",
+                    )
                     return@withLock null
                 }
 
@@ -159,6 +163,17 @@ class OnnxEmbeddingEncoder @Inject constructor(
         const val ASSET_DIR = "embeddings"
         const val MODEL_FILE = "model_quantized.onnx"
         const val VOCAB_FILE = "vocab.txt"
+
+        /**
+         * Quá nửa câu không đọc được thì vector chỉ còn phản ánh độ dài.
+         *
+         * Ngưỡng này tồn tại vì một ca thật: câu rác tiếng Việt khớp
+         * `QUERY_FUEL` ở `cos=0.5999` rồi được thực thi. Vocab của MiniLM là
+         * WordPiece tiếng Anh, nên với đầu vào tiếng Việt nó gần như luôn vượt
+         * ngưỡng này — đó là kết quả đúng: tầng embedding hiện không phục vụ
+         * được tiếng Việt, và phải im lặng thay vì đoán.
+         */
+        const val MAX_UNKNOWN_RATIO = 0.5
         const val READY_MARKER = ".unpacked"
         const val MAX_SEQ_LEN = 64
     }

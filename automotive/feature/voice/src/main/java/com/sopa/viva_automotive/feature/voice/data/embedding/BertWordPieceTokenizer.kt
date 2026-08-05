@@ -24,6 +24,19 @@ class BertWordPieceTokenizer(
          * vào trường hợp này.
          */
         val isAllUnknown: Boolean get() = contentTokens > 0 && unknownTokens == contentTokens
+
+        /**
+         * Tỉ lệ token không đọc được, `0.0`–`1.0`.
+         *
+         * Chặn theo "toàn bộ là [UNK]" là chưa đủ. Đo trên máy 05/08: câu rác
+         * *"họp mặt sạch hóa thạch và suýt rách vực âm nhạc mỹ thuật việt nam"*
+         * còn sót vài token trong từ điển nên vẫn ra vector, và vector đó khớp
+         * `QUERY_FUEL` ở `cos=0.5999` — vượt ngưỡng 0.48 rồi **thực thi**. Một
+         * vector dựng chủ yếu từ `[UNK]` chỉ mã hoá độ dài câu, không mã hoá
+         * nghĩa, nên đa số không đọc được là đủ để vứt.
+         */
+        val unknownRatio: Double
+            get() = if (contentTokens == 0) 0.0 else unknownTokens.toDouble() / contentTokens
     }
 
     fun encode(text: String): Encoding {
