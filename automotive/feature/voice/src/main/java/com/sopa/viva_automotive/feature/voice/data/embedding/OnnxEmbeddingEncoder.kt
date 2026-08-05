@@ -68,6 +68,20 @@ class OnnxEmbeddingEncoder @Inject constructor(
                 val tok = tokenizer ?: return@withLock null
                 val ort = session ?: return@withLock null
                 val encoding = tok.encode(text)
+
+                // Không nhúng thứ không đọc được. Vocab của MiniLM là WordPiece
+                // tiếng Anh; câu tiếng Việt có dấu tách ra toàn `[UNK]`, và
+                // vector thu được chỉ mã hoá SỐ LƯỢNG `[UNK]` chứ không mã hoá
+                // nghĩa. Hậu quả đo được trên máy: "đặt bàn ăn tối" và
+                // "tốc độ hiện tại" cùng ra `[CLS] [UNK]×4 [SEP]`, cosine = 1.0,
+                // nên một câu đặt bàn ăn được định tuyến thành truy vấn tốc độ
+                // rồi thực thi. Trả null để tầng trên hiểu là "không nhận ra",
+                // thay vì trao cho nó một vector trông có vẻ tự tin.
+                if (encoding.isAllUnknown) {
+                    Log.d(TAG, "Bỏ nhúng \"$text\": mọi token đều [UNK]")
+                    return@withLock null
+                }
+
                 runCatching { infer(ort, encoding) }
                     .onFailure { Log.e(TAG, "Embedding inference failed", it) }
                     .getOrNull()
