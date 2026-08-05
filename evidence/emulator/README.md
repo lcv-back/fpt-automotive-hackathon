@@ -30,8 +30,8 @@ không** trước freeze.
 ```powershell
 # 1. Cai SDK va tao AVD (mot lan)
 $sdk = "$env:LOCALAPPDATA\Android\Sdk"
-& "$sdk\cmdline-tools\latestin\sdkmanager.bat" "emulator" "system-images;android-34-ext9;android-automotive;x86_64"
-& "$sdk\cmdline-tools\latestinvdmanager.bat" create avd -n viva_aaos34 `
+& "$sdk\cmdline-tools\latest\bin\sdkmanager.bat" "emulator" "system-images;android-34-ext9;android-automotive;x86_64"
+& "$sdk\cmdline-tools\latest\bin\avdmanager.bat" create avd -n viva_aaos34 `
     -k "system-images;android-34-ext9;android-automotive;x86_64" -d "automotive_1080p_landscape"
 
 # 2. Khoi dong KEM CO AUDIO
