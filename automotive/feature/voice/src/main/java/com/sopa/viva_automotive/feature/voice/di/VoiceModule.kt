@@ -3,7 +3,7 @@ package com.sopa.viva_automotive.feature.voice.di
 import android.content.Context
 import com.sopa.viva_automotive.feature.voice.data.audio.AndroidVolumeController
 import com.sopa.viva_automotive.feature.voice.data.embedding.OnnxEmbeddingIntentMatcher
-import com.sopa.viva_automotive.feature.voice.data.vosk.VoskAsrClient
+import com.sopa.viva_automotive.feature.voice.data.asr.HttpAsrClient
 import com.sopa.viva_automotive.feature.voice.domain.audio.VolumeController
 import com.sopa.viva_automotive.feature.voice.domain.delivery.DeliveryRepository
 import com.sopa.viva_automotive.feature.voice.domain.delivery.InMemoryDeliveryRepository
@@ -43,7 +43,7 @@ abstract class VoiceModule {
     @Binds
     @Singleton
     abstract fun bindAsrClient(
-        impl: VoskAsrClient,
+        impl: HttpAsrClient,
     ): AsrClient
 
     @Binds

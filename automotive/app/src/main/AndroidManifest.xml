@@ -9,8 +9,9 @@
         android:name="android.hardware.microphone"
         android:required="false" />
 
-    <!-- Local voice assistant: on-device STT from the microphone. -->
+    <!-- Local voice assistant: mic capture + HTTP ASR (viva-asr). -->
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
+    <uses-permission android:name="android.permission.INTERNET" />
     <!-- Volume stream for volume_adjust (normal permission). -->
     <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
@@ -39,7 +40,8 @@
         android:localeConfig="@xml/locales_config"
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
-        android:theme="@style/Theme.Vivaautomotive">
+        android:theme="@style/Theme.Vivaautomotive"
+        android:usesCleartextTraffic="true">
 
         <activity
             android:name=".MainActivity"

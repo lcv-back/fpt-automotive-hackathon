@@ -7,18 +7,15 @@ import android.content.Context
 import android.content.Intent
 import android.content.pm.ApplicationInfo
 import android.content.pm.ServiceInfo
-import android.os.SystemClock
 import android.util.Log
 import androidx.lifecycle.LifecycleService
 import androidx.lifecycle.lifecycleScope
+import com.sopa.viva_automotive.feature.voice.data.audio.VadUtteranceCapture
 import com.sopa.viva_automotive.feature.voice.domain.VoiceAssistantStateManager
 import com.viva.voice.agent.VoiceAgent
 import com.viva.voice.agent.VoiceTurnResult
 import com.viva.voice.agent.VoiceTurnStatus
-import com.viva.voice.audio.AndroidPcmSource
-import com.viva.voice.audio.PushToTalkRecorder
 import com.viva.voice.trace.Stage
-import com.viva.voice.trace.SystemNanoClock
 import com.viva.voice.trace.startSilentTrace
 import com.viva.voice.trace.startVoiceTrace
 import dagger.hilt.android.AndroidEntryPoint
@@ -34,6 +31,7 @@ class VoiceAssistantService : LifecycleService() {
 
     @Inject lateinit var stateManager: VoiceAssistantStateManager
     @Inject lateinit var voiceAgent: VoiceAgent
+    @Inject lateinit var vadCapture: VadUtteranceCapture
 
     private var pipelineJob: Job? = null
     private val pendingTextCommands = ArrayDeque<String>()
@@ -115,10 +113,10 @@ class VoiceAssistantService : LifecycleService() {
 
         val captured = runCatching {
             withContext(Dispatchers.IO) {
-                val deadline = SystemClock.elapsedRealtime() + LISTENING_TIMEOUT_MS
-                PushToTalkRecorder(AndroidPcmSource(), SystemNanoClock).record {
-                    SystemClock.elapsedRealtime() < deadline
-                }
+                Log.i(VOICE_TAG, "Starting Silero VAD capture")
+                val utterance = vadCapture.capture(maxWaitForSpeechMs = LISTENING_TIMEOUT_MS)
+                Log.i(VOICE_TAG, "Silero VAD capture finished samples=${utterance.pcm.size}")
+                utterance
             }
         }.getOrElse { error ->
             Log.e(VOICE_TAG, "Mic capture failed", error)

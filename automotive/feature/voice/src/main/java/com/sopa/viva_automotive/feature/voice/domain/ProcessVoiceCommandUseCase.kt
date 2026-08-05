@@ -33,6 +33,8 @@ class ProcessVoiceCommandUseCase @Inject constructor(
             is RouteResult.Matched -> return when (val action = CoreIntentMapper.map(coreRoute.intent)) {
                 is AutomotiveVoiceAction.VehicleControl -> action.intent
                 is AutomotiveVoiceAction.VolumeAdjust -> VehicleIntent.VolumeAdjust(action.delta)
+                is AutomotiveVoiceAction.MediaPlay -> VehicleIntent.MediaPlay(action.query)
+                AutomotiveVoiceAction.MediaPause -> VehicleIntent.MediaPause
                 AutomotiveVoiceAction.MediaNext -> VehicleIntent.MediaNext
                 is AutomotiveVoiceAction.Delivery -> VehicleIntent.Delivery(action.command)
                 null -> if (isVehicleIntent(coreRoute.intent.name)) {

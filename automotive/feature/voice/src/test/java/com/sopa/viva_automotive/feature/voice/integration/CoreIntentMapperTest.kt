@@ -31,6 +31,10 @@ class CoreIntentMapperTest {
                 VehicleIntent.SetDoorLock(true),
             ),
             intent("volume_adjust", "delta" to -1) to AutomotiveVoiceAction.VolumeAdjust(-1),
+            intent("media_play", "query" to "playlist di lam") to
+                AutomotiveVoiceAction.MediaPlay("playlist di lam"),
+            intent("media_play") to AutomotiveVoiceAction.MediaPlay(null),
+            intent("media_pause") to AutomotiveVoiceAction.MediaPause,
             intent("media_next") to AutomotiveVoiceAction.MediaNext,
         )
 

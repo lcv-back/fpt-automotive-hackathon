@@ -1,14 +1,14 @@
 package com.sopa.viva_automotive.feature.voice
 
-import com.sopa.viva_automotive.feature.voice.data.vosk.VoskAsrClient
+import com.sopa.viva_automotive.feature.voice.data.asr.HttpAsrClient
 import javax.inject.Inject
 import javax.inject.Singleton
 
 @Singleton
 class VoiceRuntimeWarmUp @Inject constructor(
-    private val voskAsrClient: VoskAsrClient,
+    private val httpAsrClient: HttpAsrClient,
 ) {
     suspend fun warmUp() {
-        voskAsrClient.warmUp()
+        httpAsrClient.warmUp()
     }
 }

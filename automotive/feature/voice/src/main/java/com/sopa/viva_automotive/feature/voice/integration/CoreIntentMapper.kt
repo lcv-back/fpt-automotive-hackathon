@@ -9,6 +9,8 @@ import com.viva.voice.intent.Intent
 sealed interface AutomotiveVoiceAction {
     data class VehicleControl(val intent: VehicleIntent) : AutomotiveVoiceAction
     data class VolumeAdjust(val delta: Int) : AutomotiveVoiceAction
+    data class MediaPlay(val query: String? = null) : AutomotiveVoiceAction
+    data object MediaPause : AutomotiveVoiceAction
     data object MediaNext : AutomotiveVoiceAction
 
     /** `delivery_*` — handled in-app, never reaches VHAL (03-contracts.md §0.1). */
@@ -47,6 +49,8 @@ object CoreIntentMapper {
             AutomotiveVoiceAction.VolumeAdjust(delta.toInt())
         }
 
+        "media_play" -> AutomotiveVoiceAction.MediaPlay(intent.text("query"))
+        "media_pause" -> AutomotiveVoiceAction.MediaPause
         "media_next" -> AutomotiveVoiceAction.MediaNext
 
         // The order id slot is optional by design: "xác nhận giao thành công"
