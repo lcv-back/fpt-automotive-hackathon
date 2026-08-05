@@ -94,4 +94,14 @@ object SafetyRules {
     const val CONFIRM_DOOR = "G2_CONFIRM_DOOR"
     const val LOW_CONFIDENCE = "G3_LOW_CONFIDENCE"
     const val VALUE_RANGE = "G3_VALUE_RANGE"
+
+    /**
+     * `03-contracts.md` §4: *"wake phrase/trợ lý khác hoặc câu nằm ngoài 10
+     * intent lõi → Deny — nói rõ phạm vi, không gọi Skill"*.
+     *
+     * Luật này **không** áp ở biên `VehicleRepository` như G1/G2: câu ngoài
+     * phạm vi không sinh ra lệnh ghi property nào để mà chặn. Nó được áp ở chỗ
+     * intent được điều phối, trước khi bất kỳ Skill nào chạy.
+     */
+    const val UNSUPPORTED = "G3_UNSUPPORTED"
 }

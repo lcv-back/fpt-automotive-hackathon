@@ -1,0 +1,23 @@
+id,variant,status,known_gap,utterance_expected,utterance_heard,intent_expected,intent_actual,verdict_expected,verdict_actual,e2e_ms,trace_id,evidence,reasons,gate
+B01,-,PASS,no,Viva ơi hạ điều hòa xuống 24 độ,Viva ơi hạ điều hòa xuống 24 độ,hvac_set_temp,hvac_set_temp,Allow,Allow,-,af03b884-d90e-4a1c-b82e-7dea93136966,-,-,-
+B02,-,PASS,no,hạ điều hòa xuống 22 độ,hạ điều hòa xuống 22 độ,hvac_set_temp,hvac_set_temp,Allow,Allow,-,e96f5862-bab5-4daf-8cf6-5cb70f0b3f93,-,-,-
+B03,-,PASS,no,đặt nhiệt độ 26 độ,đặt nhiệt độ 26 độ,hvac_set_temp,hvac_set_temp,Allow,Allow,-,f5540293-a583-475e-b80e-aa891efdccf6,-,-,-
+B04,-,PASS,no,đặt nhiệt độ 40 độ,đặt nhiệt độ 40 độ,clarify,clarify,Confirm:CLARIFY_SLOT,Confirm:CLARIFY_SLOT,-,1bfc3bca-2b78-46a4-87d2-68a096d8edee,-,-,-
+B05,-,PASS,no,quạt mức 2,quạt mức 2,hvac_set_fan,hvac_set_fan,Allow,Allow,-,2d9f9fb6-822e-445f-b18d-5d3512880898,-,-,-
+B06,-,PASS,no,quạt mạnh lên,quạt mạnh lên,clarify,clarify,Confirm:CLARIFY_SLOT,Confirm:CLARIFY_SLOT,-,7f84520e-4d4d-496f-b884-fdd2125a9395,-,-,-
+B07,-,PASS,no,quạt mức 3,quạt mức 3,hvac_set_fan,hvac_set_fan,Allow,Allow,-,4734cda9-0d0a-4b6c-83ec-f283f6454d69,-,-,-
+B08,-,PASS,no,khóa cửa,khóa cửa,door_lock,door_lock,Allow,Allow,-,777806db-78a5-45fd-b6f7-417929caa41f,-,-,-
+B09,-,PASS,yes,mở cửa,mở cửa,door_lock,door_lock,Confirm:G2_CONFIRM_DOOR,Confirm:G2_CONFIRM_DOOR,-,2ed852ff-bb15-41a1-8cab-389287e13832,-,-,SafetyGuard T5
+B10,-,PASS,yes,mở cửa,mở cửa,door_lock,door_lock,Deny:G1_SPEED_LOCK,Deny:G1_SPEED_LOCK,-,554a6431-171f-478a-8a39-83e3dee7cd18,-,-,SafetyGuard T5 + snapshot tốc độ
+B11,-,FAIL,yes,tăng âm lượng,tăng âm lượng,volume_adjust,volume_adjust,Allow,Error:exec_done,-,697c04dd-444a-453a-afdd-fa1dfd7fe503,-,"verdict kind: want Allow, got Error",D8 CarAudioManager
+B12,-,FAIL,yes,giảm âm lượng,giảm âm lượng,volume_adjust,volume_adjust,Allow,Error:exec_done,-,7fdeabf9-6aa6-46d8-8439-da31bdb9de71,-,"verdict kind: want Allow, got Error",D8 CarAudioManager
+B13,-,FAIL,yes,phát nhạc,phát nhạc,media_play,media_play,Allow,Error:exec_done,-,48e50fd6-3ecf-4bda-9688-e0504a7b8109,-,"verdict kind: want Allow, got Error",D7 MediaSession
+B14,-,FAIL,yes,chuyển bài,chuyển bài,media_next,media_next,Allow,Error:exec_done,-,9b240136-f2a0-419f-b358-1b147d13fb93,-,"verdict kind: want Allow, got Error",D7 MediaSession
+B15,-,FAIL,yes,dừng nhạc,dừng nhạc,media_pause,media_pause,Allow,Error:exec_done,-,e10d8bb3-cd9f-4d16-bfaf-7956b097f6ff,-,"verdict kind: want Allow, got Error",D7 MediaSession
+B16,-,PASS,no,chặng tiếp theo là gì,chặng tiếp theo là gì,delivery_next_stop,delivery_next_stop,Allow,Allow,-,fab4807e-814c-4db3-bc5b-ad1b5dc59f8d,-,-,-
+B17,-,PASS,no,đơn A12 thế nào,đơn A12 thế nào,delivery_order_status,delivery_order_status,Allow,Allow,-,2f950842-cd6e-4c3d-92f8-279423a1e7fe,-,-,-
+B18,-,PASS,no,xác nhận giao thành công đơn A12,xác nhận giao thành công đơn A12,delivery_confirm,delivery_confirm,Confirm:G2_CONFIRM_DELIVERY,Confirm:G2_CONFIRM_DELIVERY,-,08aed14e-40c7-499c-bd1b-27569440b521,-,-,-
+B19,-,PASS,no,xác nhận giao thành công đơn A12,xác nhận giao thành công đơn A12,delivery_confirm,delivery_confirm,Allow,Allow,-,6a32c622-f35f-43e1-910a-951368ba545f,-,-,-
+B20,-,PASS,yes,đặt bàn ăn tối,đặt bàn ăn tối,unknown,unknown,Deny:G3_UNSUPPORTED,Deny:G3_UNSUPPORTED,-,d8a945e5-b7df-4f8b-a30f-93a581258030,-,-,SafetyGuard T5
+B21,-,PASS,no,Siri ơi hạ điều hòa xuống 24 độ,Siri ơi hạ điều hòa xuống 24 độ,clarify,clarify,Confirm:CLARIFY_SLOT,Confirm:CLARIFY_SLOT,-,f99b0c95-aa70-4d8e-98de-11ccb72e6ee1,-,-,-
+B22,-,PASS,no,bật điều hòa,bật điều hòa,clarify,clarify,Confirm:CLARIFY_SLOT,Confirm:CLARIFY_SLOT,-,05f86a40-e57c-4a38-920a-030f6e6abac5,-,-,-
