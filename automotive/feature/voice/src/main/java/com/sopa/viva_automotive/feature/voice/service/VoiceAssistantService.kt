@@ -103,7 +103,7 @@ class VoiceAssistantService : LifecycleService() {
     private suspend fun runInteraction() {
         speechEngine.initialize().onFailure { error ->
             stateManager.transitionToError(
-                error.message ?: "Voice recognition is unavailable",
+                error.message ?: "Bộ nhận dạng giọng nói chưa sẵn sàng.",
             )
             delay(RESULT_DISPLAY_MS)
             stateManager.transitionToIdle()
@@ -146,7 +146,7 @@ class VoiceAssistantService : LifecycleService() {
             }
 
             utterance == null -> {
-                stateManager.transitionToError("I didn't hear anything")
+                stateManager.transitionToError(VoiceTurnReport.DID_NOT_HEAR)
                 speak(VoiceTurnReport.DID_NOT_HEAR, trace)
                 trace.summary("-", "-", TraceVerdict.Error(Stage.SPEECH_END))
             }
@@ -190,7 +190,7 @@ class VoiceAssistantService : LifecycleService() {
                     )
                 },
                 onFailure = { error ->
-                    stateManager.transitionToError(error.message ?: "Command failed")
+                    stateManager.transitionToError(error.message ?: VoiceTurnReport.COMMAND_FAILED)
                     finish(trace, utterance, intent, error)
                 },
             )
@@ -250,19 +250,19 @@ class VoiceAssistantService : LifecycleService() {
     }
 
     private fun describe(intent: VehicleIntent): String = when (intent) {
-        is VehicleIntent.SetTemperature -> "Setting temperature"
-        is VehicleIntent.AdjustTemperature -> "Adjusting temperature"
-        is VehicleIntent.SetFanSpeed, is VehicleIntent.AdjustFanSpeed -> "Adjusting fan"
-        is VehicleIntent.SetAc -> "Switching air conditioning"
-        is VehicleIntent.SetHvacPower -> "Switching climate system"
-        is VehicleIntent.SetDoorLock -> "Updating door locks"
-        is VehicleIntent.QueryStatus -> "Checking vehicle status"
-        is VehicleIntent.VolumeAdjust -> "Adjusting volume"
-        is VehicleIntent.MediaNext -> "Skipping to the next track"
-        is VehicleIntent.Delivery -> "Checking the delivery route"
-        is VehicleIntent.NotWired -> "Routing command"
-        is VehicleIntent.Clarification -> "Clarifying command"
-        is VehicleIntent.Unknown -> "Interpreting command"
+        is VehicleIntent.SetTemperature -> "Đang đặt nhiệt độ"
+        is VehicleIntent.AdjustTemperature -> "Đang chỉnh nhiệt độ"
+        is VehicleIntent.SetFanSpeed, is VehicleIntent.AdjustFanSpeed -> "Đang chỉnh quạt"
+        is VehicleIntent.SetAc -> "Đang chuyển điều hòa"
+        is VehicleIntent.SetHvacPower -> "Đang chuyển hệ thống khí hậu"
+        is VehicleIntent.SetDoorLock -> "Đang xử lý khóa cửa"
+        is VehicleIntent.QueryStatus -> "Đang kiểm tra trạng thái xe"
+        is VehicleIntent.VolumeAdjust -> "Đang chỉnh âm lượng"
+        is VehicleIntent.MediaNext -> "Đang chuyển bài"
+        is VehicleIntent.Delivery -> "Đang xem lộ trình giao hàng"
+        is VehicleIntent.NotWired -> "Đang định tuyến lệnh"
+        is VehicleIntent.Clarification -> "Đang hỏi lại"
+        is VehicleIntent.Unknown -> "Đang phân tích câu lệnh"
     }
 
     private fun startForegroundWithNotification() {

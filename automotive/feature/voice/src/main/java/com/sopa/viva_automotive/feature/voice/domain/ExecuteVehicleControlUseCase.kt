@@ -88,7 +88,7 @@ class ExecuteVehicleControlUseCase @Inject constructor(
             if (!FanSpeed.isValid(intent.level)) {
                 Result.failure(
                     CommandValidationException(
-                        "Fan speed must be between ${FanSpeed.MIN_LEVEL} and ${FanSpeed.MAX_LEVEL}",
+                        VehicleControlResponses.fanSpeedOutOfRange(FanSpeed.MIN_LEVEL, FanSpeed.MAX_LEVEL),
                     ),
                 )
             } else {
@@ -110,12 +110,12 @@ class ExecuteVehicleControlUseCase @Inject constructor(
         is VehicleIntent.SetAc ->
             vehicleRepository
                 .setProperty(VehicleProperties.HVAC_AC_ON, VehicleAreas.GLOBAL, intent.on)
-                .map { if (intent.on) "Air conditioning on" else "Air conditioning off" }
+                .map { VehicleControlResponses.airConditioning(intent.on) }
 
         is VehicleIntent.SetHvacPower ->
             vehicleRepository
                 .setProperty(VehicleProperties.HVAC_POWER_ON, VehicleAreas.GLOBAL, intent.on)
-                .map { if (intent.on) "Climate system on" else "Climate system off" }
+                .map { VehicleControlResponses.climatePower(intent.on) }
 
         is VehicleIntent.SetDoorLock -> setDoorLock(intent.locked)
 
@@ -187,8 +187,10 @@ class ExecuteVehicleControlUseCase @Inject constructor(
         if (celsius < TemperatureUnits.MIN_CELSIUS || celsius > TemperatureUnits.MAX_CELSIUS) {
             return Result.failure(
                 CommandValidationException(
-                    "Temperature must be between ${TemperatureUnits.MIN_CELSIUS.roundToInt()} " +
-                        "and ${TemperatureUnits.MAX_CELSIUS.roundToInt()} degrees Celsius",
+                    VehicleControlResponses.temperatureOutOfRange(
+                        TemperatureUnits.MIN_CELSIUS.roundToInt(),
+                        TemperatureUnits.MAX_CELSIUS.roundToInt(),
+                    ),
                 ),
             )
         }
@@ -208,16 +210,16 @@ class ExecuteVehicleControlUseCase @Inject constructor(
         when (kind) {
             VehicleIntent.StatusQueryKind.SPEED ->
                 currentFloat(VehicleProperties.PERF_VEHICLE_SPEED, VehicleAreas.GLOBAL)
-                    .map { "Current speed is ${(it * 3.6f).roundToInt()} kilometers per hour" }
+                    .map { VehicleControlResponses.currentSpeed(it) }
             VehicleIntent.StatusQueryKind.FUEL ->
                 currentFloat(VehicleProperties.FUEL_LEVEL, VehicleAreas.GLOBAL)
-                    .map { "Fuel level is ${it.roundToInt()} percent" }
+                    .map { VehicleControlResponses.fuelLevel(it) }
             VehicleIntent.StatusQueryKind.BATTERY ->
                 currentFloat(VehicleProperties.EV_BATTERY_LEVEL, VehicleAreas.GLOBAL)
-                    .map { "Battery level is ${it.roundToInt()} percent" }
+                    .map { VehicleControlResponses.batteryLevel(it) }
             VehicleIntent.StatusQueryKind.TEMPERATURE ->
                 currentFloat(VehicleProperties.HVAC_TEMPERATURE_SET, VehicleAreas.SEAT_ZONE_DRIVER)
-                    .map { "Temperature is set to ${formatTemp(it)}" }
+                    .map { VehicleControlResponses.temperatureSetting(formatTemp(it)) }
         }
 
     private suspend fun formatTemp(celsius: Float): String {

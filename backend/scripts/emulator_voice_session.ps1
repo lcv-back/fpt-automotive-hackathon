@@ -118,7 +118,24 @@ function Initialize-App {
     Invoke-Adb -AdbArgs @('shell', 'input', 'tap', $TAP_VIETNAMESE[0], $TAP_VIETNAMESE[1])
     Start-Sleep -Seconds 2
 
-    Write-Host "Xong. Kiem lai bang mat: Settings -> Voice language phai tick 'Tieng Viet'." -ForegroundColor Green
+    # Ngon ngu GIAO DIEN, khac voi ngon ngu NHAN DANG o buoc tren.
+    #
+    # Ca 6 module deu da co values-vi day du, nhung app hien tieng Anh neu locale
+    # thiet bi la en-US — va emulator AAOS mac dinh dung en-US. Ket qua la mot
+    # ban demo "nua Anh nua Viet": tro ly tra loi tieng Viet trong khi nhan tren
+    # man hinh van la Climate / Driver / Fan speed.
+    #
+    # Dat rieng cho app (Android 13+) thay vi doi locale ca may: khong dung toi
+    # phan con lai cua he thong, va khong can reboot.
+    Write-Host "== Dat giao dien tieng Viet ==" -ForegroundColor Cyan
+    Invoke-Adb -AdbArgs @('shell', 'cmd', 'locale', 'set-app-locales', $PKG, '--user', '10', '--locales', 'vi-VN')
+    Invoke-Adb -AdbArgs @('shell', 'am', 'force-stop', $PKG)
+    Start-Sleep -Seconds 2
+    Invoke-Adb -AdbArgs @('shell', 'am', 'start', '--user', '10', '-n', $ACTIVITY) | Out-Null
+    Start-Sleep -Seconds 5
+
+    Write-Host "Xong. Kiem lai bang mat: man hinh phai la 'Dieu hoa / Tai xe / Hanh khach'," -ForegroundColor Green
+    Write-Host "va Cai dat -> Ngon ngu giong noi phai tick 'Tieng Viet'." -ForegroundColor Green
 }
 
 function Wait-ForTurn {
