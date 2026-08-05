@@ -51,6 +51,10 @@ param(
     # Bơm câu bằng text thay vì chờ người nói. Đo router -> guard -> skill,
     # KHÔNG đo mic/VAD/ASR/WER. Xem SimulatedUtteranceReceiver và vong2/25 §2 F7.
     [switch]$Inject,
+    # Thu bo ngu lieu NOI THAT: doc tung cau, ghi lai Vosk nghe ra gi.
+    # Ket qua la CSV co nhan, de chinh nguong dua tren du lieu thay vi dua
+    # tren mot nhum transcript quan sat duoc.
+    [switch]$Record,
     [int]$Utterances = 0,
     [string]$OutDir,
     [string]$Serial,
@@ -183,6 +187,104 @@ function Set-VehicleState {
     ) | Out-Null
 }
 
+function Get-HeardTranscript {
+    <# Cau cuoi cung Vosk chot, va muc tin hieu dinh cua luot.
+
+       Doc tu VoskEngine chu khong tu VIVA_TRACE_SUMMARY: summary chi mang cau
+       da qua router, con o day can dung thu ASR tra ve — ke ca khi router bo. #>
+    $lines = Invoke-Adb -AdbArgs @('logcat', '-d', '-s', 'VoskEngine:D')
+    $heard = ($lines | Select-String 'Vosk chot cau: "(.*)"' | Select-Object -Last 1)
+    $peaks = $lines | Select-String 'peak=(\d+)/' | ForEach-Object { [int]$_.Matches[0].Groups[1].Value }
+    [pscustomobject]@{
+        Heard = if ($heard) { $heard.Matches[0].Groups[1].Value } else { '' }
+        Peak  = if ($peaks) { ($peaks | Measure-Object -Maximum).Maximum } else { 0 }
+    }
+}
+
+function Invoke-RecordingSession {
+    <# Doc tung cau, ghi lai Vosk nghe ra gi. Day la buoc thu du lieu, khong
+       phai buoc cham diem: cot `vosk_nghe_ra` moi la thu can de chinh nguong. #>
+    param([array]$Rows, [string]$OutDir)
+
+    $corpus = Join-Path $OutDir 'spoken-corpus.csv'
+    "cau_can_noi,intent_mong_doi,vosk_nghe_ra,peak,intent_thuc_te,verdict" |
+        Set-Content -Path $corpus -Encoding utf8
+
+    Write-Host ""
+    Write-Host "=====================================================" -ForegroundColor Yellow
+    Write-Host " THU NGU LIEU NOI THAT — $($Rows.Count) cau" -ForegroundColor Yellow
+    Write-Host " Doc TO va GAN khi thay 'NOI:', roi im 2 giay." -ForegroundColor Yellow
+    Write-Host " Can peak > 5000. Thap hon thi keo Input volume Windows len," -ForegroundColor Yellow
+    Write-Host " va kiem toggle mic ao trong Extended Controls." -ForegroundColor Yellow
+    Write-Host "=====================================================" -ForegroundColor Yellow
+    Write-Host ""
+
+    foreach ($row in $Rows) {
+        $pre = $PRECONDITION[$row.id]
+        if ($pre) { Set-VehicleState -Unit $pre.unit -Value $pre.value; Start-Sleep -Milliseconds 600 }
+
+        Invoke-Adb -AdbArgs @('logcat', '-c')
+        Invoke-Adb -AdbArgs @('shell', 'am', 'start', '-n', $ACTIVITY) | Out-Null
+        Start-Sleep -Milliseconds 800
+
+        Write-Host ("[{0}] " -f $row.id) -NoNewline -ForegroundColor DarkGray
+        Write-Host "NOI: " -NoNewline -ForegroundColor Cyan
+        Write-Host $row.utterance -ForegroundColor White
+
+        Invoke-Adb -AdbArgs @('shell', 'input', 'tap', $TAP_MIC[0], $TAP_MIC[1])
+        $lines = Wait-ForTurn -TimeoutSec 30
+        $asr = Get-HeardTranscript
+
+        $gotIntent = '?'
+        $gotVerdict = '?'
+        if ($lines) {
+            $summary = ($lines | Select-String 'VIVA_TRACE_SUMMARY' | Select-Object -Last 1).ToString()
+            $fields = ($summary -split 'VIVA_TRACE_SUMMARY\|')[-1] -split '\|'
+            if ($fields.Count -gt 4) {
+                $gotIntent = $fields[2]
+                $gotVerdict = $fields[3]
+            }
+        }
+
+        # PowerShell ket thuc cau lenh o dau `}` neu `elseif` khong cung dong,
+        # nen khoi nay phai viet lien mach.
+        $colour = if ($gotIntent -eq $row.expect_intent) {
+            'Green'
+        } elseif ($asr.Peak -lt 5000) {
+            'Red'
+        } else {
+            'Yellow'
+        }
+        Write-Host ("      Vosk nghe: `"{0}`"" -f $asr.Heard) -ForegroundColor DarkGray
+        Write-Host ("      peak={0}  ->  {1} / {2}" -f $asr.Peak, $gotIntent, $gotVerdict) -ForegroundColor $colour
+        if ($asr.Peak -lt 5000) {
+            Write-Host "      ! tin hieu yeu — cau nay nen doc lai" -ForegroundColor Red
+        }
+
+        $csvRow = @(
+            (ConvertTo-CsvField $row.utterance),
+            (ConvertTo-CsvField $row.expect_intent),
+            (ConvertTo-CsvField $asr.Heard),
+            $asr.Peak,
+            (ConvertTo-CsvField $gotIntent),
+            (ConvertTo-CsvField $gotVerdict)
+        ) -join ','
+        $csvRow | Add-Content -Path $corpus -Encoding utf8
+
+        Start-Sleep -Milliseconds 4500
+    }
+
+    Write-Host ""
+    Write-Host "Bo ngu lieu: $corpus" -ForegroundColor Green
+    Write-Host "Gui file nay lai de chinh nguong dua tren du lieu that." -ForegroundColor Cyan
+}
+
+<# Vosk co the tra ve dau nhay kep; khong escape la vo file CSV. #>
+function ConvertTo-CsvField {
+    param([string]$Value)
+    '"' + ($Value -replace '"', '""') + '"'
+}
+
 function Send-Utterance {
     <# Bom mot cau qua receiver cua bien the mock. Base64 vi dau tieng Viet di
        qua shell Windows roi shell Android rat de hong, va mot cau hong dau se
@@ -212,6 +314,11 @@ $manifest = Join-Path $OutDir 'run_manifest.txt'
 
 $rows = Import-Csv $Suite
 if ($Utterances -gt 0) { $rows = $rows | Select-Object -First $Utterances }
+
+if ($Record) {
+    Invoke-RecordingSession -Rows $rows -OutDir $OutDir
+    return
+}
 
 Write-Host ""
 Write-Host "=====================================================" -ForegroundColor Yellow
