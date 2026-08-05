@@ -2,10 +2,12 @@ package com.sopa.viva_automotive.feature.voice.di
 
 import android.content.Context
 import com.sopa.viva_automotive.feature.voice.data.SpeechRecognitionEngine
+import com.sopa.viva_automotive.feature.voice.data.audio.AndroidVolumeController
 import com.sopa.viva_automotive.feature.voice.data.embedding.OnnxEmbeddingIntentMatcher
 import com.sopa.viva_automotive.feature.voice.data.vosk.VoskSpeechRecognitionEngine
 import com.sopa.viva_automotive.feature.voice.domain.delivery.DeliveryRepository
 import com.sopa.viva_automotive.feature.voice.domain.delivery.InMemoryDeliveryRepository
+import com.sopa.viva_automotive.feature.voice.domain.audio.VolumeController
 import com.sopa.viva_automotive.feature.voice.domain.embedding.SemanticIntentMatcher
 import com.viva.voice.intent.GrammarIntentRouter
 import com.viva.voice.intent.IntentRouter
@@ -34,6 +36,12 @@ abstract class VoiceModule {
     abstract fun bindSemanticIntentMatcher(
         impl: OnnxEmbeddingIntentMatcher,
     ): SemanticIntentMatcher
+
+    @Binds
+    @Singleton
+    abstract fun bindVolumeController(
+        impl: AndroidVolumeController,
+    ): VolumeController
 
     /**
      * Singleton because the route is mutable state: the stop the driver just

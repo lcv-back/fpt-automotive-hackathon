@@ -11,6 +11,10 @@
 
     <!-- Local voice assistant: on-device STT from the microphone. -->
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
+    <!-- Chỉnh âm lượng luồng nhạc cho intent volume_adjust. Quyền normal, cấp
+         lúc cài — khác CAR_CONTROL_AUDIO_VOLUME của CarAudioManager (cần
+         privileged, xem AndroidVolumeController). -->
+    <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MICROPHONE" />

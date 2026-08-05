@@ -4,8 +4,10 @@ import com.sopa.viva_automotive.core.common.units.TemperatureUnits
 import com.sopa.viva_automotive.core.database.settings.SettingsDataStore
 import com.sopa.viva_automotive.feature.voice.domain.delivery.DeliveryCommand
 import com.sopa.viva_automotive.feature.voice.domain.delivery.DeliverySkill
+import com.sopa.viva_automotive.feature.voice.domain.audio.VolumeController
 import com.sopa.viva_automotive.feature.voice.domain.model.VehicleIntent
 import com.sopa.viva_automotive.vehicleservice.api.FanSpeed
+import com.sopa.viva_automotive.vehicleservice.api.SafetyDeniedException
 import com.sopa.viva_automotive.vehicleservice.api.SafetyConfirmationRequiredException
 import com.sopa.viva_automotive.vehicleservice.api.SafetyRules
 import com.sopa.viva_automotive.vehicleservice.api.VehicleAreas
@@ -33,6 +35,7 @@ class ExecuteVehicleControlUseCase @Inject constructor(
     private val vehicleRepository: VehicleRepository,
     private val settingsDataStore: SettingsDataStore,
     private val deliverySkill: DeliverySkill,
+    private val volumeController: VolumeController,
 ) {
 
     /**
@@ -122,12 +125,7 @@ class ExecuteVehicleControlUseCase @Inject constructor(
         // skill directly and never touches vehicleRepository (§0.1).
         is VehicleIntent.Delivery -> deliverySkill.execute(intent.command)
 
-        is VehicleIntent.VolumeAdjust ->
-            Result.failure(
-                CommandNotWiredException(
-                    "Mình nghe rõ lệnh âm lượng, nhưng bản demo này chưa nối bộ điều khiển âm lượng.",
-                ),
-            )
+        is VehicleIntent.VolumeAdjust -> volumeController.adjust(intent.delta)
 
         is VehicleIntent.MediaNext ->
             Result.failure(
@@ -146,9 +144,19 @@ class ExecuteVehicleControlUseCase @Inject constructor(
         is VehicleIntent.Clarification ->
             Result.failure(CommandValidationException(intent.promptVi))
 
+        // 03-contracts.md §4, G3_UNSUPPORTED: câu ngoài 10 intent lõi bị **từ
+        // chối có lý do**, không phải im lặng hay báo lỗi kỹ thuật. Không Skill
+        // nào được gọi.
+        //
+        // Chặn ở đây chứ không ở `GuardedVehicleRepository` vì một câu ngoài
+        // phạm vi không sinh ra lệnh ghi property nào để mà chặn ở biên đó.
         is VehicleIntent.Unknown ->
             Result.failure(
-                CommandValidationException("Sorry, I didn't understand \"${intent.utterance}\""),
+                SafetyDeniedException(
+                    rule = SafetyRules.UNSUPPORTED,
+                    reasonVi = "Mình chỉ hỗ trợ điều hoà, cửa xe, âm lượng, nhạc và lộ trình giao hàng.",
+                    suggestion = "Bạn thử nói lại theo một trong các nhóm đó nhé.",
+                ),
             )
     }
 
