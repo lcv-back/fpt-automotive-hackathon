@@ -53,10 +53,17 @@ go run ./cmd/viva-tools harness compare `
 > 🔴 **Thứ còn thiếu là cơ chế tắt** cho cột `no_guard` — xem cảnh báo ở mục *Công cụ*.
 > Không có nó thì A1 chỉ đo được cột `full`.
 >
-> ⚠️ B20 (`Deny:G3_UNSUPPORTED`) vẫn chưa sinh được, vì hai lý do độc lập: câu ngoài phạm
-> vi rơi vào `VehicleIntent.Unknown` nên **không bao giờ chạm tới guard** (không có
-> `setProperty` nào được gọi), và `SafetyRules` cũng không có mã `G3_UNSUPPORTED`. Đúng
-> như ghi chú sẵn trong `benchmark_v1.csv`: hôm nay B20 ra `Error:nlu_done`.
+> ✅ **B20 đã đóng (PR #24).** `G3_UNSUPPORTED` được hiện thực đúng chỗ hợp đồng §4 mô tả:
+> ở nơi điều phối intent, **không** ở `GuardedVehicleRepository` — câu ngoài phạm vi không
+> sinh lệnh ghi property nào để mà chặn ở biên đó. B20 giờ ra `unknown` /
+> `Deny:G3_UNSUPPORTED`, và tài xế nghe *"Mình chỉ hỗ trợ điều hoà, cửa xe, âm lượng,
+> nhạc và lộ trình giao hàng."*
+>
+> Trên đường tới đó còn tìm ra một lỗi NLU thật: *"đặt bàn ăn tối"* từng bị định tuyến
+> thành `vehicle_status_speed` và **thực thi**, vì vocab MiniLM là WordPiece tiếng Anh nên
+> mọi câu tiếng Việt tách thành `[UNK]` và hai câu cùng số từ cho ra **cùng một vector**
+> (`cos=1.0`). Đã sửa: encoder từ chối nhúng khi mọi token đều `[UNK]`. Chi tiết ở
+> `evidence/emulator/session-20260805-163407/README.md`.
 
 **Giả thuyết:** bỏ tầng an toàn của đội thì *"mở cửa"* lúc `Speed=60` vẫn thực thi.
 
@@ -66,10 +73,15 @@ go run ./cmd/viva-tools harness compare `
 
 | Chỉ số | full | no_guard | Ghi chú |
 |---|---|---|---|
-| `Deny:G1_SPEED_LOCK` (số lượt) | *chưa đo* | *chưa đo* | Kỳ vọng >0 → 0 |
-| `Allow` trên `door_lock` khi đang chạy | *chưa đo* | *chưa đo* | Kỳ vọng 0 → >0 |
-| p95 `e2e_computed` | *chưa đo* | *chưa đo* | Kỳ vọng gần như không đổi — an toàn **không** phải thứ làm chậm |
-| `safety_guard` (chặng) | *chưa đo* | *chưa đo* | Kỳ vọng biến mất ở no_guard |
+| `Deny:G1_SPEED_LOCK` (số lượt) | **1** (B10) | *chưa đo* | Cột `full` đo 05/08 trên emulator AAOS, `session-20260805-165301`. Cột `no_guard` chưa có cơ chế tắt |
+| `Allow` trên `door_lock` khi đang chạy | **0** | *chưa đo* | Đúng kỳ vọng: guard chặn, cửa vẫn `Locked` |
+| `Confirm:G2_CONFIRM_DOOR` (số lượt) | **1** (B09) | *chưa đo* | Xe đứng yên thì hỏi xác nhận thay vì từ chối |
+| p95 `e2e_computed` | *chưa đo* | *chưa đo* | ⚠️ Phiên đó bơm câu bằng text nên **không có** `speech_end` → mọi `e2e_ms=0` và các lượt tự nằm ngoài thống kê. Muốn số này phải có người nói thật |
+| `safety_guard` (chặng) | *chưa đo* | *chưa đo* | App chưa mark chặng riêng cho guard |
+
+> **Cột `full` đã có số, và đó là số thật** — nhưng đọc kèm hai giới hạn: chạy trên
+> **emulator AAOS**, không phải Device CarSky; và property là `MockVehicleRepository`,
+> không phải VHAL. Xem `evidence/emulator/README.md`.
 
 > ⚠️ Chạy A1 **trên Road Simulator, xe mô phỏng đang chạy**, không phải xe đứng yên —
 > nếu tốc độ bằng 0 thì luật không kích hoạt và bảng này vô nghĩa ở cả hai cột.
