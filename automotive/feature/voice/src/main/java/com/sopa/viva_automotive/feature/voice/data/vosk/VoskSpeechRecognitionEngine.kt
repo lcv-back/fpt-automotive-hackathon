@@ -124,6 +124,15 @@ class VoskSpeechRecognitionEngine @Inject constructor(
         val readerJob = launch(ioDispatcher) {
             val buffer = ShortArray(BUFFER_SIZE_SAMPLES)
             var lastPartial = ""
+
+            // Đo biên độ đầu vào, mỗi giây một dòng.
+            //
+            // Khi một lượt kết thúc bằng `Error:speech_end`, có hai nguyên nhân
+            // hoàn toàn khác nhau mà log cũ không phân biệt được: mic không đẩy
+            // mẫu nào (toàn 0), hay mic vẫn chạy nhưng Vosk không bao giờ chốt
+            // câu. Cách xử lý của hai thứ đó khác hẳn nhau, nên đừng đoán.
+            var blocks = 0
+            var peakInWindow = 0
             while (isActive) {
                 if (endOfUtteranceRequested) {
                     val forced = JSONObject(recognizer.finalResult).optString("text").trim()
@@ -142,8 +151,21 @@ class VoskSpeechRecognitionEngine @Inject constructor(
                     break
                 }
                 if (read == 0) continue
+
+                for (i in 0 until read) {
+                    val amplitude = kotlin.math.abs(buffer[i].toInt())
+                    if (amplitude > peakInWindow) peakInWindow = amplitude
+                }
+                blocks++
+                if (blocks * BUFFER_SIZE_SAMPLES >= SAMPLE_RATE) {
+                    Log.d(TAG, "Muc dau vao: peak=$peakInWindow/32767 (partial=\"$lastPartial\")")
+                    blocks = 0
+                    peakInWindow = 0
+                }
+
                 if (recognizer.acceptWaveForm(buffer, read)) {
                     val text = JSONObject(recognizer.result).optString("text").trim()
+                    Log.d(TAG, "Vosk chot cau: \"$text\"")
                     if (text.isNotEmpty()) {
                         send(TranscriptionEvent.Final(text))
                         break
@@ -151,6 +173,7 @@ class VoskSpeechRecognitionEngine @Inject constructor(
                 } else {
                     val partial = JSONObject(recognizer.partialResult).optString("partial").trim()
                     if (partial.isNotEmpty() && partial != lastPartial) {
+                        Log.d(TAG, "Partial: \"$partial\"")
                         lastPartial = partial
                         send(TranscriptionEvent.Partial(partial))
                     }
