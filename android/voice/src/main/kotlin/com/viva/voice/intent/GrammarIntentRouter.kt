@@ -59,6 +59,26 @@ class GrammarIntentRouter(
             )
         }
 
+        // Truy vấn trạng thái phải xét TRƯỚC lệnh đặt nhiệt độ.
+        //
+        // "nhiệt độ hiện tại" mà để rơi vào nhánh đặt nhiệt độ thì router đi
+        // tìm một con số không tồn tại rồi hỏi lại — tài xế hỏi một câu và bị
+        // hỏi ngược. Phân biệt bằng chỗ có số hay không: hỏi thì không có số.
+        if (command.has("tốc độ") && !command.has("đặt")) {
+            return matched("vehicle_status_speed")
+        }
+        if (command.has("xăng", "nhiên liệu")) {
+            return matched("vehicle_status_fuel")
+        }
+        if (command.has("pin", "ắc quy")) {
+            return matched("vehicle_status_battery")
+        }
+        if (command.has("nhiệt độ") && spokenOrDigitNumber(command) == null &&
+            command.has(*STATUS_CUES)
+        ) {
+            return matched("vehicle_status_temperature")
+        }
+
         if (isTemperatureCommand(command)) {
             return routeTemperature(command)
         }
@@ -218,6 +238,11 @@ class GrammarIntentRouter(
             foldedRegex("""\b(?:bài trước|quay lại bài trước)\b"""),
             foldedRegex("""\b(?:dtc|mã lỗi|xe có lỗi)\b"""),
         )
+        /** Dấu hiệu câu HỎI, dùng để tách truy vấn khỏi lệnh đặt giá trị. */
+        private val STATUS_CUES = arrayOf(
+            "bao nhiêu", "hiện tại", "mấy", "thế nào", "còn", "đang",
+        )
+
         private val TEMPERATURE_CUES = arrayOf("đặt", "hạ", "tăng", "giảm", "xuống", "lên", "độ")
     }
 }

@@ -7,6 +7,7 @@ import com.sopa.viva_automotive.feature.voice.integration.CoreIntentMapper
 import com.sopa.viva_automotive.feature.voice.domain.model.VehicleIntent
 import com.sopa.viva_automotive.feature.voice.domain.model.VehicleIntentTypes
 import com.sopa.viva_automotive.vehicleservice.api.VehicleZone
+import com.viva.voice.intent.FuzzyCommandMatcher
 import com.viva.voice.intent.GrammarIntentRouter
 import com.viva.voice.text.SpokenNumberParser
 import com.viva.voice.intent.IntentRouter
@@ -25,6 +26,12 @@ class ProcessVoiceCommandUseCase @Inject constructor(
     private val semanticIntentMatcher: SemanticIntentMatcher,
     private val grammarRouter: IntentRouter,
 ) {
+
+    /**
+     * Tầng khớp mờ theo âm, chạy **sau** grammar. Không tiêm qua Hilt vì nó
+     * không có phụ thuộc và không có trạng thái — dựng thẳng cho gọn.
+     */
+    private val fuzzyMatcher = FuzzyCommandMatcher()
 
     suspend operator fun invoke(utterance: String): VehicleIntent {
         val text = normalize(utterance)
@@ -46,11 +53,26 @@ class ProcessVoiceCommandUseCase @Inject constructor(
                     VehicleIntent.NotWired(coreRoute.intent.name)
                 }
             }
-            is RouteResult.NeedsClarification ->
+            // Hỏi lại là phương án cuối, không phải phương án đầu.
+            //
+            // Câu ASR nghe méo vẫn có thể vào được nhánh này với **giá trị
+            // sai**: "chẳng nhiệt độ lên hà my tư đồ" (thật, đo 05/08) khiến
+            // router thấy "nhiệt độ" rồi nhặt được đúng chữ `tư` = 4 → ngoài
+            // dải 16–32 → hỏi lại. Tầng khớp mờ đọc cả cụm `hà my tư` thành 24
+            // và cho ra lệnh đầy đủ. Câu trả lời đầy đủ luôn tốt hơn một câu
+            // hỏi lại, nên thử nó trước khi bỏ cuộc.
+            is RouteResult.NeedsClarification -> {
+                fuzzyIntent(utterance)?.let { return it }
                 return VehicleIntent.Clarification(coreRoute.promptVi)
+            }
             is RouteResult.Unsupported ->
                 if (!coreRoute.canFallback) {
+                    // `canFallback = false` là từ chối CÓ CHỦ Ý — wake phrase của
+                    // trợ lý khác, hoặc lệnh đã cắt khỏi phạm vi. Không được
+                    // dùng khớp mờ để lách những ca này.
                     return VehicleIntent.Clarification(coreRoute.promptVi)
+                } else {
+                    fuzzyIntent(utterance)?.let { return it }
                 }
         }
 
@@ -64,6 +86,24 @@ class ProcessVoiceCommandUseCase @Inject constructor(
             ?: return VehicleIntent.Unknown(utterance)
 
         return toVehicleIntent(intentType, text, utterance)
+    }
+
+    /**
+     * Cứu lệnh từ câu ASR nghe méo, chỉ khi tầng grammar đã bó tay.
+     *
+     * Trả `null` khi điểm khớp dưới ngưỡng của intent đó — lúc ấy câu đi tiếp
+     * xuống keyword/embedding rồi `unknown`, đúng đường cũ.
+     */
+    private fun fuzzyIntent(utterance: String): VehicleIntent? {
+        val intent = fuzzyMatcher.match(utterance) ?: return null
+        return when (val action = CoreIntentMapper.map(intent)) {
+            is AutomotiveVoiceAction.VehicleControl -> action.intent
+            is AutomotiveVoiceAction.VolumeAdjust -> VehicleIntent.VolumeAdjust(action.delta)
+            AutomotiveVoiceAction.MediaNext -> VehicleIntent.MediaNext
+            is AutomotiveVoiceAction.Delivery -> VehicleIntent.Delivery(action.command)
+            // Khớp được intent nhưng thiếu slot thì đừng đoán bừa giá trị.
+            null -> null
+        }
     }
 
     private fun toVehicleIntent(
