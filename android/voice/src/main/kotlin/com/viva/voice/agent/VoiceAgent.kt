@@ -78,7 +78,12 @@ class VoiceAgent(
             )
         }
 
-        if (recognised.isPartial || recognised.text.isBlank() || recognised.confidence < MIN_ASR_CONFIDENCE) {
+        // `Partial` chỉ để hiển thị (§2.4) và câu rỗng thì không có gì để định tuyến.
+        // Luật low-confidence chỉ chạy khi engine **thật sự** đưa ra một con số:
+        // `acousticConfidence == null` nghĩa là không đo được, và một lượt không đo
+        // được không phải là một lượt nghe kém.
+        val tooQuiet = recognised.acousticConfidence?.let { it < MIN_ASR_CONFIDENCE } == true
+        if (recognised.isPartial || recognised.text.isBlank() || tooQuiet) {
             return finish(
                 VoiceTurnResult(
                     transcript = recognised.text,
@@ -90,16 +95,20 @@ class VoiceAgent(
                 trace,
             )
         }
-        return handleRecognisedText(recognised.text, recognised.confidence, trace)
+        return handleRecognisedText(recognised.text, trace)
     }
 
-    /** Lets the app/HMI integrate now while microphone and real ASR are still being wired. */
+    /**
+     * Lối vào cho text đã có sẵn (bơm benchmark, HMI gõ tay).
+     *
+     * Không có audio nên **không có** acoustic confidence — và đó chính là lý do lối
+     * này không được dùng để đo WER hay để claim một con số ASR nào.
+     */
     suspend fun handleText(text: String, trace: LatencyTrace): VoiceTurnResult =
-        handleRecognisedText(text, 1f, trace)
+        handleRecognisedText(text, trace)
 
     private suspend fun handleRecognisedText(
         text: String,
-        sourceConfidence: Float,
         trace: LatencyTrace,
     ): VoiceTurnResult {
         val route = router.route(text)
@@ -127,11 +136,13 @@ class VoiceAgent(
                 trace,
             )
 
+            // `route.intent.confidence` là độ chắc của NLU và được giữ nguyên. Bản cũ
+            // nhân nó với confidence của ASR, biến một trường thành hai ý nghĩa: sau
+            // đó không ai đọc được con số trên trace là router thiếu chắc hay mic ồn.
+            // §4: không dùng cùng một trường confidence cho cả ASR và NLU.
             is RouteResult.Matched -> execute(
                 transcript = text,
-                intent = route.intent.copy(
-                    confidence = minOf(route.intent.confidence, sourceConfidence),
-                ),
+                intent = route.intent,
                 trace = trace,
             )
         }

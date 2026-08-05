@@ -46,5 +46,11 @@ android {
 
 dependencies {
     implementation("com.microsoft.onnxruntime:onnxruntime-android:1.20.0")
+    // AudioCapture phát Flow<PcmFrame> (28-PIPELINE §8 P0.1). `api` chứ không phải
+    // `implementation`: Flow nằm trong chữ ký công khai của module, consumer phải
+    // thấy được kiểu đó.
+    api(libs.kotlinx.coroutines.core)
+
     testImplementation("junit:junit:4.13.2")
+    testImplementation(libs.kotlinx.coroutines.test)
 }
