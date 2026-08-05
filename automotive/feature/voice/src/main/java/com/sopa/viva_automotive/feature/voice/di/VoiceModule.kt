@@ -2,12 +2,12 @@ package com.sopa.viva_automotive.feature.voice.di
 
 import android.content.Context
 import com.sopa.viva_automotive.feature.voice.data.embedding.OnnxEmbeddingIntentMatcher
+import com.sopa.viva_automotive.feature.voice.data.vosk.VoskAsrClient
 import com.sopa.viva_automotive.feature.voice.domain.embedding.SemanticIntentMatcher
 import com.sopa.viva_automotive.feature.voice.integration.AppCommandGateway
 import com.viva.voice.agent.CommandGateway
 import com.viva.voice.agent.VoiceAgent
 import com.viva.voice.asr.AsrClient
-import com.viva.voice.asr.FakeAsrClient
 import com.viva.voice.intent.GrammarIntentRouter
 import com.viva.voice.tts.AndroidTtsSpeaker
 import com.viva.voice.tts.TtsSpeaker
@@ -35,15 +35,17 @@ abstract class VoiceModule {
         impl: AppCommandGateway,
     ): CommandGateway
 
+    @Binds
+    @Singleton
+    abstract fun bindAsrClient(
+        impl: VoskAsrClient,
+    ): AsrClient
+
     companion object {
         @Provides
         @Singleton
         fun provideTtsSpeaker(@ApplicationContext context: Context): TtsSpeaker =
             AndroidTtsSpeaker(context)
-
-        @Provides
-        @Singleton
-        fun provideAsrClient(): AsrClient = FakeAsrClient()
 
         @Provides
         @Singleton

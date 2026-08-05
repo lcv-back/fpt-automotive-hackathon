@@ -75,12 +75,18 @@ class MainActivity : ComponentActivity() {
         }
 
         dispatchVoiceText(intent)
+        if (intent?.getBooleanExtra(EXTRA_VOICE_LISTEN, false) == true) {
+            VoiceAssistantService.startListening(this)
+        }
     }
 
     override fun onNewIntent(intent: android.content.Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
         dispatchVoiceText(intent)
+        if (intent.getBooleanExtra(EXTRA_VOICE_LISTEN, false)) {
+            VoiceAssistantService.startListening(this)
+        }
     }
 
     private fun dispatchVoiceText(intent: android.content.Intent?) {
@@ -94,5 +100,6 @@ class MainActivity : ComponentActivity() {
         const val LOCALE_PREFS = "viva_locale"
         const val KEY_LANGUAGE = "language"
         const val EXTRA_VOICE_TEXT = "viva_voice_text"
+        const val EXTRA_VOICE_LISTEN = "viva_voice_listen"
     }
 }

@@ -2,9 +2,10 @@ package com.sopa.viva_automotive.core.ui.locale
 
 enum class VoiceLanguage(
     val storageKey: String,
+    val voskAssetDir: String,
 ) {
-    ENGLISH("en"),
-    VIETNAMESE("vi"),
+    ENGLISH("en", "model-en-us"),
+    VIETNAMESE("vi", "model-vi"),
     ;
 
     companion object {

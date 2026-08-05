@@ -7,6 +7,7 @@ import android.content.Context
 import android.content.Intent
 import android.content.pm.ServiceInfo
 import android.os.SystemClock
+import android.util.Log
 import androidx.lifecycle.LifecycleService
 import androidx.lifecycle.lifecycleScope
 import com.sopa.viva_automotive.feature.voice.domain.VoiceAssistantStateManager
@@ -100,11 +101,18 @@ class VoiceAssistantService : LifecycleService() {
                 }
             }
         }.getOrElse { error ->
+            Log.e(VOICE_TAG, "Mic capture failed", error)
             stateManager.transitionToError(error.message ?: "Microphone is unavailable")
             delay(RESULT_DISPLAY_MS)
             stateManager.transitionToIdle()
             return
         }
+
+        Log.i(
+            VOICE_TAG,
+            "Captured utterance samples=${captured.pcm.size} rate=${captured.sampleRate} " +
+                "usable=${captured.isUsable} tooShort=${captured.tooShort}",
+        )
 
         if (!captured.isUsable) {
             stateManager.transitionToError("I didn't hear anything")
@@ -117,6 +125,11 @@ class VoiceAssistantService : LifecycleService() {
         trace.markAt(Stage.SPEECH_END, captured.endNanos)
         stateManager.transitionToProcessing("…")
         val result = voiceAgent.handleAudio(captured.pcm, captured.sampleRate, trace)
+        Log.i(
+            VOICE_TAG,
+            "VoiceAgent status=${result.status} transcript=\"${result.transcript}\" " +
+                "spoken=\"${result.spokenVi}\"",
+        )
         applyAgentResult(result, displayTranscript = result.transcript.ifBlank { "…" })
     }
 
@@ -172,6 +185,7 @@ class VoiceAssistantService : LifecycleService() {
         private const val NOTIFICATION_ID = 0x5641
         private const val LISTENING_TIMEOUT_MS = 8_000L
         private const val RESULT_DISPLAY_MS = 3_000L
+        private const val VOICE_TAG = "VIVA_VOICE"
 
         fun startListening(context: Context) {
             context.startForegroundService(
