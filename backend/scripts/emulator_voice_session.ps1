@@ -29,8 +29,21 @@
     .\emulator_voice_session.ps1 -Utterances 3      # chay thu 3 cau truoc
 
 .NOTES
-    Emulator PHAI chay voi -allow-host-audio, neu khong dau vao mic bi zero
-    va moi luot deu ra Error:speech_end. Xem evidence/emulator/README.md.
+    HAI DIEU KIEN cho mic, thieu mot la moi luot ra Error:speech_end:
+
+    1. Emulator phai khoi dong voi -allow-host-audio. Co nay chi CHO PHEP.
+    2. Trong emulator: nut "..." (Extended Controls) -> muc Microphone ->
+       bat "Virtual microphone uses host audio input". Cai nay moi NOI tieng
+       vao may ao, va no MAC DINH TAT.
+
+    Thieu buoc 2 thi log ghi peak=2/32767 suot ca luot — mic ao day im lang.
+    Do 05/08 mat vai gio moi tim ra vi cho nay khong duoc ghi o dau.
+
+    Sau khi bat: noi TO va GAN. Can peak > 5000/32767 moi du cho Vosk nhan
+    dang; do bang `adb logcat -s VoskEngine:D` khi dang noi. Muc ~1700 la
+    nghe thay tieng nhung khong doc ra chu nao.
+
+    Xem evidence/emulator/README.md.
 #>
 [CmdletBinding()]
 param(

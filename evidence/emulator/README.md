@@ -25,6 +25,46 @@ không** trước freeze.
 | Biến thể APK | **`mock`** — `MockVehicleRepository`, không đụng `android.car`, không có CarService/VHAL thật |
 | Commit | `635aab695360e96f55398fcca0436ace401ec043` |
 
+## Dựng lại môi trường này — ba bước, bước 2 hay bị quên
+
+```powershell
+# 1. Cai SDK va tao AVD (mot lan)
+$sdk = "$env:LOCALAPPDATA\Android\Sdk"
+& "$sdk\cmdline-tools\latestin\sdkmanager.bat" "emulator" "system-images;android-34-ext9;android-automotive;x86_64"
+& "$sdk\cmdline-tools\latestinvdmanager.bat" create avd -n viva_aaos34 `
+    -k "system-images;android-34-ext9;android-automotive;x86_64" -d "automotive_1080p_landscape"
+
+# 2. Khoi dong KEM CO AUDIO
+& "$sdk\emulator\emulator.exe" -avd viva_aaos34 -no-snapshot -no-boot-anim -gpu auto -allow-host-audio
+
+# 3. Cai app, cap quyen, chon tieng Viet (giong noi + giao dien)
+cd backend\scripts
+.\emulator_voice_session.ps1 -Setup
+```
+
+> 🔴 **Bước còn thiếu mà không lệnh nào làm thay được.** Trong cửa sổ emulator:
+> nút **`...`** (Extended Controls) → mục **Microphone** → bật
+> **"Virtual microphone uses host audio input"**. Toggle này **mặc định tắt**,
+> và cờ `-allow-host-audio` chỉ *cho phép* chứ không bật nó.
+>
+> Thiếu bước này, log ghi `peak=2/32767` suốt cả lượt — mic ảo đẩy im lặng vào
+> máy ảo, mọi lượt ra `Error:speech_end`, và không có gì trong app hay trong
+> log gợi ý nguyên nhân. Ngày 05/08 mất vài giờ mới lần ra.
+
+## Mức tín hiệu cần đạt
+
+Đo bằng `adb logcat -s VoskEngine:D` trong lúc nói:
+
+| `peak` | Nghĩa là |
+|---|---|
+| `2` | mic ảo chưa nối — xem toggle ở trên |
+| `~1700` | có tiếng nhưng quá nhỏ, Vosk không đọc ra chữ nào |
+| `> 5000` | đủ để nhận dạng |
+| `20000+` | mức đo được khi nói to và ghé gần máy |
+
+Mic array của laptop thu rất yếu ở khoảng cách thường. Kéo **Input volume** trong
+Windows Sound lên 100 và nói gần.
+
 ## Được phép khai gì
 
 ✅ *"App build, cài, khởi động và chạy ổn định trên emulator AAOS 14; sinh `VIVA_TRACE`
