@@ -12,28 +12,33 @@ import androidx.lifecycle.LifecycleService
 import androidx.lifecycle.lifecycleScope
 import com.sopa.viva_automotive.feature.voice.data.SpeechRecognitionEngine
 import com.sopa.viva_automotive.feature.voice.data.TranscriptionEvent
+import com.sopa.viva_automotive.feature.voice.data.audio.SileroVadDriverFactory
 import com.sopa.viva_automotive.feature.voice.domain.ExecuteVehicleControlUseCase
 import com.sopa.viva_automotive.feature.voice.domain.ProcessVoiceCommandUseCase
 import com.sopa.viva_automotive.feature.voice.domain.VoiceAssistantStateManager
 import com.sopa.viva_automotive.feature.voice.domain.VoiceTurnReport
 import com.sopa.viva_automotive.feature.voice.domain.embedding.SemanticIntentMatcher
 import com.sopa.viva_automotive.feature.voice.domain.model.VehicleIntent
+import com.viva.voice.audio.AudioCapture
+import com.viva.voice.audio.VadStreamEvent
 import com.viva.voice.trace.LatencyTrace
 import com.viva.voice.trace.Stage
 import com.viva.voice.trace.TraceVerdict
 import com.viva.voice.trace.startSilentTrace
-import com.viva.voice.trace.startVoiceTrace
 import com.viva.voice.tts.TtsSpeaker
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
 
 @AndroidEntryPoint
 class VoiceAssistantService : LifecycleService() {
 
+    @Inject lateinit var audioCapture: AudioCapture
+    @Inject lateinit var vadDriverFactory: SileroVadDriverFactory
     @Inject lateinit var speechEngine: SpeechRecognitionEngine
     @Inject lateinit var stateManager: VoiceAssistantStateManager
     @Inject lateinit var processVoiceCommand: ProcessVoiceCommandUseCase
@@ -100,11 +105,28 @@ class VoiceAssistantService : LifecycleService() {
         }
     }
 
+    /**
+     * Một lượt thoại đầy đủ: mic → VAD → ASR → NLU → guard → thực thi → HMI/TTS.
+     *
+     * ## Vì sao chỉ có một chỗ mở microphone
+     *
+     * [audioCapture] là nguồn PCM duy nhất (28-PIPELINE §0, quyết định 1). Cùng một
+     * `Flow<PcmFrame>` đi qua VAD rồi vào ASR trong **một** chuỗi collect, nên hai
+     * bên nhìn đúng một dòng audio và đúng một trục mẫu. Bản trước để
+     * `VoskSpeechRecognitionEngine` tự dựng `AudioRecord`, và đó là lý do Silero VAD
+     * có code, có test, mà không bao giờ nằm trên đường chạy APK: cắm nó vào đồng
+     * nghĩa với mở mic thứ hai.
+     *
+     * ## Vì sao thứ tự trong `onEach` là VAD trước, ASR sau
+     *
+     * VAD chạy trước trong cùng khung, nên khi endpointer thấy biên thì
+     * [SpeechRecognitionEngine.requestEndOfUtterance] đã được đặt trước lúc recognizer
+     * xử lý chính khung đó — endpoint của lượt là endpoint **do VAD đo**, không phải
+     * hai endpointer tự quyết rồi lệch nhau.
+     */
     private suspend fun runInteraction() {
         speechEngine.initialize().onFailure { error ->
-            stateManager.transitionToError(
-                error.message ?: "Bộ nhận dạng giọng nói chưa sẵn sàng.",
-            )
+            stateManager.transitionToError(error.message ?: VoiceTurnReport.ASR_UNAVAILABLE)
             delay(RESULT_DISPLAY_MS)
             stateManager.transitionToIdle()
             return
@@ -112,46 +134,106 @@ class VoiceAssistantService : LifecycleService() {
 
         stateManager.transitionToListening()
 
-        // One trace per turn, opened when the microphone starts. This pipeline
-        // has no VAD endpointer of its own, so `speech_start` is the moment we
-        // begin listening rather than a detected onset, and `speech_end` is the
-        // recognizer's own endpoint decision. Both are honest for a streaming
-        // on-device ASR; do not back-date them to flatter the number.
-        val trace = startVoiceTrace()
-
-        var finalText: String? = null
-        var engineError: String? = null
-        trace.mark(Stage.ASR_SENT)
-        withTimeoutOrNull(LISTENING_TIMEOUT_MS) {
-            speechEngine.transcribe().collect { event ->
-                when (event) {
-                    is TranscriptionEvent.Partial ->
-                        stateManager.updatePartialTranscription(event.text)
-                    is TranscriptionEvent.Final -> {
-                        trace.mark(Stage.SPEECH_END)
-                        trace.mark(Stage.ASR_DONE)
-                        finalText = event.text
-                    }
-                    is TranscriptionEvent.Error -> engineError = event.message
-                }
-            }
+        // Trace mở im lặng: `speech_start` do VAD back-date về đúng mẫu onset, chứ
+        // không phải lúc bấm nút. Nếu VAD không nạp được, nhánh fallback bên dưới
+        // đánh dấu tại khung đầu và ghi rõ đó là mốc mở mic, không phải onset.
+        val trace = startSilentTrace()
+        val vad = vadDriverFactory.create()
+        if (vad == null) {
+            Log.w(VOICE_TAG, "VAD khong san sang: lượt này dùng endpoint của Vosk")
         }
 
-        val utterance = finalText
+        var finalEvent: TranscriptionEvent.Final? = null
+        var engineError: TranscriptionEvent.Error? = null
+        var sawSpeech = false
+
+        val captureFailure = runCatching {
+            withTimeoutOrNull(LISTENING_TIMEOUT_MS) {
+                val frames = audioCapture.frames().onEach { frame ->
+                    if (trace.nanosOf(Stage.ASR_SENT) == null) {
+                        // Streaming ASR: audio bắt đầu chảy vào recognizer từ khung
+                        // đầu tiên, nên `asr_sent` đứng trước `speech_end` — đúng bản
+                        // chất của engine, không phải lỗi thứ tự.
+                        trace.markAt(Stage.ASR_SENT, frame.startNanos)
+                        if (vad == null) trace.markAt(Stage.SPEECH_START, frame.startNanos)
+                    }
+                    when (val event = vad?.accept(frame)) {
+                        is VadStreamEvent.SpeechStarted -> {
+                            sawSpeech = true
+                            trace.markAt(Stage.SPEECH_START, event.startNanos)
+                        }
+
+                        is VadStreamEvent.SpeechEnded -> {
+                            trace.markAt(Stage.SPEECH_END, event.utterance.speechEndNanos)
+                            Log.d(
+                                VOICE_TAG,
+                                "VAD endpoint: ${event.utterance.durationMs}ms tiếng nói",
+                            )
+                            speechEngine.requestEndOfUtterance()
+                        }
+
+                        null -> Unit
+                    }
+                }
+
+                speechEngine.transcribe(frames).collect { event ->
+                    when (event) {
+                        is TranscriptionEvent.Partial ->
+                            stateManager.updatePartialTranscription(event.text)
+
+                        is TranscriptionEvent.Final -> {
+                            // Vosk có thể tự chốt câu trước khi VAD thấy khoảng lặng.
+                            // Khi đó `speech_end` chưa được đánh dấu và mốc trung thực
+                            // nhất còn lại là chính lúc này.
+                            trace.mark(Stage.SPEECH_END)
+                            trace.mark(Stage.ASR_DONE)
+                            finalEvent = event
+                        }
+
+                        is TranscriptionEvent.Error -> engineError = event
+                    }
+                }
+            }
+        }.exceptionOrNull()
+
+        val final = finalEvent
         when {
+            // `AndroidPcmSource.start()` ném khi thiết bị từ chối ghi âm — thiếu
+            // quyền, hoặc app khác đang giữ mic.
+            captureFailure != null -> {
+                Log.w(VOICE_TAG, "Khong mo duoc microphone", captureFailure)
+                stateManager.transitionToError(VoiceTurnReport.MICROPHONE_UNAVAILABLE)
+                speak(VoiceTurnReport.MICROPHONE_UNAVAILABLE, trace)
+                trace.summary("-", "-", TraceVerdict.Error(Stage.SPEECH_START))
+            }
+
             engineError != null -> {
-                stateManager.transitionToError(engineError)
-                speak(VoiceTurnReport.DID_NOT_HEAR, trace)
+                val message = VoiceTurnReport.speechErrorSpeech(engineError.code)
+                Log.w(VOICE_TAG, "ASR loi ${engineError.code}: ${engineError.diagnostic}")
+                stateManager.transitionToError(message)
+                speak(message, trace)
                 trace.summary("-", "-", TraceVerdict.Error(Stage.ASR_DONE))
             }
 
-            utterance == null -> {
+            final == null -> {
                 stateManager.transitionToError(VoiceTurnReport.DID_NOT_HEAR)
                 speak(VoiceTurnReport.DID_NOT_HEAR, trace)
-                trace.summary("-", "-", TraceVerdict.Error(Stage.SPEECH_END))
+                // Không có tiếng nói nào là một kết cục khác với "nghe mà không hiểu":
+                // lượt dừng ở tầng VAD, không phải ở ASR.
+                val stage = if (sawSpeech || vad == null) Stage.SPEECH_END else Stage.SPEECH_START
+                trace.summary("-", "-", TraceVerdict.Error(stage))
             }
 
-            else -> handleUtterance(trace, utterance)
+            // §5: transcript đã được **đo** là kém chắc thì hỏi lại, không biến thành
+            // lệnh xe. Vosk trả null nên nhánh này chưa chạy hôm nay — nó nằm sẵn cho
+            // adapter nào thật sự có confidence đã hiệu chỉnh.
+            VoiceTurnReport.needsRepeatForConfidence(final.acousticConfidence) -> {
+                stateManager.transitionToError(VoiceTurnReport.DID_NOT_HEAR)
+                speak(VoiceTurnReport.DID_NOT_HEAR, trace)
+                trace.summary(final.text, "-", TraceVerdict.Confirm("G3_LOW_CONFIDENCE"))
+            }
+
+            else -> handleUtterance(trace, final.text)
         }
 
         delay(RESULT_DISPLAY_MS)

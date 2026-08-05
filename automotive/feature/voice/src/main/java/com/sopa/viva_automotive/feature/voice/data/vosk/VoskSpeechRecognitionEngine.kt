@@ -1,28 +1,24 @@
 package com.sopa.viva_automotive.feature.voice.data.vosk
 
-import android.annotation.SuppressLint
 import android.content.Context
-import android.media.AudioFormat
-import android.media.AudioRecord
-import android.media.MediaRecorder
+import android.os.SystemClock
 import android.util.Log
 import com.sopa.viva_automotive.core.common.coroutines.IoDispatcher
 import com.sopa.viva_automotive.core.database.settings.SettingsDataStore
 import com.sopa.viva_automotive.core.ui.locale.VoiceLanguage
 import com.sopa.viva_automotive.feature.voice.data.SpeechRecognitionEngine
 import com.sopa.viva_automotive.feature.voice.data.TranscriptionEvent
+import com.viva.voice.audio.PcmFrame
 import dagger.hilt.android.qualifiers.ApplicationContext
 import java.io.File
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlinx.coroutines.CoroutineDispatcher
-import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOn
-import kotlinx.coroutines.isActive
-import kotlinx.coroutines.launch
+import kotlinx.coroutines.flow.takeWhile
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
@@ -81,48 +77,34 @@ class VoskSpeechRecognitionEngine @Inject constructor(
         }
     }
 
-    @SuppressLint("MissingPermission") // RECORD_AUDIO is checked by the caller (service/UI).
-    override fun transcribe(): Flow<TranscriptionEvent> = callbackFlow {
+    /**
+     * Nhận khung PCM từ [com.viva.voice.audio.AudioCapture]; **không** mở microphone.
+     *
+     * Bản trước dựng `AudioRecord` riêng ngay trong đây, nên Silero VAD không có cách
+     * nào nhìn thấy cùng dòng audio mà Vosk đang nghe — muốn cắm VAD vào thì phải mở
+     * mic thứ hai, và trên AAOS cái mở sau bị từ chối. Từ đây engine chỉ là một
+     * consumer của [frames] (28-PIPELINE §8 P0.2).
+     */
+    override fun transcribe(frames: Flow<PcmFrame>): Flow<TranscriptionEvent> = flow {
         val loadedModel = model
         val language = loadedLanguage
         if (loadedModel == null || language == null) {
-            trySend(
+            emit(
                 TranscriptionEvent.Error(
-                    "Voice model is not available. Check offline STT assets for the selected language.",
+                    code = TranscriptionEvent.CODE_MODEL_UNAVAILABLE,
+                    diagnostic = "Vosk model not loaded; check offline STT assets for the selected language",
                 ),
             )
-            close()
-            return@callbackFlow
+            return@flow
         }
 
         endOfUtteranceRequested = false
         val recognizer = Recognizer(loadedModel, SAMPLE_RATE.toFloat())
-        val minBuffer = AudioRecord.getMinBufferSize(
-            SAMPLE_RATE,
-            AudioFormat.CHANNEL_IN_MONO,
-            AudioFormat.ENCODING_PCM_16BIT,
-        )
-        val audioRecord = AudioRecord(
-            MediaRecorder.AudioSource.VOICE_RECOGNITION,
-            SAMPLE_RATE,
-            AudioFormat.CHANNEL_IN_MONO,
-            AudioFormat.ENCODING_PCM_16BIT,
-            maxOf(minBuffer * 2, BUFFER_SIZE_SAMPLES * 2),
-        )
+        val startedAtMs = SystemClock.elapsedRealtime()
+        Log.d(TAG, "Nhan khung PCM voi Vosk ${language.storageKey}")
 
-        if (audioRecord.state != AudioRecord.STATE_INITIALIZED) {
-            recognizer.close()
-            audioRecord.release()
-            trySend(TranscriptionEvent.Error("Microphone is unavailable"))
-            close()
-            return@callbackFlow
-        }
-
-        audioRecord.startRecording()
-        Log.d(TAG, "Listening with Vosk ${language.storageKey}")
-
-        val readerJob = launch(ioDispatcher) {
-            val buffer = ShortArray(BUFFER_SIZE_SAMPLES)
+        try {
+            var finished = false
             var lastPartial = ""
 
             // Đo biên độ đầu vào, mỗi giây một dòng.
@@ -131,65 +113,92 @@ class VoskSpeechRecognitionEngine @Inject constructor(
             // hoàn toàn khác nhau mà log cũ không phân biệt được: mic không đẩy
             // mẫu nào (toàn 0), hay mic vẫn chạy nhưng Vosk không bao giờ chốt
             // câu. Cách xử lý của hai thứ đó khác hẳn nhau, nên đừng đoán.
-            var blocks = 0
+            var framedSamples = 0
             var peakInWindow = 0
-            while (isActive) {
+
+            // Vị ngữ chạy **trước** mỗi khung, nên khi thân vòng đặt `finished` thì
+            // khung kế tiếp dừng cả chuỗi — kể cả AudioCapture ở đầu nguồn.
+            frames.takeWhile { !finished }.collect { frame ->
+                val samples = frame.samples
                 if (endOfUtteranceRequested) {
-                    val forced = JSONObject(recognizer.finalResult).optString("text").trim()
-                        .ifEmpty { lastPartial }
-                    if (forced.isNotEmpty()) {
-                        send(TranscriptionEvent.Final(forced))
-                    } else {
-                        send(TranscriptionEvent.Error("I didn't hear anything"))
-                    }
-                    break
+                    // VAD đã thấy biên (hoặc nút đã nhả): chốt câu ngay, không chờ
+                    // Vosk tự quyết định. Đây là điều làm cho endpoint của lượt là
+                    // endpoint do VAD đo, chứ không phải hai endpointer cãi nhau.
+                    finished = true
+                    emit(finalEvent(recognizer, lastPartial, startedAtMs))
+                    return@collect
                 }
 
-                val read = audioRecord.read(buffer, 0, buffer.size)
-                if (read < 0) {
-                    send(TranscriptionEvent.Error("Microphone read failed (code $read)"))
-                    break
-                }
-                if (read == 0) continue
-
-                for (i in 0 until read) {
-                    val amplitude = kotlin.math.abs(buffer[i].toInt())
+                for (sample in samples) {
+                    val amplitude = kotlin.math.abs(sample.toInt())
                     if (amplitude > peakInWindow) peakInWindow = amplitude
                 }
-                blocks++
-                if (blocks * BUFFER_SIZE_SAMPLES >= SAMPLE_RATE) {
+                framedSamples += samples.size
+                if (framedSamples >= SAMPLE_RATE) {
                     Log.d(TAG, "Muc dau vao: peak=$peakInWindow/32767 (partial=\"$lastPartial\")")
-                    blocks = 0
+                    framedSamples = 0
                     peakInWindow = 0
                 }
 
-                if (recognizer.acceptWaveForm(buffer, read)) {
+                if (recognizer.acceptWaveForm(samples, samples.size)) {
                     val text = JSONObject(recognizer.result).optString("text").trim()
                     Log.d(TAG, "Vosk chot cau: \"$text\"")
                     if (text.isNotEmpty()) {
-                        send(TranscriptionEvent.Final(text))
-                        break
+                        finished = true
+                        emit(
+                            TranscriptionEvent.Final(
+                                text = text,
+                                acousticConfidence = null,
+                                engineMs = elapsedSince(startedAtMs),
+                            ),
+                        )
                     }
                 } else {
                     val partial = JSONObject(recognizer.partialResult).optString("partial").trim()
                     if (partial.isNotEmpty() && partial != lastPartial) {
                         Log.d(TAG, "Partial: \"$partial\"")
                         lastPartial = partial
-                        send(TranscriptionEvent.Partial(partial))
+                        emit(TranscriptionEvent.Partial(partial))
                     }
                 }
             }
-            close()
-        }
 
-        awaitClose {
-            endOfUtteranceRequested = true
-            readerJob.cancel()
-            runCatching { audioRecord.stop() }
-            audioRecord.release()
+            // Nguồn audio hết trước khi có câu: chạm trần thời lượng, mic chết, hoặc
+            // session bị đóng. Vẫn phải chốt cái đang có, không im lặng.
+            if (!finished) {
+                emit(finalEvent(recognizer, lastPartial, startedAtMs))
+            }
+        } finally {
             recognizer.close()
         }
     }.flowOn(ioDispatcher)
+
+    /** Kết quả cuối khi bị ép chốt: `finalResult` của Vosk, hoặc partial gần nhất. */
+    private fun finalEvent(
+        recognizer: Recognizer,
+        lastPartial: String,
+        startedAtMs: Long,
+    ): TranscriptionEvent {
+        val forced = JSONObject(recognizer.finalResult).optString("text").trim()
+            .ifEmpty { lastPartial }
+        return if (forced.isNotEmpty()) {
+            TranscriptionEvent.Final(
+                text = forced,
+                // Vosk small không trả confidence đã hiệu chỉnh. `null` là câu trả lời
+                // trung thực; xem TranscriptionEvent.Final.acousticConfidence.
+                acousticConfidence = null,
+                engineMs = elapsedSince(startedAtMs),
+            )
+        } else {
+            TranscriptionEvent.Error(
+                code = TranscriptionEvent.CODE_NO_SPEECH,
+                diagnostic = "recognizer produced no text before the endpoint",
+            )
+        }
+    }
+
+    private fun elapsedSince(startedAtMs: Long): Int =
+        (SystemClock.elapsedRealtime() - startedAtMs).toInt().coerceAtLeast(0)
 
     private fun releaseModelLocked() {
         runCatching { model?.close() }
@@ -220,6 +229,5 @@ class VoskSpeechRecognitionEngine @Inject constructor(
         const val TAG = "VoskEngine"
         const val MODEL_READY_MARKER = ".unpacked"
         const val SAMPLE_RATE = 16_000
-        const val BUFFER_SIZE_SAMPLES = 4_096
     }
 }

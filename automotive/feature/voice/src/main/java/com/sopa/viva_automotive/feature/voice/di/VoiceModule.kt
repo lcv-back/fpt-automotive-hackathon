@@ -9,7 +9,11 @@ import com.sopa.viva_automotive.feature.voice.domain.delivery.DeliveryRepository
 import com.sopa.viva_automotive.feature.voice.domain.delivery.InMemoryDeliveryRepository
 import com.sopa.viva_automotive.feature.voice.domain.audio.VolumeController
 import com.sopa.viva_automotive.feature.voice.domain.embedding.SemanticIntentMatcher
+import com.viva.voice.audio.AndroidPcmSource
+import com.viva.voice.audio.AudioCapture
+import com.viva.voice.audio.PcmSourceAudioCapture
 import com.viva.voice.intent.GrammarIntentRouter
+import com.viva.voice.trace.SystemNanoClock
 import com.viva.voice.intent.IntentRouter
 import com.viva.voice.tts.AndroidTtsSpeaker
 import com.viva.voice.tts.TtsSpeaker
@@ -55,6 +59,21 @@ abstract class VoiceModule {
     ): DeliveryRepository
 
     companion object {
+        /**
+         * Chủ sở hữu microphone **duy nhất** của app (28-PIPELINE §0, quyết định 1).
+         *
+         * Singleton vì đúng một thành phần được cầm mic: `AndroidPcmSource.start()`
+         * là no-op khi `AudioRecord` đang mở, nên hai session chồng nhau không tạo ra
+         * hai handle. `VoiceAssistantService` vốn đã chặn lượt thứ hai bằng
+         * `pipelineJob`; ràng buộc này là lớp thứ hai, không phải lớp duy nhất.
+         */
+        @Provides
+        @Singleton
+        fun provideAudioCapture(): AudioCapture = PcmSourceAudioCapture(
+            source = AndroidPcmSource(),
+            clock = SystemNanoClock,
+        )
+
         /**
          * The T0 grammar tier, bound here instead of being constructed inside
          * `ProcessVoiceCommandUseCase` so the N4 ablation can replace it with a
