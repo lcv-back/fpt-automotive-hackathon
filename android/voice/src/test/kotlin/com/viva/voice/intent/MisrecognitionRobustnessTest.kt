@@ -205,6 +205,19 @@ class MisrecognitionRobustnessTest {
             "quạt mức 3" to "hvac_set_fan",
             "quat muc 3" to "hvac_set_fan",
             "quát mức 3" to "hvac_set_fan",
+            // — số viết bằng chữ: dạng Vosk THẬT SỰ trả về —
+            //
+            // `model-vi/graph/words.txt` có 19.529 từ và **0 token chữ số**
+            // (kiểm 05/08). Nói "24 độ" thì thứ đi vào router là "hai mươi bốn
+            // độ". Nhóm này từng hỏng 100% mà benchmark không thấy, vì đường
+            // bơm text đưa vào chữ số.
+            "hạ điều hòa xuống hai mươi bốn độ" to "hvac_set_temp",
+            "ha dieu hoa xuong hai muoi bon do" to "hvac_set_temp",
+            "đặt nhiệt độ hai mươi sáu độ" to "hvac_set_temp",
+            "đặt nhiệt độ mười tám độ" to "hvac_set_temp",
+            "quạt mức ba" to "hvac_set_fan",
+            "quat muc ba" to "hvac_set_fan",
+            "quạt mức năm" to "hvac_set_fan",
             // — âm lượng —
             "tăng âm lượng" to "volume_adjust",
             "tang am luong" to "volume_adjust",

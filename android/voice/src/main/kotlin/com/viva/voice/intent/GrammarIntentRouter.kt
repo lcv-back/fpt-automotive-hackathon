@@ -1,6 +1,7 @@
 package com.viva.voice.intent
 
-import java.text.Normalizer
+import com.viva.voice.text.SpokenNumberParser
+import com.viva.voice.text.VietnameseText
 import java.util.Locale
 
 /**
@@ -116,7 +117,7 @@ class GrammarIntentRouter(
             .orEmpty()
 
     private fun routeTemperature(command: String): RouteResult {
-        val value = NUMBER.find(command)?.groupValues?.get(1)?.toIntOrNull()
+        val value = spokenOrDigitNumber(command)
             ?: return RouteResult.NeedsClarification(
                 "Bạn muốn đặt nhiệt độ điều hòa ở bao nhiêu độ?",
             )
@@ -131,11 +132,29 @@ class GrammarIntentRouter(
     private fun isTemperatureCommand(command: String): Boolean {
         if (command.has("nhiệt độ")) return true
         if (!command.has("điều hòa")) return false
-        return NUMBER.containsMatchIn(command) || command.has(*TEMPERATURE_CUES)
+        return spokenOrDigitNumber(command) != null || command.has(*TEMPERATURE_CUES)
     }
 
+    /**
+     * Lấy số từ câu lệnh, chấp nhận **cả hai** dạng.
+     *
+     * Vosk `vn-0.4` không có token chữ số nào (19.529 từ, 0 token `\d+` —
+     * kiểm trên chính `model-vi/graph/words.txt` ngày 05/08), nên câu nói ra
+     * luôn là *"hai mươi bốn"* chứ không bao giờ là *"24"*. Chỉ tìm chữ số thì
+     * mọi lệnh nhiệt độ và quạt **nói bằng miệng** đều rơi vào "hỏi lại", kể cả
+     * khi ASR nghe đúng từng chữ. Đường bơm text thì lại đưa vào "24", nên lỗi
+     * này không lộ ra trong benchmark — chỉ lộ khi có người nói thật.
+     *
+     * Chữ số vẫn được ưu tiên: nó không mơ hồ.
+     */
+    private fun spokenOrDigitNumber(command: String): Int? =
+        SpokenNumberParser.parse(command)?.let { parsed ->
+            val rounded = parsed.toInt()
+            if (parsed == rounded.toDouble()) rounded else null
+        }
+
     private fun routeFan(command: String): RouteResult {
-        val level = NUMBER.find(command)?.groupValues?.get(1)?.toIntOrNull()
+        val level = spokenOrDigitNumber(command)
             ?: return RouteResult.NeedsClarification("Bạn muốn đặt quạt ở mức mấy, từ 0 đến 5?")
         if (level !in MIN_FAN_LEVEL..MAX_FAN_LEVEL) {
             return RouteResult.NeedsClarification("Mức quạt hỗ trợ từ 0 đến 5. Bạn chọn mức nào?")
@@ -174,14 +193,9 @@ class GrammarIntentRouter(
          * Chỉ chạm vào chữ cái, nên áp lên **mẫu regex** cũng an toàn: mọi ký
          * tự điều khiển của regex đi qua nguyên vẹn.
          */
-        internal fun fold(raw: String): String =
-            Normalizer.normalize(raw, Normalizer.Form.NFD)
-                .replace(COMBINING_MARKS, "")
-                .replace("đ", "d")
+        internal fun fold(raw: String): String = VietnameseText.fold(raw)
 
         private fun foldedRegex(pattern: String) = Regex(fold(pattern))
-
-        private val COMBINING_MARKS = Regex("""\p{Mn}+""")
 
         private const val MIN_TEMPERATURE_C = 16
         private const val MAX_TEMPERATURE_C = 32
@@ -189,7 +203,6 @@ class GrammarIntentRouter(
         private const val MAX_FAN_LEVEL = 5
         private const val GRAMMAR_CONFIDENCE = 1.0f
 
-        private val NUMBER = Regex("""(\d{1,2})""")
         private val PUNCTUATION = Regex("""[,.!?;:]""")
         private val WHITESPACE = Regex("""\s+""")
         /** Dùng trên câu đã bỏ dấu. */
