@@ -38,6 +38,19 @@ class MockVehicleRepository @Inject constructor(
 
     private val state = MutableStateFlow(defaultState())
 
+    /**
+     * Properties the tester has set by hand through `VSTATE`; the simulator must
+     * leave them alone from then on.
+     *
+     * Vì sao cần: [simulateTick] quét tốc độ theo hình sin 0→90 km/h mỗi 90 giây.
+     * Không có cơ chế ghim thì `adb shell am broadcast … unit_type speed
+     * state_value 60` chỉ sống đúng **một tick**, và kịch bản *"mở cửa lúc xe
+     * đang chạy"* lúc bị `G1_SPEED_LOCK` chặn, lúc lại được cho qua vì rơi đúng
+     * đáy hình sin. Bảng ablation A1 dựng trên nền đó không tái lập được — mà
+     * tái lập được chính là thứ ô *Demo live và độ ổn định* chấm.
+     */
+    private val pinned = java.util.concurrent.ConcurrentHashMap.newKeySet<Key>()
+
     override fun observeProperty(propertyId: Int): Flow<CarPropertyResult> = channelFlow {
         startSimulationIfNeeded()
         val lastSent = mutableMapOf<Int, Any>()
@@ -74,7 +87,30 @@ class MockVehicleRepository @Inject constructor(
         return Result.success(Unit)
     }
 
-        fun injectVehicleEvent(propertyId: Int, areaId: Int, value: Any) {
+    /**
+     * Đặt giá trị thay cho "phía xe" và **ghim** nó: đây là người kiểm thử nói
+     * *"xe đang chạy 60 km/h"*, không phải một mẫu đo thoáng qua.
+     *
+     * Ghim theo từng property, nên bơm tốc độ không làm đứng phần mô phỏng
+     * nhiệt độ. Ghim sống tới khi process chết — khởi động lại app là về mặc
+     * định. Không có lệnh gỡ ghim vì kịch bản dùng nó (A1 · E09) cần giá trị
+     * đứng yên, không cần quay lại chế độ dao động.
+     */
+    fun injectVehicleEvent(propertyId: Int, areaId: Int, value: Any) {
+        pinned += Key(propertyId, areaId)
+        write(propertyId, areaId, value)
+    }
+
+    /**
+     * Ghi từ vòng mô phỏng — bỏ qua property đã bị ghim bằng tay.
+     *
+     * Tách khỏi [write] có chủ đích: lệnh thật từ app ([setProperty]) vẫn phải
+     * ghi được lên property đã ghim. Ghim chỉ chặn **vòng mô phỏng**, không
+     * chặn xe làm việc của nó — nếu không, ghim tốc độ xong thì khoá cửa cũng
+     * hỏng theo.
+     */
+    private fun simulatedWrite(propertyId: Int, areaId: Int, value: Any) {
+        if (Key(propertyId, areaId) in pinned) return
         write(propertyId, areaId, value)
     }
 
@@ -105,22 +141,22 @@ class MockVehicleRepository @Inject constructor(
 
     private fun simulateTick(tick: Int) {
         val speed = (12.5f * (1 + sin(tick * 2 * PI / 90))).toFloat()
-        write(VehicleProperties.PERF_VEHICLE_SPEED, VehicleAreas.GLOBAL, speed)
+        simulatedWrite(VehicleProperties.PERF_VEHICLE_SPEED, VehicleAreas.GLOBAL, speed)
 
         val current = floatAt(VehicleProperties.HVAC_TEMPERATURE_CURRENT, VehicleAreas.SEAT_ZONE_DRIVER)
         val target = floatAt(VehicleProperties.HVAC_TEMPERATURE_SET, VehicleAreas.SEAT_ZONE_DRIVER)
         if (abs(current - target) > 0.05f) {
             val next = current + (target - current).coerceIn(-0.2f, 0.2f)
-            write(VehicleProperties.HVAC_TEMPERATURE_CURRENT, VehicleAreas.SEAT_ZONE_DRIVER, next)
+            simulatedWrite(VehicleProperties.HVAC_TEMPERATURE_CURRENT, VehicleAreas.SEAT_ZONE_DRIVER, next)
         }
 
         if (tick % 30 == 0) {
-            write(
+            simulatedWrite(
                 VehicleProperties.FUEL_LEVEL,
                 VehicleAreas.GLOBAL,
                 (floatAt(VehicleProperties.FUEL_LEVEL, VehicleAreas.GLOBAL) - 0.1f).coerceAtLeast(0f),
             )
-            write(
+            simulatedWrite(
                 VehicleProperties.EV_BATTERY_LEVEL,
                 VehicleAreas.GLOBAL,
                 (floatAt(VehicleProperties.EV_BATTERY_LEVEL, VehicleAreas.GLOBAL) - 0.1f).coerceAtLeast(0f),

@@ -13,4 +13,5 @@
     <string name="status_body_controls">Body controls</string>
     <string name="status_doors_locked_toggle">Doors locked</string>
     <string name="status_interior_lights">Interior lights</string>
+    <string name="status_safety_blocked">Blocked by the safety layer</string>
 </resources>

@@ -56,12 +56,24 @@ object LogcatDiagnostics : TraceDiagnostics {
  * timestamp is already known and older than now - see [LatencyTrace.markAt].
  */
 fun startVoiceTrace(nanos: Long? = null): LatencyTrace {
-    val trace = LatencyTrace(
-        traceId = UUID.randomUUID().toString(),
-        clock = SystemNanoClock,
-        sink = LogcatTraceSink,
-        diagnostics = LogcatDiagnostics,
-    )
+    val trace = startSilentTrace()
     if (nanos != null) trace.markAt(Stage.SPEECH_START, nanos) else trace.mark(Stage.SPEECH_START)
     return trace
 }
+
+/**
+ * Mở trace cho một lượt **không có tiếng nói** — ví dụ câu bơm vào từ bộ
+ * benchmark.
+ *
+ * Khác [startVoiceTrace] đúng một điểm: không đánh dấu `speech_start`. Điểm đó
+ * quyết định tính trung thực của số đo — [LatencyTrace.e2eMs] tính từ
+ * `speech_end` hoặc `speech_start`, nên một lượt không hề có ai nói mà vẫn mang
+ * `speech_start` sẽ đẻ ra `e2e_ms` trông như độ trễ đầu-cuối thật, trong khi
+ * chặng ASR còn chưa từng chạy. Thà để trống còn hơn có một con số đẹp mà sai.
+ */
+fun startSilentTrace(): LatencyTrace = LatencyTrace(
+    traceId = UUID.randomUUID().toString(),
+    clock = SystemNanoClock,
+    sink = LogcatTraceSink,
+    diagnostics = LogcatDiagnostics,
+)

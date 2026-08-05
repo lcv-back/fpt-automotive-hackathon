@@ -5,6 +5,7 @@ import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.content.Context
 import android.content.Intent
+import android.content.pm.ApplicationInfo
 import android.content.pm.ServiceInfo
 import android.util.Log
 import androidx.lifecycle.LifecycleService
@@ -20,6 +21,7 @@ import com.sopa.viva_automotive.feature.voice.domain.model.VehicleIntent
 import com.viva.voice.trace.LatencyTrace
 import com.viva.voice.trace.Stage
 import com.viva.voice.trace.TraceVerdict
+import com.viva.voice.trace.startSilentTrace
 import com.viva.voice.trace.startVoiceTrace
 import com.viva.voice.tts.TtsSpeaker
 import dagger.hilt.android.AndroidEntryPoint
@@ -55,15 +57,36 @@ class VoiceAssistantService : LifecycleService() {
                 stateManager.transitionToIdle()
                 stopSelf()
             }
+            // Đường chạy benchmark: một câu cho sẵn, không qua mic.
+            //
+            // Chặn ở build không debuggable. Một lối vào cho phép chạy lệnh xe
+            // từ ngoài process mà không cần nói là thứ không được có mặt trong
+            // bản phát hành, kể cả khi hôm nay chỉ có biến thể mock gọi tới nó.
+            ACTION_SIMULATE_UTTERANCE -> {
+                val debuggable =
+                    applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE != 0
+                val utterance = intent.getStringExtra(EXTRA_UTTERANCE).orEmpty()
+                when {
+                    !debuggable ->
+                        Log.w(VOICE_TAG, "Bỏ qua $ACTION_SIMULATE_UTTERANCE: build không debuggable")
+                    utterance.isBlank() ->
+                        Log.w(VOICE_TAG, "Bỏ qua $ACTION_SIMULATE_UTTERANCE: thiếu $EXTRA_UTTERANCE")
+                    else -> {
+                        startForegroundWithNotification()
+                        warmUpEmbeddings()
+                        startPipeline { runInjectedUtterance(utterance) }
+                    }
+                }
+            }
         }
         return START_NOT_STICKY
     }
 
-    private fun startPipeline() {
+    private fun startPipeline(turn: suspend () -> Unit = { runInteraction() }) {
         if (pipelineJob?.isActive == true) return
         pipelineJob = lifecycleScope.launch {
             try {
-                runInteraction()
+                turn()
             } finally {
                 stopSelf()
             }
@@ -128,38 +151,74 @@ class VoiceAssistantService : LifecycleService() {
                 trace.summary("-", "-", TraceVerdict.Error(Stage.SPEECH_END))
             }
 
-            else -> {
-                stateManager.transitionToProcessing(utterance)
-                val intent = processVoiceCommand(utterance)
-                trace.mark(Stage.NLU_DONE)
-                if (intent is VehicleIntent.Clarification) {
-                    stateManager.transitionToClarification(intent.promptVi)
-                    finish(trace, utterance, intent, error = null)
-                } else {
-                    stateManager.transitionToExecuting(describe(intent))
-                    executeVehicleControl(intent).fold(
-                        onSuccess = { message ->
-                            trace.mark(Stage.EXEC_DONE)
-                            stateManager.transitionToSuccess(message)
-                            // The executor already answers in Vietnamese for the
-                            // intents that have a pre-rendered clip, so the same
-                            // string drives the HMI and the voice.
-                            speak(message, trace)
-                            trace.summary(
-                                utterance,
-                                VoiceTurnReport.intentName(intent),
-                                TraceVerdict.Allow,
-                            )
-                        },
-                        onFailure = { error ->
-                            stateManager.transitionToError(error.message ?: "Command failed")
-                            finish(trace, utterance, intent, error)
-                        },
-                    )
-                }
-            }
+            else -> handleUtterance(trace, utterance)
         }
 
+        delay(RESULT_DISPLAY_MS)
+        stateManager.transitionToIdle()
+    }
+
+    /**
+     * Everything after "we have a sentence": route it, execute it, answer, close
+     * the trace.
+     *
+     * Tách ra khỏi [runInteraction] để [runInjectedUtterance] dùng chung **đúng
+     * đường sản phẩm** — nếu chép lại logic thì benchmark sẽ đo một bản sao,
+     * không đo thứ đang chạy.
+     */
+    private suspend fun handleUtterance(trace: LatencyTrace, utterance: String) {
+        stateManager.transitionToProcessing(utterance)
+        val intent = processVoiceCommand(utterance)
+        trace.mark(Stage.NLU_DONE)
+        if (intent is VehicleIntent.Clarification) {
+            stateManager.transitionToClarification(intent.promptVi)
+            finish(trace, utterance, intent, error = null)
+        } else {
+            stateManager.transitionToExecuting(describe(intent))
+            executeVehicleControl(intent).fold(
+                onSuccess = { message ->
+                    trace.mark(Stage.EXEC_DONE)
+                    stateManager.transitionToSuccess(message)
+                    // The executor already answers in Vietnamese for the
+                    // intents that have a pre-rendered clip, so the same
+                    // string drives the HMI and the voice.
+                    speak(message, trace)
+                    trace.summary(
+                        utterance,
+                        VoiceTurnReport.intentName(intent),
+                        TraceVerdict.Allow,
+                    )
+                },
+                onFailure = { error ->
+                    stateManager.transitionToError(error.message ?: "Command failed")
+                    finish(trace, utterance, intent, error)
+                },
+            )
+        }
+    }
+
+    /**
+     * Chạy một lượt với câu **cho sẵn**, bỏ qua mic và ASR.
+     *
+     * ## Đo được gì và KHÔNG đo được gì
+     *
+     * `benchmark_v1.csv` chấm `expect_intent` và `expect_verdict` — tức phần
+     * router → guard → skill. Đường này chạy đúng phần đó bằng đúng mã sản
+     * phẩm ([handleUtterance]). Nó **không** đo mic, VAD, ASR, WER hay độ ồn:
+     * `vong2/25` §2 F7 đã ghi sẵn giới hạn này của bộ suite.
+     *
+     * Vì không có tiếng nói nào, lượt này **cố ý không mark** `speech_start` và
+     * `speech_end`, nên `e2e_computed` để trống thay vì bịa ra một con số đẹp.
+     * Ngoài ra mỗi lượt in một dòng tag [BENCH_TAG] mang cùng trace id, để bất
+     * kỳ ai đọc capture về sau đều thấy ngay đây là câu bơm vào, không phải câu
+     * nói. Đừng bỏ dòng đó đi.
+     *
+     * Chỉ chạy trên build `debuggable` — xem [onStartCommand].
+     */
+    private suspend fun runInjectedUtterance(utterance: String) {
+        val trace = startSilentTrace()
+        Log.i(BENCH_TAG, "$BENCH_TAG|${trace.traceId}|injected_text|$utterance")
+        handleUtterance(trace, utterance)
         delay(RESULT_DISPLAY_MS)
         stateManager.transitionToIdle()
     }
@@ -238,6 +297,22 @@ class VoiceAssistantService : LifecycleService() {
 
         /** Diagnostics tag. Never VIVA_TRACE — that stream is the benchmark input. */
         private const val VOICE_TAG = "VIVA_VOICE"
+
+        /**
+         * Chạy một lượt với câu cho sẵn thay vì nghe mic. **Chỉ có tác dụng trên
+         * build `debuggable`** — xem nhánh xử lý trong `onStartCommand`.
+         */
+        const val ACTION_SIMULATE_UTTERANCE =
+            "com.sopa.viva_automotive.action.SIMULATE_UTTERANCE"
+
+        /** Câu tiếng Việt cần chạy, dạng chuỗi thường (đã giải mã). */
+        const val EXTRA_UTTERANCE = "utterance"
+
+        /**
+         * Tag đánh dấu lượt bơm text. Mang cùng trace id với lượt tương ứng để
+         * người đọc capture về sau phân biệt được câu bơm với câu nói thật.
+         */
+        const val BENCH_TAG = "VIVA_BENCH_INJECT"
 
         fun startListening(context: Context) {
             context.startForegroundService(

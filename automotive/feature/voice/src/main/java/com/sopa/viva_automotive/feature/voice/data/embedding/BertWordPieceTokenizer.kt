@@ -9,7 +9,22 @@ class BertWordPieceTokenizer(
         val inputIds: LongArray,
         val attentionMask: LongArray,
         val tokenTypeIds: LongArray,
-    )
+        /** Số token nội dung (không kể `[CLS]`/`[SEP]`) rơi vào `[UNK]`. */
+        val unknownTokens: Int,
+        /** Số token nội dung, tức độ dài trừ `[CLS]` và `[SEP]`. */
+        val contentTokens: Int,
+    ) {
+        /**
+         * Không một token nội dung nào nằm trong từ điển.
+         *
+         * Vector cho một chuỗi như vậy chỉ phản ánh **số lượng** `[UNK]`, không
+         * phản ánh nghĩa: hai câu tiếng Việt khác hẳn nhau nhưng cùng số từ sẽ
+         * cho vector giống hệt nhau và cosine bằng 1.0. Vocab của MiniLM là
+         * WordPiece tiếng Anh, nên gần như mọi câu tiếng Việt có dấu đều rơi
+         * vào trường hợp này.
+         */
+        val isAllUnknown: Boolean get() = contentTokens > 0 && unknownTokens == contentTokens
+    }
 
     fun encode(text: String): Encoding {
         val tokens = ArrayList<String>(32)
@@ -32,7 +47,17 @@ class BertWordPieceTokenizer(
         for (i in tokens.indices) {
             ids[i] = (vocab[tokens[i]] ?: unkId).toLong()
         }
-        return Encoding(ids, mask, types)
+
+        // Đếm trên chuỗi token, không đếm lại theo id: một token có mặt trong
+        // vocab nhưng chính là "[UNK]" vẫn phải tính là không biết.
+        val content = tokens.subList(1, (tokens.size - 1).coerceAtLeast(1))
+        return Encoding(
+            inputIds = ids,
+            attentionMask = mask,
+            tokenTypeIds = types,
+            unknownTokens = content.count { it == UNK },
+            contentTokens = content.size,
+        )
     }
 
     private fun basicTokenize(text: String): List<String> {

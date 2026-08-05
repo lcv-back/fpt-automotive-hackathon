@@ -1,6 +1,8 @@
 package com.sopa.viva_automotive.feature.voice.domain
 
 import com.sopa.viva_automotive.feature.voice.domain.model.VehicleIntent
+import com.sopa.viva_automotive.vehicleservice.api.SafetyConfirmationRequiredException
+import com.sopa.viva_automotive.vehicleservice.api.SafetyDeniedException
 import com.viva.voice.trace.Stage
 import com.viva.voice.trace.TraceVerdict
 
@@ -44,10 +46,14 @@ object VoiceTurnReport {
     /**
      * Verdict for the summary line.
      *
-     * There is no `SafetyGuard` in this build, so no turn can legitimately
-     * report `Deny:<rule>` yet — a turn that executed reports plain `Allow`.
-     * When T5/T6 lands, the guard verdict replaces this and the ablation table
-     * (N4b) gets its before/after rows for free.
+     * `SafetyGuard` is enforced at the `VehicleRepository` boundary since
+     * `GuardedVehicleRepository` landed, so a blocked turn arrives here as a
+     * [SafetyDeniedException] or [SafetyConfirmationRequiredException] carrying
+     * its rule id. Both must be matched **before** the generic `error != null`
+     * branch: falling through would file a speed-locked door unlock as
+     * `Error:exec_done`, and N4b's A1 table would count zero
+     * `Deny:G1_SPEED_LOCK` in both the `full` and `no_guard` runs — a table
+     * that cannot show the guard doing anything.
      *
      * `Confirm:CLARIFY_SLOT` is a stretch of the `Confirm` kind, which
      * TraceVerdict documents as a SafetyGuard outcome. It is used anyway
@@ -58,6 +64,11 @@ object VoiceTurnReport {
      * option.
      */
     fun verdictFor(intent: VehicleIntent, error: Throwable?): TraceVerdict = when {
+        // The guard refused before any setter ran. This is the rule id the
+        // ablation joins on, so it rides the wire, not a bare "Deny".
+        error is SafetyDeniedException -> TraceVerdict.Deny(error.rule)
+        error is SafetyConfirmationRequiredException -> TraceVerdict.Confirm(error.rule)
+
         // A turn that asked "are you sure?" did exactly what §4 requires of it.
         // Filing it as an error would make G2_CONFIRM_DELIVERY look like a
         // defect in the benchmark instead of the safety rule it is.
@@ -71,6 +82,15 @@ object VoiceTurnReport {
 
     /** What the assistant says out loud when a turn does not end in success. */
     fun failureSpeech(intent: VehicleIntent, error: Throwable?): String = when {
+        // `reasonVi` alone, deliberately: PrerenderedPrompts.rawNameFor() is an
+        // exact-text lookup, and "Xe đang chạy, mình chưa mở cửa được." is one
+        // of the bundled clips (tts_deny_door_while_moving). Appending
+        // `suggestion` would miss that entry and, on an AAOS image with no vi-VN
+        // voice, degrade the refusal to a bare notification ping. The suggestion
+        // still reaches the driver as HMI text via the exception message.
+        error is SafetyDeniedException -> error.reasonVi
+        error is SafetyConfirmationRequiredException -> error.questionVi
+
         // The question itself is the answer the driver needs to hear.
         error is ConfirmationRequiredException -> error.questionVi
         intent is VehicleIntent.Clarification -> intent.promptVi

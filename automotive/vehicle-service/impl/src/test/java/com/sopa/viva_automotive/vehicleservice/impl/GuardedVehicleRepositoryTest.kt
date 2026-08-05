@@ -1,5 +1,7 @@
 package com.sopa.viva_automotive.vehicleservice.impl
 
+import com.sopa.viva_automotive.vehicleservice.api.SafetyConfirmationRequiredException
+import com.sopa.viva_automotive.vehicleservice.api.SafetyDeniedException
 import com.sopa.viva_automotive.vehicleservice.api.SafetyGuard
 import com.sopa.viva_automotive.vehicleservice.api.SafetyRules
 import com.sopa.viva_automotive.vehicleservice.api.CarPropertyResult
@@ -22,12 +24,15 @@ import org.junit.Test
  */
 class GuardedVehicleRepositoryTest {
 
+    private val logLines = mutableListOf<String>()
+
     private fun guarded(
         underlying: VehicleRepository,
         guard: SafetyGuard = DefaultSafetyGuard(),
     ) = GuardedVehicleRepository(
         delegate = underlying,
         guard = guard,
+        log = logLines::add,
     )
 
     private suspend fun MockVehicleRepository.setSpeedKmh(speedKmh: Float) {
@@ -41,6 +46,35 @@ class GuardedVehicleRepositoryTest {
     private suspend fun VehicleRepository.readDoorLock(): Boolean? =
         getProperty(VehicleProperties.DOOR_LOCK, VehicleAreas.DOOR_ROW_1_LEFT)
             .getOrNull()?.booleanValue()
+
+    /**
+     * Chặn xong mà im lặng thì không có gì để chụp làm bằng chứng E09, và trên
+     * đường HMI tài xế chỉ thấy công tắc tự bật lại. Dòng log này là dấu vết duy
+     * nhất cho hai call site không đi qua `VIVA_TRACE`.
+     */
+    @Test
+    fun `verdict bi chan duoc ghi lai kem ma luat`() = runTest {
+        val underlying = MockVehicleRepository(backgroundScope, simulate = false)
+        val repo = guarded(underlying)
+        underlying.setSpeedKmh(60f)
+        underlying.setProperty(VehicleProperties.DOOR_LOCK, VehicleAreas.DOOR_ROW_1_LEFT, true)
+
+        repo.setProperty(VehicleProperties.DOOR_LOCK, VehicleAreas.DOOR_ROW_1_LEFT, false)
+
+        assertEquals(1, logLines.size)
+        assertTrue(logLines[0], logLines[0].startsWith("Deny:${SafetyRules.SPEED_LOCK}"))
+        assertTrue(logLines[0], logLines[0].contains("property=${VehicleProperties.DOOR_LOCK}"))
+    }
+
+    @Test
+    fun `lenh duoc phep thi khong sinh dong log nao`() = runTest {
+        val underlying = MockVehicleRepository(backgroundScope, simulate = false)
+        val repo = guarded(underlying)
+
+        repo.setProperty(VehicleProperties.HVAC_FAN_SPEED, VehicleAreas.GLOBAL, 3).getOrThrow()
+
+        assertTrue("$logLines", logLines.isEmpty())
+    }
 
     @Test
     fun `lenh bi Deny thi KHONG ghi xuong xe`() = runTest {

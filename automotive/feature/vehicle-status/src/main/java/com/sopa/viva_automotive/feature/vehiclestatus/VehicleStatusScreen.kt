@@ -19,6 +19,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.produceState
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
@@ -38,6 +39,15 @@ fun VehicleStatusScreen(
 ) {
     val status by viewModel.status.collectAsStateWithLifecycle()
 
+    // Lệnh bị tầng an toàn chặn phải nói ra được lý do. Trước đây ViewModel có
+    // phát `errors` nhưng không ai thu, nên công tắc chỉ lặng lẽ bật lại như cũ:
+    // tài xế không biết vì sao, và không có gì để chụp làm bằng chứng E09.
+    // Giữ nguyên trên màn hình thay vì snackbar tự tắt — một lần chạy demo phải
+    // quay lại được, và ảnh chụp là thứ đi vào bản nộp.
+    val safetyMessage by produceState<String?>(initialValue = null, viewModel) {
+        viewModel.errors.collect { value = it }
+    }
+
     Column(
         modifier = modifier
             .fillMaxSize()
@@ -52,6 +62,17 @@ fun VehicleStatusScreen(
             textAlign = TextAlign.Center,
             modifier = Modifier.fillMaxWidth(),
         )
+
+        safetyMessage?.let { message ->
+            SectionCard(title = stringResource(R.string.status_safety_blocked)) {
+                Text(
+                    text = message,
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.error,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
+        }
 
         Row(horizontalArrangement = Arrangement.spacedBy(24.dp)) {
             StatusTile(

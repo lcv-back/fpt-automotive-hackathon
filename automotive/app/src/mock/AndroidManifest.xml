@@ -15,6 +15,19 @@
                 <action android:name="com.sopa.viva_automotive.mock.VSTATE" />
             </intent-filter>
         </receiver>
+
+        <!-- Benchmark driver: đẩy một câu cho sẵn vào đúng đường xử lý voice,
+             không qua mic. Chỉ có trong biến thể mock, và service còn chặn thêm
+             một lớp nữa (bỏ qua nếu build không debuggable). Nó đo router →
+             guard → skill, KHÔNG đo ASR — xem SimulatedUtteranceReceiver. -->
+        <receiver
+            android:name=".debug.SimulatedUtteranceReceiver"
+            android:exported="true"
+            tools:ignore="ExportedReceiver">
+            <intent-filter>
+                <action android:name="com.sopa.viva_automotive.mock.UTTERANCE" />
+            </intent-filter>
+        </receiver>
     </application>
 
 </manifest>

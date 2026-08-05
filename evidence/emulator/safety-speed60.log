@@ -1,0 +1,49 @@
+SAFETYGUARD CHAN MO KHOA CUA O 60 KM/H — EMULATOR AAOS
+=======================================================
+
+Nhan: emulator evidence, bien the `mock`. KHONG dong duoc E09 trong
+      18-CLAIM-EVIDENCE-MAP (E09 doi Device CarSky + property that).
+Xem them: evidence/emulator/README.md
+Commit: 635aab695360e96f55398fcca0436ace401ec043
+Thoi diem: 2026-08-05T15:40:49+07:00 (Asia/Saigon)
+
+Kich ban
+--------
+1. Dat toc do xe = 16.7 m/s (60 km/h) qua cong debug cua bien the mock:
+
+   $ adb shell am broadcast \
+       -a com.sopa.viva_automotive.mock.VSTATE \
+       --es unit_type speed --es state_value 16.7 \
+       -n com.sopa.viva_automotive.mock/com.sopa.viva_automotive.debug.VehicleDummyReceiver
+   Broadcast completed: result=0
+
+   $ adb logcat -d -s VehicleDummyReceiver:I
+   VehicleDummyReceiver: VSTATE speed=16.7 -> property=291504647 area=0 value=16.7
+
+2. Cho 6 giay, xac nhan toc do DUNG YEN o 60 km/h tren HMI (truoc commit
+   635aab6 no bi vong mo phong ghi de, nhay 10 -> 85 -> 48 km/h).
+
+3. Bam cong tac "Doors locked" tren man Vehicle status de mo khoa:
+
+   $ adb shell input tap 1024 320
+
+Ket qua
+-------
+$ adb logcat -d -s VivaSafetyGuard:I
+08-05 15:40:49.419  5805  5805 I VivaSafetyGuard: Deny:G1_SPEED_LOCK property=371198722 area=1 value=false source=HMI confirmed=false
+
+- Property 371198722 (DOOR_LOCK) area 1 (DOOR_ROW_1_LEFT) KHONG bi ghi.
+- HMI van hien "Locked"; cong tac tu bat lai.
+- Banner tren man hinh: "Blocked by the safety layer —
+  Xe dang chay, minh chua mo cua duoc."  (anh: safety-speed60-hmi.png)
+
+Doc dung ba dieu
+----------------
+1. Lenh nay den tu HMI (`source=HMI`), khong phai giong noi. Guard nam o
+   bien VehicleRepository nen chan ca hai duong; day la bang chung cho
+   duong cham. Duong voice sinh verdict rieng qua VIVA_TRACE.
+2. `confirmed=false` o day khong lien quan: G1_SPEED_LOCK la luat tu choi
+   dut khoat, xac nhan cung khong mo duoc.
+3. Property la property cua MockVehicleRepository trong app, KHONG phai
+   Vehicle Property that qua CarService/VHAL. Muon claim toi VHAL thi
+   phai chay bien the `real` tren Device that.
