@@ -26,3 +26,15 @@ docs/link.md
 # Local artifact-generation workspaces and inspection sidecars.
 .tmp/
 *.pptx.inspect.ndjson
+
+# Benchmark audio that noise_mix.py DERIVES. Every file is reproduced
+# byte-for-byte from the clean source plus a fixed per-clip seed, so ~12 MB of
+# WAV in the history would buy nothing that `py scripts/noise_mix.py` does not.
+# corpus-index.csv (the SNR actually achieved per file) stays tracked — that is
+# the part a reviewer needs and cannot regenerate without the audio.
+evidence/asr/corpus/**/*.wav
+evidence/asr/corpus-v12/**/*.wav
+
+# NOT ignored, deliberately: evidence/asr/corpus-src/*.wav — the rendered
+# Vietnamese command clips. They need a vi-VN Windows voice that most of the
+# team's machines do not have, so they are authored input, not derived output.
