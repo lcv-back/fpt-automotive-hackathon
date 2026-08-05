@@ -1,6 +1,8 @@
 package com.sopa.viva_automotive.feature.voice.domain
 
 import com.sopa.viva_automotive.feature.voice.domain.model.VehicleIntent
+import com.sopa.viva_automotive.vehicleservice.api.SafetyConfirmationRequiredException
+import com.sopa.viva_automotive.vehicleservice.api.SafetyDeniedException
 import com.viva.voice.trace.Stage
 import com.viva.voice.trace.TraceVerdict
 
@@ -22,12 +24,16 @@ object VoiceTurnReport {
         VehicleIntent.MediaNext -> "media_next"
         is VehicleIntent.RadioTune -> "radio_tune"
         VehicleIntent.RadioNextStation -> "radio_next"
+        is VehicleIntent.Delivery -> intent.command.intentName
         is VehicleIntent.NotWired -> intent.intentName
         is VehicleIntent.Clarification -> "clarify"
         is VehicleIntent.Unknown -> "unknown"
     }
 
     fun verdictFor(intent: VehicleIntent, error: Throwable?): TraceVerdict = when {
+        error is SafetyDeniedException -> TraceVerdict.Deny(error.rule)
+        error is SafetyConfirmationRequiredException -> TraceVerdict.Confirm(error.rule)
+        error is ConfirmationRequiredException -> TraceVerdict.Confirm(error.rule)
         error is CommandNotWiredException -> TraceVerdict.Error(Stage.EXEC_DONE)
         intent is VehicleIntent.Clarification -> TraceVerdict.Confirm("CLARIFY_SLOT")
         intent is VehicleIntent.Unknown -> TraceVerdict.Error(Stage.NLU_DONE)
@@ -36,6 +42,9 @@ object VoiceTurnReport {
     }
 
     fun failureSpeech(intent: VehicleIntent, error: Throwable?): String = when {
+        error is SafetyDeniedException -> error.reasonVi
+        error is SafetyConfirmationRequiredException -> error.questionVi
+        error is ConfirmationRequiredException -> error.questionVi
         intent is VehicleIntent.Clarification -> intent.promptVi
         intent is VehicleIntent.Unknown -> DID_NOT_HEAR
         error is CommandNotWiredException -> error.message ?: COMMAND_FAILED

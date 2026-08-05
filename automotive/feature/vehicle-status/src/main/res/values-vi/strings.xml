@@ -13,4 +13,5 @@
     <string name="status_body_controls">Điều khiển thân xe</string>
     <string name="status_doors_locked_toggle">Khóa cửa</string>
     <string name="status_interior_lights">Đèn trong cabin</string>
+    <string name="status_safety_blocked">Tầng an toàn đã chặn lệnh</string>
 </resources>

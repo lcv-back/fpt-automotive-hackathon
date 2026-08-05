@@ -1,0 +1,84 @@
+name: asr-ci
+
+# Chỉ chạy khi asr/ đổi. Phần còn lại của repo là Kotlin/Go/markdown, không
+# cần dựng Python runtime cho mỗi commit.
+on:
+  push:
+    branches: [main]
+    paths:
+      - "asr/**"
+      - ".github/workflows/asr-ci.yml"
+  pull_request:
+    paths:
+      - "asr/**"
+      - ".github/workflows/asr-ci.yml"
+
+jobs:
+  test:
+    name: pytest (khong can model)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: asr
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          # Khớp base image của Dockerfile, để lỗi chỉ xuất hiện ở runtime
+          # thật thì cũng xuất hiện ở đây.
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: asr/requirements-dev.txt
+
+      # Cố ý KHÔNG cài requirements.txt: nó kéo theo faster-whisper +
+      # CTranslate2 (~100MB wheel) và vẫn chưa đủ để chạy — còn cần model đã
+      # convert. Test tầng HTTP chạy với fake transcriber, nên
+      # requirements-dev.txt là đủ và job này xong trong vài chục giây.
+      - name: cài dependency test
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements-dev.txt
+
+      - name: pytest
+        run: python -m pytest -q
+
+      # Bắt lỗi cú pháp ở phần KHÔNG được test import: model.py chỉ import
+      # faster_whisper bên trong hàm, nên một lỗi cú pháp ở đó sẽ lọt qua
+      # pytest và chỉ nổ khi container khởi động thật.
+      - name: kiểm cú pháp toàn bộ package
+        run: python -m compileall -q app scripts
+
+  image:
+    name: build image va kiem /health
+    runs-on: ubuntu-latest
+    # Vì sao job này tồn tại: ngày 04/08 build đầu tiên của Dockerfile vỡ BỐN lần
+    # liên tiếp — exec-stack của ctranslate2, kwarg `dtype` của transformers,
+    # CVE torch.load, rồi `requests` biến mất khỏi huggingface_hub 1.x. Job
+    # `test` ở trên KHÔNG bắt được lỗi nào trong bốn lỗi đó: nó chạy với fake
+    # transcriber và không hề chạm tới faster-whisper hay model thật.
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: build image
+        run: docker build -t viva-asr:ci asr/
+
+      # Model nạp xong thì /health mới trả 200; trước đó là 503 kèm lý do. Nên
+      # chờ 200 chính là phép kiểm "container này thật sự phục vụ được", chứ
+      # không chỉ "image build xong".
+      - name: chạy container và chờ /health 200
+        run: |
+          docker run -d --name viva-asr-ci -p 8080:8080 viva-asr:ci
+          for i in $(seq 1 60); do
+            code=$(curl -s -o /tmp/health.json -w '%{http_code}' http://127.0.0.1:8080/health || true)
+            echo "[$i] HTTP $code $(cat /tmp/health.json 2>/dev/null)"
+            if [ "$code" = "200" ]; then exit 0; fi
+            sleep 5
+          done
+          echo "::error::/health khong bao gio tra 200"
+          docker logs --tail 50 viva-asr-ci
+          exit 1
+
+      - name: dọn
+        if: always()
+        run: docker rm -f viva-asr-ci || true

@@ -1,0 +1,39 @@
+Evidence: V7 — viva-asr chay tren CarSky
+Label: CARSKY PLATFORM — node Running that, KHONG phai bang chung latency
+Captured at: 2026-08-04 (gio Asia/Saigon)
+Repository commit: xem git log cua nhanh docs/carsky-api-limits
+
+TRIEN KHAI
+  Registry   : registry.hackathon-2.carsky.io
+  Image      : viva/viva-asr:0.1.0
+  Index      : sha256:63c2c56a09b901e61248858398d375a7ce7b7d232a2855c85bad0c4aaeeb6735
+    linux/amd64 : sha256:fd047333d79521c173f3605bf3f8840107a5ab644cc835624223498e9dc366b0
+    linux/arm64 : sha256:8f31e29c5b596bd7ffae92a663574613b4dce82885c941e101a5032a88b736aa
+  Blueprint  : VIVA-deploy-clone-0803 (6deadb05-c856-4dab-976b-432b0fac0658)
+  Node       : "VIVA ASR" id=b8eada00-d137-4fdc-a131-2197b1d1356b, nodeType=container
+  Deployment : cef07cbd-b51e-4a39-b89f-c3968ed726d6
+  Room       : og4erd2wzaxe5xod8otuj (device VIVA 2 — KHONG phai room demo)
+  Namespace  : room-h0t6i5lx
+
+KET QUA
+  22/22 node phase=Running, trong do "VIVA ASR" = Running.
+  -> cluster PULL DUOC image cua doi (tieu chi "Xong khi" cua V6/V7).
+  -> node config khai image dang TEN DAY DU + DIGEST va pull thanh cong:
+     registry.hackathon-2.carsky.io/viva/viva-asr@sha256:63c2c56a...
+     Tuc khong phai dung dang localhost:5000/... nhu cac node co san cua BTC.
+
+CAI NAY KHONG CHUNG MINH DIEU GI VE LATENCY
+  Chua gui duoc mot request nao vao container tu ben ngoai: no nam tren mang
+  10.99.0.x trong room, ma adb-exec/shell/container-exec deu chet vi
+  "Conduit service not configured", con nydus-reach thi doi chua co binary.
+  => So 439/667 ms trong evidence/asr/ VAN LA CPU MAY DEV. Muon so cua CarSky
+     thi phai qua app chay tren Device — cung nut that voi E03/E04.
+
+HAI DIEU CAN BIET KHI NOI APP VAO
+  1. Pin `eth` cua node ASR dang KHONG co dia chi tinh (properties.address rong).
+     PATCH /pins/{id} tra 404 nen khong set duoc qua API. IVI Gateway cung rong
+     ma van chay, nhung BuildConfig.ASR_BASE_URL can mot dia chi BIET TRUOC —
+     nen dat 10.99.0.2 trong UI (dung dia chi PA-1 cua 03-contracts.md §2).
+  2. Slot deployment da dung 2/2 (MAX_CONCURRENT_DEPLOYMENTS_PER_ACCOUNT=2).
+     Muon deploy them phai xoa: DELETE /api/v1/deployments/og4erd2wzaxe5xod8otuj
+     Room demo v37aa3knc6t1embelr5yi KHONG bi dung toi.

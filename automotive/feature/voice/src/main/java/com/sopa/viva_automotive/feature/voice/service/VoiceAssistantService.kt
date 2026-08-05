@@ -5,6 +5,7 @@ import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.content.Context
 import android.content.Intent
+import android.content.pm.ApplicationInfo
 import android.content.pm.ServiceInfo
 import android.os.SystemClock
 import android.util.Log
@@ -18,6 +19,7 @@ import com.viva.voice.audio.AndroidPcmSource
 import com.viva.voice.audio.PushToTalkRecorder
 import com.viva.voice.trace.Stage
 import com.viva.voice.trace.SystemNanoClock
+import com.viva.voice.trace.startSilentTrace
 import com.viva.voice.trace.startVoiceTrace
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
@@ -54,15 +56,30 @@ class VoiceAssistantService : LifecycleService() {
                 stateManager.transitionToIdle()
                 stopSelf()
             }
+            ACTION_SIMULATE_UTTERANCE -> {
+                val debuggable =
+                    applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE != 0
+                val utterance = intent.getStringExtra(EXTRA_UTTERANCE).orEmpty()
+                when {
+                    !debuggable ->
+                        Log.w(VOICE_TAG, "Skip $ACTION_SIMULATE_UTTERANCE: non-debuggable build")
+                    utterance.isBlank() ->
+                        Log.w(VOICE_TAG, "Skip $ACTION_SIMULATE_UTTERANCE: missing $EXTRA_UTTERANCE")
+                    else -> {
+                        startForegroundWithNotification()
+                        startPipeline { runInjectedUtterance(utterance) }
+                    }
+                }
+            }
         }
         return START_NOT_STICKY
     }
 
-    private fun startPipeline() {
+    private fun startPipeline(turn: suspend () -> Unit = { runInteraction() }) {
         if (pipelineJob?.isActive == true) return
         pipelineJob = lifecycleScope.launch {
             try {
-                runInteraction()
+                turn()
             } finally {
                 stopSelf()
             }
@@ -78,10 +95,13 @@ class VoiceAssistantService : LifecycleService() {
             try {
                 var next: String? = text
                 while (next != null) {
-                    applyAgentResult(voiceAgent.handleText(next, startVoiceTrace().also {
-                        it.mark(Stage.SPEECH_END)
-                        it.mark(Stage.ASR_DONE)
-                    }), displayTranscript = next)
+                    val trace = startVoiceTrace()
+                    trace.mark(Stage.SPEECH_END)
+                    trace.mark(Stage.ASR_DONE)
+                    applyAgentResult(
+                        voiceAgent.handleText(next, trace),
+                        displayTranscript = next,
+                    )
                     next = pendingTextCommands.removeFirstOrNull()
                 }
             } finally {
@@ -131,6 +151,15 @@ class VoiceAssistantService : LifecycleService() {
                 "spoken=\"${result.spokenVi}\"",
         )
         applyAgentResult(result, displayTranscript = result.transcript.ifBlank { "…" })
+    }
+
+    private suspend fun runInjectedUtterance(utterance: String) {
+        val trace = startSilentTrace()
+        Log.i(BENCH_TAG, "$BENCH_TAG|${trace.traceId}|injected_text|$utterance")
+        applyAgentResult(
+            voiceAgent.handleText(utterance, trace),
+            displayTranscript = utterance,
+        )
     }
 
     private suspend fun applyAgentResult(
@@ -186,6 +215,11 @@ class VoiceAssistantService : LifecycleService() {
         private const val LISTENING_TIMEOUT_MS = 8_000L
         private const val RESULT_DISPLAY_MS = 3_000L
         private const val VOICE_TAG = "VIVA_VOICE"
+
+        const val ACTION_SIMULATE_UTTERANCE =
+            "com.sopa.viva_automotive.action.SIMULATE_UTTERANCE"
+        const val EXTRA_UTTERANCE = "utterance"
+        const val BENCH_TAG = "VIVA_BENCH_INJECT"
 
         fun startListening(context: Context) {
             context.startForegroundService(

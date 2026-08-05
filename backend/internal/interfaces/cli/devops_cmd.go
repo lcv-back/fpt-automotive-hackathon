@@ -74,16 +74,17 @@ func runCarskyBlueprint(gw repository.CarSkyGateway, args []string) int {
 	case "clone":
 		fs := flag.NewFlagSet("carsky blueprint clone", flag.ContinueOnError)
 		id := fs.String("id", "", "blueprint id (required)")
+		name := fs.String("name", "", "name for the new blueprint (required by the CarSky API)")
 		backupOut := fs.String("backup-out", "", "path to save the pre-clone backup JSON (required — SafeClone refuses to clone without one)")
 		cloneOut := fs.String("clone-out", "", "path to save the clone response JSON (required)")
 		if err := fs.Parse(args[1:]); err != nil {
 			return 2
 		}
-		if *id == "" || *backupOut == "" || *cloneOut == "" {
-			fmt.Fprintln(os.Stderr, "error: --id, --backup-out, and --clone-out are required")
+		if *id == "" || *name == "" || *backupOut == "" || *cloneOut == "" {
+			fmt.Fprintln(os.Stderr, "error: --id, --name, --backup-out, and --clone-out are required")
 			return 2
 		}
-		backup, cloneResp, err := devops.SafeClone(gw, *id)
+		backup, cloneResp, err := devops.SafeClone(gw, *id, *name)
 		if backup != nil {
 			if werr := writeJSONFile(*backupOut, backup); werr != nil {
 				fmt.Fprintf(os.Stderr, "error writing backup: %v\n", werr)

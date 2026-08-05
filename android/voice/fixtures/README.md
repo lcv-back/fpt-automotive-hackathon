@@ -12,6 +12,11 @@ cd backend
 go run ./cmd/viva-tools harness report --input ../android/voice/fixtures/golden_trace.log --out report.csv
 ```
 
+> Hai file này cũng được `go test ./internal/usecase/harness` khẳng định trực tiếp
+> (`golden_test.go`): số trace, số warning, mốc hợp lệ còn nguyên sau dòng hỏng, và
+> `e2e_ms` khai trong summary khớp `tts_start − speech_end` trong 0.5ms. Format lệch
+> ở một trong hai phía sẽ **fail `go test`** thay vì lộ ra lúc chạy benchmark.
+
 ## `golden_trace.log` — đường hạnh phúc, 4 lượt
 
 Có prefix logcat thật (`07-29 21:14:07.000  4821  4821 I VIVA_TRACE: …`) và dòng log của

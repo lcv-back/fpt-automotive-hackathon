@@ -6,11 +6,13 @@ Claim–Evidence Map có evidence Device mới.
 
 ## 1. “AI nằm ở đâu nếu core dùng grammar?”
 
-**Trả lời:** AI nằm ở nhận biết tiếng nói và ngôn ngữ: Silero VAD chốt cuối câu, ASR chuyển audio thành text; grammar
-là policy có chủ đích cho tập lệnh xe hữu hạn. Chúng tôi không dùng LLM để tạo cảm giác “AI hơn” khi nó làm execution
+**Trả lời:** AI trên đường chạy APK hiện nằm ở Vosk on-device, chuyển audio thành text; grammar là policy có chủ đích
+cho tập lệnh xe hữu hạn. Silero VAD là module team-owned có mã và unit test nhưng **chưa được cắm vào APK**; hiện Vosk
+tự mở `AudioRecord` và tự quyết điểm cuối câu. Chúng tôi không dùng LLM để tạo cảm giác “AI hơn” khi nó làm execution
 khó kiểm soát hơn.
 
-**Evidence:** `android/voice/`, test `GrammarIntentRouterTest`, `VadEndpointerTest`.
+**Evidence:** `VoiceAssistantService.kt:93`, `VoskSpeechRecognitionEngine.kt:105`, test
+`GrammarIntentRouterTest`, `VadEndpointerTest`.
 
 **Không nói:** “LLM đang chạy trong core flow” hoặc “AI tự quyết định actuator”.
 
@@ -27,7 +29,8 @@ không bằng cách mở quyền thực thi cho mô hình.
 ## 3. “Phần nào thật sự do đội tự xây?”
 
 **Trả lời:** Voice orchestration, recorder/WAV, Silero VAD integration, ASR boundary, grammar router 10 intent,
-latency trace/verdict, TTS fallback 36 câu, audio focus và contract intent-to-execution là team-owned. AAOS, Car APIs,
+latency trace/verdict, TTS fallback 36 câu, audio focus và contract intent-to-execution là team-owned. Trong số đó,
+recorder/WAV, Silero VAD và `AsrClient` mới ở mức module/test, chưa nằm trên đường chạy APK. AAOS, Car APIs,
 AudioRecord, Android TTS và các thư viện model là baseline/platform.
 
 **Evidence:** `vong2/20-WRITE-UP-AI-VONG-2.md` §6, source và E12.

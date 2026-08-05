@@ -52,6 +52,29 @@ jobs:
       - name: go test
         run: go test ./... -v
 
+  windows-runner-smoke:
+    name: benchmark runner (Windows PowerShell)
+    runs-on: windows-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: backend/go.mod
+          cache: false
+
+      - name: run golden benchmark fixture
+        shell: powershell
+        run: >-
+          .\scripts\run_benchmark.ps1
+          -Variant golden
+          -Log '..\android\voice\fixtures\golden_trace.log'
+          -Suite 'testdata\golden_suite.csv'
+          -OutRoot '${{ runner.temp }}\benchmark-smoke'
+
   # "CD" here means: on every push to main, produce ready-to-run binaries
   # for the platforms the team actually uses (Windows dev machines, and
   # Linux/macOS in case anyone runs it from WSL/a Mac) and attach them to

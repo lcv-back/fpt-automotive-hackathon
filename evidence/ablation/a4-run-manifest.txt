@@ -1,0 +1,27 @@
+Evidence ID: A4 (N4 ablation — grammar tier off)
+Label: JVM/source ablation — KHONG phai Device evidence
+Captured at: 2026-08-04T11:16:00.5548624+07:00
+Repository commit: 733bfdd0b15b93b27a862df3950298b2aee91f7d
+Java: Temurin 17.0.20 (JDK tren may dev)
+Gradle: 9.5, AGP 9.3.1
+
+Command:
+  cd automotive
+  .\gradlew :feature:voice:testDebugUnitTest --tests "*GrammarAblationTest*"
+
+Input suite: backend/suites/benchmark_v1.csv (22 cau, doc truc tiep — khong chep lai)
+Output:      evidence/ablation/a4-grammar-ablation.csv
+
+Ket qua tong hop (22 cau):
+  COMMAND_LOST   12   lenh loi ngung hoat dong khi bo grammar
+  REFUSAL_LOST    2   cau dang le bi tu choi lai thanh lenh xe that
+  changed         2   doi ket qua nhung khong thanh lenh (mat cau hoi lai / mat ly do tu choi)
+  same            6   khong doi
+
+GIOI HAN PHAI KHAI KHI TRICH:
+  Tang embedding that (MiniLM ONNX) khong nap duoc trong unit test JVM, nen nhanh
+  no-grammar o day chi con keyword mapping. Bang nay vi vay DANH GIA THAP muc do hu
+  hai: tren may that, embedding con co the suy ra mot lenh xe cho nhung cau o day roi
+  vao Unknown. Khong duoc viet nguoc lai thanh "chi mat 12 cau".
+
+  Day la ablation o tang JVM, KHONG phai bang chung chay tren Device.

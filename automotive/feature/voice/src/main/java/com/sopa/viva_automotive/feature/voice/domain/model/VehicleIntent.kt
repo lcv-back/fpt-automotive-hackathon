@@ -1,5 +1,6 @@
 package com.sopa.viva_automotive.feature.voice.domain.model
 
+import com.sopa.viva_automotive.feature.voice.domain.delivery.DeliveryCommand
 import com.sopa.viva_automotive.vehicleservice.api.VehicleZone
 
 sealed interface VehicleIntent {
@@ -37,6 +38,8 @@ sealed interface VehicleIntent {
     data class RadioTune(val query: String? = null) : VehicleIntent
 
     data object RadioNextStation : VehicleIntent
+
+    data class Delivery(val command: DeliveryCommand) : VehicleIntent
 
     data class NotWired(val intentName: String) : VehicleIntent
 

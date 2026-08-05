@@ -1,14 +1,19 @@
 package com.sopa.viva_automotive.feature.voice.di
 
 import android.content.Context
+import com.sopa.viva_automotive.feature.voice.data.audio.AndroidVolumeController
 import com.sopa.viva_automotive.feature.voice.data.embedding.OnnxEmbeddingIntentMatcher
 import com.sopa.viva_automotive.feature.voice.data.vosk.VoskAsrClient
+import com.sopa.viva_automotive.feature.voice.domain.audio.VolumeController
+import com.sopa.viva_automotive.feature.voice.domain.delivery.DeliveryRepository
+import com.sopa.viva_automotive.feature.voice.domain.delivery.InMemoryDeliveryRepository
 import com.sopa.viva_automotive.feature.voice.domain.embedding.SemanticIntentMatcher
 import com.sopa.viva_automotive.feature.voice.integration.AppCommandGateway
 import com.viva.voice.agent.CommandGateway
 import com.viva.voice.agent.VoiceAgent
 import com.viva.voice.asr.AsrClient
 import com.viva.voice.intent.GrammarIntentRouter
+import com.viva.voice.intent.IntentRouter
 import com.viva.voice.tts.AndroidTtsSpeaker
 import com.viva.voice.tts.TtsSpeaker
 import dagger.Binds
@@ -41,7 +46,23 @@ abstract class VoiceModule {
         impl: VoskAsrClient,
     ): AsrClient
 
+    @Binds
+    @Singleton
+    abstract fun bindVolumeController(
+        impl: AndroidVolumeController,
+    ): VolumeController
+
+    @Binds
+    @Singleton
+    abstract fun bindDeliveryRepository(
+        impl: InMemoryDeliveryRepository,
+    ): DeliveryRepository
+
     companion object {
+        @Provides
+        @Singleton
+        fun provideIntentRouter(): IntentRouter = GrammarIntentRouter()
+
         @Provides
         @Singleton
         fun provideTtsSpeaker(@ApplicationContext context: Context): TtsSpeaker =
@@ -52,10 +73,11 @@ abstract class VoiceModule {
         fun provideVoiceAgent(
             asr: AsrClient,
             gateway: CommandGateway,
+            router: IntentRouter,
             tts: TtsSpeaker,
         ): VoiceAgent = VoiceAgent(
             asr = asr,
-            router = GrammarIntentRouter(),
+            router = router,
             gateway = gateway,
             tts = tts,
         )

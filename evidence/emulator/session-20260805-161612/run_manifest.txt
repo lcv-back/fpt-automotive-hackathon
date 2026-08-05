@@ -1,0 +1,18 @@
+emulator voice session
+======================
+thoi diem   : 2026-08-05T16:20:08.7449627+07:00
+commit      : d4de51de4bd650114ab8914e913a00129f5c7112
+suite       : D:\fpt-automative-hackathon\backend\scripts\..\suites\benchmark_v1.csv
+so cau chay : 22 (qua han: 0)
+thiet bi    : google/sdk_gcar_x86_64/emulator_car64_x86_64:14/UAA1.250512.001/13479943:userdebug/dev-keys
+apk         : D:\fpt-automative-hackathon\backend\scripts\..\..\automotive\app\build\outputs\apk\mock\debug\app-mock-debug.apk
+sha256      : F0C11FA0B61D299928F6471647F42B50F2595CAB129A3983662A4955E50D8134
+che do      : BOM TEXT (khong qua mic)
+              Do duoc : intent + verdict, tuc router -> guard -> skill.
+              KHONG do : mic, VAD, ASR, WER, do on, do tre dau-cuoi.
+              Moi luot co mot dong VIVA_BENCH_INJECT cung trace id trong
+              capture. Cac luot nay KHONG co speech_end nen tu dong nam
+              ngoai moi thong ke p50/p95 cua harness — dung co go rieng
+              de "cuu" chung.
+nhan        : EMULATOR AAOS tren may dev — KHONG phai Device CarSky.
+              Khong duoc dung file nay de dong E03/E04.

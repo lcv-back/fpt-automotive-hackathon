@@ -250,6 +250,47 @@ class LatencyTraceTest {
         assertTrue(t.isClosed())
     }
 
+    // --- luot khong co tieng noi (benchmark bom text) ----------------------
+
+    @Test
+    fun `a turn with no speech mark reports e2e as unusable, not as a fast turn`() {
+        // Luot bom text cho benchmark khong di qua mic hay ASR. Neu no van mang
+        // speech_start thi se de ra mot e2e_ms trong nhu do tre dau-cuoi that,
+        // trong khi chang ASR chua he chay — dung loai so lieu dep ma sai ma ca
+        // file nay duoc viet ra de chan.
+        //
+        // `e2e_ms=0` la cach khai dung theo hop dong: truong nay BAT BUOC phai
+        // co (parser Go bao loi neu thieu), va 0 chinh la quy uoc "khong co mark
+        // dung duoc". Harness khong doc so nay de tinh p50/p95 — no tinh
+        // e2e_computed tu speech_end -> tts_start trong cac dong event, ma luot
+        // nay khong co, nen no tu roi ra ngoai thong ke do tre.
+        val sink = RecordingTraceSink()
+        val t = trace(FakeClock(), sink)
+
+        t.mark(Stage.NLU_DONE)
+        t.mark(Stage.EXEC_DONE)
+        assertNull("khong co speech mark thi khong tinh duoc e2e", t.e2eMs())
+
+        t.summary("hạ điều hòa xuống 24 độ", "hvac_set_temp", TraceVerdict.Allow)
+
+        val summary = sink.lines.last { it.contains("VIVA_TRACE_SUMMARY") }
+        assertTrue(summary, summary.endsWith("|e2e_ms=0"))
+        assertFalse("khong duoc co dong speech_start nao", sink.lines.any { it.contains("speech_start") })
+    }
+
+    @Test
+    fun `marking speech_start is what turns e2e back on`() {
+        val clock = FakeClock(1_000_000_000L)
+        val sink = RecordingTraceSink()
+        val t = trace(clock, sink)
+
+        t.mark(Stage.SPEECH_START)
+        clock.now += 500_000_000L
+        t.summary("khoa cua", "door_lock", TraceVerdict.Allow)
+
+        assertEquals(500.0, t.e2eMs()!!, 0.001)
+    }
+
     // --- verdict grammar ---------------------------------------------------
 
     @Test

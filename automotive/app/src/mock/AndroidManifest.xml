@@ -2,6 +2,29 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
 
+    <!--
+        Biến thể `mock` cài được lên **điện thoại Android thường**, không chỉ AAOS.
+
+        Vì sao cần: emulator AAOS không có mic thật. Đo trên máy ngày 05/08 cho
+        `peak=2/32767` suốt 15 giây — mic ảo đẩy im lặng, nên không có cách nào
+        biết Vosk `vn-0.4` nghe tiếng Việt tốt tới đâu, cũng không quay được
+        video demo có giọng người. Điện thoại có mic thật và thường có sẵn giọng
+        TTS vi-VN, nên nó mở được cả hai thứ đó trong một buổi tối.
+
+        An toàn: `mock` chạy trên `MockVehicleRepository`, không đụng một API
+        `android.car` nào — xem `app/src/mock/.../VehicleServiceModule.kt`. Biến
+        thể `real` KHÔNG được ghi đè dòng này; nó vẫn đòi AAOS như cũ.
+
+        ⚠️ Khai nhãn cho đúng: mọi số đo từ điện thoại là *"chạy trên thiết bị
+        Android thường để kiểm phần giọng nói"*, KHÔNG phải "chạy trên AAOS" và
+        càng không phải "chạy trên CarSky". Bằng chứng automotive vẫn là lần
+        chạy trên emulator AAOS — xem `evidence/emulator/README.md`.
+    -->
+    <uses-feature
+        android:name="android.hardware.type.automotive"
+        android:required="false"
+        tools:replace="android:required" />
+
     <application>
         <!-- Development-only dummy vehicle driver: exported so `adb shell am
              broadcast` can inject vehicle-side VSTATE events into the mock
@@ -13,6 +36,19 @@
             tools:ignore="ExportedReceiver">
             <intent-filter>
                 <action android:name="com.sopa.viva_automotive.mock.VSTATE" />
+            </intent-filter>
+        </receiver>
+
+        <!-- Benchmark driver: đẩy một câu cho sẵn vào đúng đường xử lý voice,
+             không qua mic. Chỉ có trong biến thể mock, và service còn chặn thêm
+             một lớp nữa (bỏ qua nếu build không debuggable). Nó đo router →
+             guard → skill, KHÔNG đo ASR — xem SimulatedUtteranceReceiver. -->
+        <receiver
+            android:name=".debug.SimulatedUtteranceReceiver"
+            android:exported="true"
+            tools:ignore="ExportedReceiver">
+            <intent-filter>
+                <action android:name="com.sopa.viva_automotive.mock.UTTERANCE" />
             </intent-filter>
         </receiver>
     </application>

@@ -1,0 +1,37 @@
+VIVA_TRACE THAT DAU TIEN — EMULATOR AAOS
+=========================================
+
+Nhan: emulator evidence. KHONG dong duoc E03/E04 trong 18-CLAIM-EVIDENCE-MAP.
+Xem them: evidence/emulator/README.md
+Commit: 635aab695360e96f55398fcca0436ace401ec043
+Thoi diem: 2026-08-05T15:42:42+07:00 (Asia/Saigon)
+
+Y nghia: truoc hom nay moi dong VIVA_TRACE trong repo deu la fixture do
+doi tu sinh (android/voice/fixtures/golden_trace.log). Day la lan dau
+format duoc sinh boi app that chay tren mot may that.
+
+Cach tao
+--------
+$ adb logcat -c
+$ adb shell input tap 111 483        # bam mic tren thanh voice
+$ (cho 22 giay)
+$ adb logcat -d -s VIVA_TRACE:I
+
+Ket qua
+-------
+08-05 15:42:42.166  5805  5805 I VIVA_TRACE: VIVA_TRACE|637556de-7e1f-4941-b2c2-0336856f4fc0|speech_start|1299166037800
+08-05 15:42:42.167  5805  5805 I VIVA_TRACE: VIVA_TRACE|637556de-7e1f-4941-b2c2-0336856f4fc0|asr_sent|1299166923700
+08-05 15:42:58.011  5805  6422 I VIVA_TRACE: VIVA_TRACE|637556de-7e1f-4941-b2c2-0336856f4fc0|tts_start|1315011302500
+08-05 15:43:01.196  5805  5805 I VIVA_TRACE: VIVA_TRACE_SUMMARY|637556de-7e1f-4941-b2c2-0336856f4fc0|-|-|Error:speech_end|e2e_ms=15845
+
+Doc dung
+--------
+- `Error:speech_end` la KET QUA DUNG cua lan chay nay, khong phai loi:
+  khong co ai noi vao mic, engine cho het 15 giay
+  (VoiceAssistantService.kt LISTENING_TIMEOUT_MS = 15_000) roi bao
+  "chua nghe ro". e2e_ms=15845 gan het bang dung timeout do.
+- Hai o intent/utterance la "-" vi khong co cau nao duoc nhan.
+- Chua co lan chay nao CO tieng noi. Bo 22 cau cua benchmark van chua
+  chay tren may that: `run_benchmark.ps1 -Adb` chi HUNG logcat, khong bom
+  cau vao; service chi co ACTION_START_LISTENING, khong co duong text.
+  Muon co so lieu that thi phai co nguoi noi vao mic.

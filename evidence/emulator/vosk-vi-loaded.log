@@ -1,0 +1,30 @@
+MODEL VOSK TIENG VIET NAP THAT — EMULATOR AAOS
+===============================================
+
+Nhan: emulator evidence. Xem evidence/emulator/README.md
+Thoi diem: 2026-08-05T15:23:29+07:00 (Asia/Saigon)
+
+Y nghia: 24-N5 ghi "Chua chay model that lan nao" cho chat luong nhan
+dang tieng Viet. Day la bang chung model vn-0.4 NAP VA LANG NGHE duoc
+tren may that. No KHONG phai bang chung ve do chinh xac — chua co cau
+noi nao di qua no.
+
+Cach tao
+--------
+Settings -> Voice language -> "Tieng Viet" (mac dinh cua app la English:
+VoiceLanguage.fromStorageKey roi ve ENGLISH khi chua co gia tri luu).
+Sau do bam mic.
+
+Ket qua
+-------
+I VoskAPI  : ReadDataFiles():model.cc:259) Loading i-vector extractor from /data/user/10/com.sopa.viva_automotive.mock/files/model-vi/ivector/final.ie
+I VoskAPI  : ReadDataFiles():model.cc:292) Loading HCLG from /data/user/10/com.sopa.viva_automotive.mock/files/model-vi/graph/HCLG.fst
+I VoskAPI  : ReadDataFiles():model.cc:310) Loading words from /data/user/10/com.sopa.viva_automotive.mock/files/model-vi/graph/words.txt
+I VoskAPI  : ReadDataFiles():model.cc:321) Loading winfo /data/user/10/com.sopa.viva_automotive.mock/files/model-vi/graph/phones/word_boundary.int
+I VoskEngine: Loaded Vosk model for vi (model-vi)
+D VoskEngine: Listening with Vosk vi
+
+Luu y cho ban demo
+------------------
+App mac dinh chay tieng Anh va nap model-en-us. Sau moi lan cai moi,
+phai vao Settings doi sang "Tieng Viet" truoc khi quay demo.

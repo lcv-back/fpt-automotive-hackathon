@@ -19,15 +19,19 @@ cụ thể lúc gấp rút trước deadline.
 được. Mỗi người làm trên `feat/<tên>-<module>`, merge khi xanh."* — không có
 nhánh `dev` riêng, branch feature checkout thẳng từ `main`.
 
-**Quy tắc cho `backend/` (theo yêu cầu của Vĩ, có thể khác quy ước Android ở trên):**
+> ⚠️ **Sửa 03/08 — bản trước mô tả một luồng không tồn tại.** File này từng ghi
+> `feature/* → dev → main`, nhưng remote `lcv-back/fpt-automotive-hackathon`
+> **không có nhánh `dev`** và chưa bao giờ có. Một quy tắc mô tả sai thực tế thì
+> tệ hơn không có quy tắc: người mới làm theo sẽ `git checkout dev` và fail ngay.
+> Luồng thật, thống nhất với `03-contracts.md` §9, là **`feature/* → main`**.
 
-1. Hai nhánh dài hạn: `main` (luôn build được, là thứ được nộp) và `dev`
-   (nhánh tích hợp — mọi nhánh tính năng merge vào đây trước, `main` chỉ
-   nhận merge từ `dev` khi ổn định).
-2. **Không code trực tiếp trên `main` hoặc `dev`.** Mọi thay đổi — kể cả
-   nhỏ — đi qua một nhánh riêng, checkout từ `dev`:
+**Quy tắc cho `backend/`:**
+
+1. Một nhánh dài hạn duy nhất: `main` — luôn build được, là thứ được nộp.
+2. **Không code trực tiếp trên `main`.** Mọi thay đổi — kể cả nhỏ — đi qua một
+   nhánh riêng, checkout từ `main`, và về `main` bằng Pull Request:
    ```
-   git checkout dev
+   git checkout main
    git pull
    git checkout -b feature/<mo-ta-ngan>
    ```
@@ -35,23 +39,21 @@ nhánh `dev` riêng, branch feature checkout thẳng từ `main`.
    - `feature/<mo-ta>` — tính năng mới hoặc thay đổi hành vi (vd:
      `feature/harness-adb-source`, `feature/carsky-nodes-cmd`)
    - `fix/<mo-ta>` — sửa lỗi (vd: `fix/csv-empty-sample-crash`)
-   - `hotfix/<mo-ta>` — sửa gấp trên `main` đã lỡ release, sau đó merge
-     ngược lại cả `main` và `dev`
+   - `hotfix/<mo-ta>` — sửa gấp cho bản đã nộp
    - `chore/<mo-ta>` — việc không đổi hành vi runtime: cập nhật docs, CI,
      dọn dẹp, đổi tên
    - `refactor/<mo-ta>` — đổi cấu trúc code, giữ nguyên hành vi
-4. Merge về `dev` khi: `go build ./...`, `go vet ./...`, `go test ./...`
-   đều xanh. Không merge "để sửa sau".
+4. Merge về `main` khi: `go build ./...`, `go vet ./...`, `go test ./...`
+   đều xanh — đúng ba bước CI `backend-ci.yml` chạy, cộng `gofmt -l .` phải
+   rỗng (CI fail nếu có file chưa format). Không merge "để sửa sau".
 5. Xoá nhánh sau khi merge (`git branch -d feature/...`) — nhánh sống lâu
    dễ conflict và không ai nhớ nó còn dở gì.
 
-**Tradeoff:** thêm một bước gián tiếp (`dev`) so với quy ước `feat/* -> main`
-của cả đội nghĩa là nhiều thao tác git hơn cho một CLI tool cá nhân — chấp
-nhận được vì `backend/` ít người đụng vào cùng lúc hơn repo Android, và cái
-giá của một `main` bị hỏng ngay trước demo cao hơn nhiều so với vài giây gõ
-thêm lệnh. Nếu `backend/` sau này chuyển vào cùng repo/CI với Android, báo
-cả đội và thống nhất lại một quy ước duy nhất — đừng để hai chuẩn branch
-song song trong cùng một repo.
+**Tradeoff:** một PR cho mỗi thay đổi nhỏ tốn thêm vài phút so với commit thẳng
+lên `main`, nhưng `backend/` nằm chung repo với Android nên một `main` hỏng làm
+kẹt cả bốn người, không riêng người gây ra. Đổi lại: chỉ có **một** chuẩn branch
+trong repo (`feature/* → main`), thay vì hai chuẩn song song như bản trước mô tả
+— hai chuẩn trong một repo là cách chắc chắn để không ai theo chuẩn nào.
 
 ## Commit message
 
@@ -108,19 +110,32 @@ Ví dụ không đạt: `update code`, `fix bug`, `wip`, `asdf`.
 | Blueprint clone thất bại sau khi export backup thành công | `SafeClone` vẫn trả backup đã lưu về cho caller — CLI ghi file backup trước, in lỗi clone sau, không làm mất backup đã lấy được | — |
 | Log input quá lớn (trỏ nhầm file, hoặc filter adb thiếu nên dump cả logcat) | Giới hạn cứng 200MiB (`maxLogBytes` trong `logsource/scan.go`) — vượt là báo lỗi rõ ràng ngay, không cố load hết vào RAM rồi bị OS kill tiến trình | — |
 | Ký tự tiếng Việt / dấu phẩy trong `utterance` khi ghi CSV | `encoding/csv` (Go stdlib) tự quote/escape đúng chuẩn RFC 4180 — không tự nối chuỗi CSV bằng tay | — |
+| Một `stage` xuất hiện 2 lần trong log của cùng `traceId` | **Giữ giá trị đầu**, ghi warning. Đúng theo §1 (`ghi đè = bỏ qua`): mốc đánh 2 lần sẽ **rút ngắn** đoạn đo, tức là app càng bug thì p95 càng đẹp | — |
+| Hai dòng `VIVA_TRACE_SUMMARY` cho cùng một `traceId` | Giữ dòng đầu, ghi warning — §1.1 nói đúng 1 dòng/lượt; 2 dòng nghĩa là trùng traceId hoặc double-emit, và mọi thống kê per-turn sẽ nhập nhằng | — |
+| `verdict` không khớp grammar §1.2 (VD `Allowed`, `Deny` không có rule) | Phân loại thành `Unknown` (hoặc giữ kind nhưng detail rỗng) + warning, **vẫn nằm trong mẫu**. Loại bỏ lượt không phân loại được sẽ âm thầm làm đẹp mọi con số tính sau đó | — |
+| Trace có mốc nhưng không có summary (lượt bỏ dở) | Đếm riêng ở `MissingSummary`, không gộp vào bất kỳ verdict nào — *"không biết lượt đó kết thúc ra sao"* là một kết quả riêng | — |
 | Response JSON của CarSky có field không đoán trước được | Không có structs — decode raw JSON, in/lưu nguyên văn | **Việc thật cần làm**: kéo `GET /api/v1/openapi` khi có token, viết structs thật thay `json.RawMessage` |
 | Nhiều thành viên chạy `carsky blueprint clone` cùng lúc trên cùng blueprint | Không có lock phía client — có thể tạo 2 bản clone nếu 2 người bấm gần như đồng thời | Đây là giới hạn của CarSky API (không có endpoint lock từ phía client gọi được an toàn ngoài `/blueprints/:id/lock`, chưa dùng) — **thống nhất bằng quy trình team** (chỉ 1 người giữ quyền clone) thay vì cố giải quyết bằng code |
 
 ## Câu hỏi còn treo — hỏi người, đừng tự đoán tiếp
 
-- `CARSKY_BASE_URL` thật là gì? `docs/link.md` chỉ có URL web UI
-  (`https://hackathon-2.carsky.io/`), chưa chắc trùng host API.
-- Format chuỗi `Verdict` trong dòng `VIVA_TRACE_SUMMARY` — Kotlin
-  `sealed class Verdict` có `Allow/Deny/Confirm` kèm field phụ (`rule`,
-  `reasonVi`...); log line hiện chỉ ghi 1 field `verdict` dạng string, chưa
-  rõ serialize thành gì (`"Allow"`? `"Deny:G1_SPEED_LOCK"`?). Hỏi Long
-  trước khi dùng field này để lọc pass/fail.
-- `backend/` này nằm trong repo `fpt-automative-hackathon` (chủ yếu chứa
-  docs/planning) — chưa rõ đây có phải repo Git chung cả đội dùng cho task
-  V4 (`Repo Git + CI build APK`) hay là repo riêng của Vĩ. Nếu là repo
-  chung, cần thống nhất lại quy tắc branch ở trên với `03-contracts.md` §9.
+- ~~`CARSKY_BASE_URL` thật là gì?~~ — ✅ **đã xác nhận 02/08, gọi thật, có phản hồi**:
+  `https://hackathon-2.carsky.io/api/v1`. Chi tiết đầy đủ (auth, endpoint thật,
+  phần đang chết) ở `docs/backend-docs/carsky-api.md`. Tóm tắt ba điều quan trọng:
+  ⑴ **xác thực bằng API key, không phải JWT của phiên web** — JWT lấy từ trình
+  duyệt bị trả `Invalid JWT`, API key thì qua (`x-api-key` hoặc
+  `Authorization: Bearer <key>`); ⑵ spec đầy đủ nằm ở **`/api/v1/openapi.json`**
+  (không phải `/openapi`), 71 endpoint, đã dùng để đối chiếu client;
+  ⑶ họ endpoint điều khiển VM (`screenshot`, `shell`, `adb-exec`, `tap`…) trả
+  `502 "Conduit service not configured"` — thiếu cấu hình phía nền tảng, không
+  phải lỗi key.
+- ~~Format chuỗi `Verdict` trong dòng `VIVA_TRACE_SUMMARY`~~ — ✅ **đã trả lời
+  29/07**, `vong2/03-contracts.md` §1.2:
+  `verdict := "Allow" | "Deny:"<RULE_ID> | "Confirm:"<RULE_ID> | "Error:"<STAGE_ID>`,
+  tách bằng dấu `:` **đầu tiên**. Hiện thực ở `internal/domain/verdict.go`,
+  test ở `verdict_test.go`.
+- ~~`backend/` có phải repo chung cả đội không~~ — ✅ **đã rõ 03/08**: đây là repo
+  chung (`lcv-back/fpt-automotive-hackathon`), và **remote không có nhánh `dev`**.
+  Quy tắc branch ở đầu file mô tả luồng `feature/* → dev → main` **không khớp
+  thực tế**; luồng đang dùng là `feature/* → main` đúng như `03-contracts.md` §9.
+  Xem mục "Quy tắc branch" đã sửa ở trên.

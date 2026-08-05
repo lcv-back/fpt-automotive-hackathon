@@ -3,7 +3,11 @@
 Ngày dự kiến chạy: **02/08/2026**
 Mục tiêu: hoàn thành **một lượt liên tục**, thu evidence thật và chốt claim nào được phép dùng cho C2 ngày 03/08.
 
-**Trạng thái lúc lập runbook:** **CHƯA CHẠY** — `adb devices -l` không trả về Device nào. Vì vậy E01–E11 chưa được tạo và mọi gate Device/benchmark vẫn giữ đỏ cho tới khi cả đội chạy runbook trên CarSky.
+**Cập nhật 03/08 23:13 (Asia/Saigon):** runbook **CHƯA CHẠY**. E01 đã có bản
+**PARTIAL** từ CarSky web ADB shell (`VIVA` connected, serial/fingerprint/model
+đã đọc trực tiếp), nhưng local `adb devices -l`, E02–E11 và toàn bộ lượt demo
+vẫn chưa có. Vì vậy các gate Device/benchmark vẫn giữ đỏ cho tới khi cả đội
+chạy trọn runbook trên CarSky.
 
 > Đây không phải buổi “đọc slide”. Nếu không có Device hoặc service framework, vẫn chạy mock để kiểm tra kịch bản nhưng phải gắn nhãn **MÔ PHỎNG** và giữ các gate tương ứng màu đỏ.
 

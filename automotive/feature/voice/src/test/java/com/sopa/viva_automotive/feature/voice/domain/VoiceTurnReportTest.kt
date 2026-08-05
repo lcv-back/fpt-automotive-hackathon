@@ -1,10 +1,93 @@
 package com.sopa.viva_automotive.feature.voice.domain
 
+import com.sopa.viva_automotive.feature.voice.domain.delivery.DeliveryCommand
 import com.sopa.viva_automotive.feature.voice.domain.model.VehicleIntent
+import com.sopa.viva_automotive.vehicleservice.api.SafetyConfirmationRequiredException
+import com.sopa.viva_automotive.vehicleservice.api.SafetyDeniedException
+import com.sopa.viva_automotive.vehicleservice.api.SafetyRules
 import org.junit.Assert.assertEquals
 import org.junit.Test
 
 class VoiceTurnReportTest {
+
+    @Test
+    fun `a guard denial reports Deny with the rule id A1 joins on`() {
+        // This is the assertion N4b's ablation stands on: if the wire says
+        // Error:exec_done instead, `harness compare --verdicts-out` counts zero
+        // Deny:G1_SPEED_LOCK in both arms and the table proves nothing.
+        assertEquals(
+            "Deny:G1_SPEED_LOCK",
+            VoiceTurnReport.verdictFor(
+                VehicleIntent.SetDoorLock(locked = false),
+                SafetyDeniedException(
+                    SafetyRules.SPEED_LOCK,
+                    "Xe đang chạy, mình chưa mở cửa được.",
+                    "Bạn dừng hẳn rồi nói lại nhé.",
+                ),
+            ).wire,
+        )
+    }
+
+    @Test
+    fun `an unreadable speed denies rather than falling through to a generic error`() {
+        assertEquals(
+            "Deny:G1_STALE_STATE",
+            VoiceTurnReport.verdictFor(
+                VehicleIntent.SetDoorLock(locked = false),
+                SafetyDeniedException(
+                    SafetyRules.STALE_STATE,
+                    "Mình chưa đọc được tốc độ hiện tại nên chưa thể mở khoá cửa.",
+                ),
+            ).wire,
+        )
+    }
+
+    @Test
+    fun `a guard confirmation is Confirm with its own rule id`() {
+        assertEquals(
+            "Confirm:G2_CONFIRM_DOOR",
+            VoiceTurnReport.verdictFor(
+                VehicleIntent.SetDoorLock(locked = false),
+                SafetyConfirmationRequiredException(
+                    SafetyRules.CONFIRM_DOOR,
+                    "Bạn có chắc muốn mở khoá cửa không?",
+                ),
+            ).wire,
+        )
+    }
+
+    @Test
+    fun `a denied turn speaks the reason verbatim so the pre-rendered clip still matches`() {
+        // PrerenderedPrompts.rawNameFor() is an exact-text lookup and this
+        // sentence is tts_deny_door_while_moving. Appending the suggestion would
+        // miss the clip and leave a device with no vi-VN voice playing a bare
+        // ping instead of the refusal.
+        assertEquals(
+            "Xe đang chạy, mình chưa mở cửa được.",
+            VoiceTurnReport.failureSpeech(
+                VehicleIntent.SetDoorLock(locked = false),
+                SafetyDeniedException(
+                    SafetyRules.SPEED_LOCK,
+                    "Xe đang chạy, mình chưa mở cửa được.",
+                    "Bạn dừng hẳn rồi nói lại nhé.",
+                ),
+            ),
+        )
+    }
+
+    @Test
+    fun `a denial without a suggestion speaks only the reason`() {
+        assertEquals(
+            "Mình chưa đọc được tốc độ hiện tại nên chưa thể mở khoá cửa.",
+            VoiceTurnReport.failureSpeech(
+                VehicleIntent.SetDoorLock(locked = false),
+                SafetyDeniedException(
+                    SafetyRules.STALE_STATE,
+                    "Mình chưa đọc được tốc độ hiện tại nên chưa thể mở khoá cửa.",
+                ),
+            ),
+        )
+    }
 
     @Test
     fun `intent names use the contract vocabulary the harness groups by`() {
@@ -20,6 +103,42 @@ class VoiceTurnReportTest {
         assertEquals(
             "delivery_next_stop",
             VoiceTurnReport.intentName(VehicleIntent.NotWired("delivery_next_stop")),
+        )
+    }
+
+    @Test
+    fun `delivery turns report their grammar intent name`() {
+        assertEquals(
+            "delivery_confirm",
+            VoiceTurnReport.intentName(VehicleIntent.Delivery(DeliveryCommand.Confirm("A12"))),
+        )
+        assertEquals(
+            "delivery_next_stop",
+            VoiceTurnReport.intentName(VehicleIntent.Delivery(DeliveryCommand.NextStop)),
+        )
+    }
+
+    @Test
+    fun `asking for delivery confirmation is Confirm with the rule id, not an error`() {
+        // N4/N5 group the benchmark by this rule id; filing it as Error would
+        // make the safety rule look like a defect.
+        assertEquals(
+            "Confirm:G2_CONFIRM_DELIVERY",
+            VoiceTurnReport.verdictFor(
+                VehicleIntent.Delivery(DeliveryCommand.Confirm("A12")),
+                ConfirmationRequiredException("G2_CONFIRM_DELIVERY", "Xác nhận đã giao đơn A 12?"),
+            ).wire,
+        )
+    }
+
+    @Test
+    fun `the confirmation question itself is what the driver hears`() {
+        assertEquals(
+            "Xác nhận đã giao đơn A 12?",
+            VoiceTurnReport.failureSpeech(
+                VehicleIntent.Delivery(DeliveryCommand.Confirm("A12")),
+                ConfirmationRequiredException("G2_CONFIRM_DELIVERY", "Xác nhận đã giao đơn A 12?"),
+            ),
         )
     }
 

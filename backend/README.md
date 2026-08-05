@@ -18,13 +18,92 @@ and a stdout summary.
 ```
 viva-tools harness report --input path/to/log.txt --out report.csv
 viva-tools harness report --adb --serial <device-serial> --out report.csv
+
+# Full evidence set for one run — aggregate + per-turn rows + verdict counts
+viva-tools harness report --input run.log --variant full \
+  --out report.csv --per-trace traces.csv --verdicts verdicts.csv
 ```
 
-Try it against the bundled fixture:
+**Which number is "end-to-end".** `03-contracts.md` §1.3 defines it as
+`speech_end → tts_start`, reported as `e2e_computed`. That is the metric the
+p95 < 1500 ms commitment is made on. `screen_latency` is the same window
+measured to `render_done` instead. The two `*_incl_speech` rows start at
+`speech_start` and therefore include however long the driver spoke — they are
+kept for continuity with earlier reports and **must not** be quoted as
+end-to-end. `e2e_reported_minus_computed` cross-checks the app's own figure
+against the harness's recomputation; a non-zero spread means the two
+definitions have drifted.
+
+Try it against the bundled fixture, or against the golden logs Long handed
+over (which `go test` also asserts on):
 
 ```
 go run ./cmd/viva-tools harness report --input testdata/sample_trace.log --out report.csv
+go run ./cmd/viva-tools harness report --input ../android/voice/fixtures/golden_trace.log --out report.csv
 ```
+
+### `viva-tools harness compare`
+
+Before/after table for an ablation run (N4a/N4b): same metrics, two captures,
+plus the change in verdict counts — which is how "turn SafetyGuard off and
+`Deny:G1_SPEED_LOCK` stops firing" becomes a table instead of a hand-replayed
+demo.
+
+```
+viva-tools harness compare --baseline full.log --candidate no_guard.log \
+  --baseline-label guard_on --candidate-label guard_off \
+  --out compare.csv --verdicts-out verdicts_compare.csv
+```
+
+A metric that exists in only one run is still printed, marked
+`not comparable` — in an ablation the disappearance *is* the finding (drop the
+`VhalRepository` callback and `hmi_render` never fires at all).
+
+### `viva-tools harness verify`
+
+Runs a benchmark suite against a capture and reports PASS/FAIL per utterance
+(V11), plus the p50/p95 over the turns that produced one (V10/V12).
+
+```
+viva-tools harness verify --suite suites/benchmark_v1.csv --input run.log \
+  --variant quiet --out results.csv --summary-out summary.csv \
+  --evidence-dir screenshots/
+```
+
+`suites/benchmark_v1.csv` is the shipped 22-utterance suite: the ten core
+intents of `03-contracts.md` §3, the five M7 complex situations, the wrong
+wake phrase and one of the five commands cut on 29/07.
+
+| Column | Meaning |
+|---|---|
+| `id` | Stable case id; also the filename stem the results join evidence on |
+| `utterance` | What the demo operator says |
+| `expect_intent` / `expect_verdict` | Target behaviour, in `§1.2` verdict grammar. A bare kind (`Deny`) accepts any rule; `Deny:G1_SPEED_LOCK` pins the rule |
+| `evidence_id` | Screenshot stem looked up under `--evidence-dir` |
+| `gate` | Non-empty = blocked on work that has not landed. A failure here is a **known gap**, counted separately and does not make the run red |
+
+Two matching modes. `--match order` (default) pairs the Nth case with the Nth
+turn, because the utterance in the log is *what ASR heard*, not what was said —
+matching on text would silently drop every misrecognized turn, which is
+precisely the data a benchmark exists to measure. `--match utterance` pairs on
+normalized text when turns were captured out of order.
+
+Exit code is 1 only when an **ungated** case fails, so this is safe to run in
+CI while T5/D7 are still landing.
+
+### `scripts/run_benchmark.ps1`
+
+One run, all artifacts, plus a `run_manifest.txt` carrying the commit, the
+suite hash and whether the worktree was dirty — a p95 with no commit next to it
+cannot be defended in a write-up.
+
+```powershell
+.\scripts\run_benchmark.ps1 -Variant quiet   -Log D:\runs\quiet.log
+.\scripts\run_benchmark.ps1 -Variant highway -Adb -Serial <device-serial>
+```
+
+For V12 (20 utterances × 3 noise levels) run it once per noise level and
+concatenate the three `summary.csv` files.
 
 ### `viva-tools carsky ...`
 

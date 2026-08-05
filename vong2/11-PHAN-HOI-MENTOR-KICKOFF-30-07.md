@@ -144,22 +144,30 @@ vào**, thì bỏ nó đi là **cả app HVAC lẫn app DOOR lẫn AI Agent cùn
 **T3 không bị bỏ.** Code `VhalRepository` chuyển vào trong service; các app nhận một client AIDL mỏng.
 Ước tính ~3h trong 5h của M1 là đóng gói lại T3, không phải viết mới.
 
-### Việc phải kiểm chứng NGAY (M1a) — chưa ai biết câu trả lời
+### Việc phải kiểm chứng NGAY (M1a) — đã trả lời một phần 03/08
 
 `06` PHẦN 9 giao báo cáo spike **S2 (VHAL)** từ 26/07 và **tới giờ chưa ai chốt**. Câu hỏi treo:
 **APK thường có `setProperty` được HVAC không, hay bị từ chối quyền?**
 
-Nếu bị từ chối thì đường cài là (bản `userdebug`, phải kiểm trên Device CarSky):
+Probe CarSky 03/08 đã xác nhận fingerprint `userdebug/test-keys`,
+`ro.debuggable=1`, `ro.secure=1` và `/system/priv-app` tồn tại. Shell hiện tại
+vẫn là `shell` và partition chưa writable; `adb root` / `adb remount` còn phải
+chạy thật. Nếu APK thường bị từ chối thì đường cài repo-aligned là:
 
 ```bash
 adb root && adb remount
-adb push VivaCarService.apk /system/priv-app/VivaCarService/
-adb push privapp-permissions-viva.xml /system/etc/permissions/
+adb push VivaAutomotive.apk /system/priv-app/VivaAutomotive/
+adb push automotive/app/privapp-permissions-com.sopa.viva_automotive.xml /system/etc/permissions/
 adb reboot
 ```
 
-Manifest cần `<uses-library android:name="android.car"/>` và các quyền `CONTROL_CAR_CLIMATE`,
-`CONTROL_CAR_DOORS`, `CAR_SPEED`.
+Manifest cần `<uses-library android:name="android.car"/>`. Allowlist hiện có
+đúng package `com.sopa.viva_automotive`; service/SafetyGuard nên nhập vào package
+này thay vì dựng thêm `com.viva.cockpit`, trừ khi đội chủ động chấp nhận thêm
+ranh giới IPC/signature permission của một APK thứ hai. **Gap còn mở:** manifest
+yêu cầu `android.car.permission.CAR_SPEED` nhưng allowlist hiện chưa có quyền
+này; phải bổ sung hoặc chứng minh image cấp nó bằng cơ chế khác trước khi claim
+SafetyGuard đọc tốc độ thật.
 
 > ⚠️ **Đây là rủi ro chặn cả T3, T4, T7 lẫn M1 — không riêng M1.** Nếu quyền không cấp được và không
 > remount được, mọi lệnh HVAC/DOOR không đổi được property thật, và **cả xương sống đổ**. Phải biết câu
@@ -281,7 +289,7 @@ nếu ④ ở PHẦN 7 đỏ:
 
 | # | Câu | Vì sao gấp |
 |---|---|---|
-| d | **Device AAOS trên CarSky có phải bản `userdebug` và `adb root` / `adb remount` được không ạ?** Nếu app của đội cần quyền `CONTROL_CAR_CLIMATE` mà không cài privileged được thì đội phải đổi cách tiếp cận | Chặn M1a — và qua đó chặn cả xương sống |
+| d | **ĐÃ TRẢ LỜI MỘT PHẦN 03/08:** Device là `userdebug/test-keys`, `ro.debuggable=1`, `/system/priv-app` có 61 entry. Câu còn lại cho BTC: **workflow được hỗ trợ để `adb root` / `adb remount` và push allowlist/APK là gì?** | Không hỏi lại phần `userdebug`; chỉ cần chốt đường remount/cài privileged. M1a vẫn mở cho tới khi có write/readback thật |
 | e | **Đội được sửa tới đâu trên guest AAOS?** Chỉ cài APK, hay được thay image / thêm service vào system partition? | Quyết định giữa đường B và đường A ở PHẦN 3 |
 | f | **Script Node IVI Gateway / PWT Gateway trong blueprint mẫu — đội clone rồi sửa mapping có đúng cách anh gợi ý không ạ**, hay anh muốn đội tự viết node mới? | Ảnh hưởng trực tiếp cách khai `provided / configured / modified / new` trong Baseline Manifest N3 |
 

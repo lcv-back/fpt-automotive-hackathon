@@ -1,0 +1,23 @@
+id,utterance,full_intent,no_grammar_intent,delta
+B01,"Viva ơi hạ điều hòa xuống 24 độ",SetTemperature(24.0),Unknown,COMMAND_LOST
+B02,"hạ điều hòa xuống 22 độ",SetTemperature(22.0),Unknown,COMMAND_LOST
+B03,"đặt nhiệt độ 26 độ",SetTemperature(26.0),SetTemperature(26.0),same
+B04,"đặt nhiệt độ 40 độ",Clarification,SetTemperature(40.0),REFUSAL_LOST
+B05,"quạt mức 2",SetFanSpeed(2),SetFanSpeed(2),same
+B06,"quạt mạnh lên",Clarification,Unknown,changed
+B07,"quạt mức 3",SetFanSpeed(3),SetFanSpeed(3),same
+B08,"khóa cửa",SetDoorLock(true),Unknown,COMMAND_LOST
+B09,"mở cửa",SetDoorLock(false),SetDoorLock(false),same
+B10,"mở cửa",SetDoorLock(false),SetDoorLock(false),same
+B11,"tăng âm lượng",VolumeAdjust(1),Unknown,COMMAND_LOST
+B12,"giảm âm lượng",VolumeAdjust(-1),Unknown,COMMAND_LOST
+B13,"phát nhạc",NotWired(media_play),Unknown,COMMAND_LOST
+B14,"chuyển bài",MediaNext,Unknown,COMMAND_LOST
+B15,"dừng nhạc",NotWired(media_pause),Unknown,COMMAND_LOST
+B16,"chặng tiếp theo là gì",Delivery(delivery_next_stop),Unknown,COMMAND_LOST
+B17,"đơn A12 thế nào",Delivery(delivery_order_status),Unknown,COMMAND_LOST
+B18,"xác nhận giao thành công đơn A12",Delivery(delivery_confirm),Unknown,COMMAND_LOST
+B19,"xác nhận giao thành công đơn A12",Delivery(delivery_confirm),Unknown,COMMAND_LOST
+B20,"đặt bàn ăn tối",Unknown,Unknown,same
+B21,"Siri ơi hạ điều hòa xuống 24 độ",Clarification,Unknown,changed
+B22,"bật điều hòa",Clarification,SetAc(true),REFUSAL_LOST

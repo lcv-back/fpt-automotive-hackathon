@@ -1,0 +1,49 @@
+INSTALL / LAUNCH / CRASH SCAN — EMULATOR AAOS, KHONG PHAI CARSKY
+================================================================
+
+Nhan: emulator evidence. KHONG dong duoc E05 trong 18-CLAIM-EVIDENCE-MAP.
+Xem them: evidence/emulator/README.md
+Commit: 635aab695360e96f55398fcca0436ace401ec043
+Thoi diem: 2026-08-05T15:40..15:44+07:00 (Asia/Saigon)
+
+1. CAI DAT
+----------
+$ adb install -r -t app-mock-debug.apk
+Performing Streamed Install
+Success
+
+2. KHOI DONG
+------------
+$ adb shell am start -n com.sopa.viva_automotive.mock/com.sopa.viva_automotive.MainActivity
+Starting: Intent { cmp=com.sopa.viva_automotive.mock/com.sopa.viva_automotive.MainActivity }
+
+Man hinh len day du: Climate (Driver/Passenger 22.0 C, Fan speed 3),
+Vehicle status (toc do/xang/pin/cua), Settings, thanh voice.
+
+3. QUET CRASH
+-------------
+$ adb logcat -d -b crash | grep -E "FATAL|viva"
+(khong co dong nao)
+
+$ adb shell ls /data/anr
+(rong)
+
+$ adb shell ps -A -o PID,ETIME,NAME | grep viva
+ 5805       02:08 com.sopa.viva_automotive.mock
+
+Process song lien tuc qua toan bo phien thao tac (~20 phut, gom: chuyen
+tab Climate/Vehicle/Settings, doi ngon ngu, 3 lan bat mic, nhieu lan bam
+cong tac khoa cua, mot lan cai de va khoi dong lai).
+
+4. LAN CHAY TRUOC DO (cung phien, ban APK truoc khi sua)
+--------------------------------------------------------
+Ban build 15:03 cung cai va chay khong crash. Hai loi tim ra o ban do la
+loi hanh vi (guard chan im lang; toc do mock ghi de), khong phai crash —
+xem commit 635aab6.
+
+5. DIEU CHUA LAM
+----------------
+- Chua cai bien the `real`: can CarService/VHAL that va quyen privileged
+  (privapp allowlist), chua thu tren emulator.
+- Chua chay lien tuc 10 phut cho kich ban demo E10.
+- Chua co bat ky bang chung nao tren Device CarSky.

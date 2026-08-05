@@ -1,0 +1,43 @@
+Evidence: viva-asr container — lan chay THAT dau tien
+Label: LOCAL DOCKER — khong phai CarSky, khong phai Device
+Captured at: 2026-08-04T13:27:58.8735321+07:00
+Repository commit: 4eecc882e633acd000db26531f88c8a4c96e6824
+Image: viva-asr:phowhisper-tiny-int8
+Image id: sha256:6e0bdff10cfe0e0850e6413c308ac7c4a665870d2e4eec3668d932d4b3cffc9d
+Image size: 965 MB
+Model: vinai/PhoWhisper-tiny -> CTranslate2 INT8 (convert trong stage build)
+Host CPU: may dev Windows + Docker Desktop (WSL2)
+
+Lenh:
+  docker build -t viva-asr:phowhisper-tiny-int8 asr/
+  docker run -d -p 8080:8080 viva-asr:phowhisper-tiny-int8
+  py asr/scripts/bench_tts_samples.py --url http://127.0.0.1:8080
+
+Dau vao: 36 clip android/voice/src/main/res/raw/tts_*.wav
+Ground truth: android/voice/scripts/tts_prompts.tsv
+
+KET QUA TOC DO (day la so co gia tri nhat o day)
+  RTF trung binh : 0.186    median 0.167
+  server_ms      : p50=439  p95=667  max=1472
+  /health        : 200 ngay lan poll dau (model nap xong truoc khi cho)
+
+KET QUA NHAN DANG (doc ky phan gioi han truoc khi trich)
+  WER trung binh : 0.411    median 0.444
+  WER = 0        : 3/36 clip
+  Phan bo        : <=0.2 la 9 clip · 0.2-0.5 la 17 · >0.5 la 10
+
+GIOI HAN — bat buoc khai kem khi trich bat ky so nao o tren:
+  1. Clip la giong TTS TONG HOP, khong phai nguoi noi trong cabin.
+  2. Clip goc 22.05 kHz, service chi nhan 16 kHz, nen script resample bang noi
+     suy tuyen tinh — cach re va XAU hon filter chuan. Chat luong am thanh dau
+     vao vi vay thap hon thuc te.
+  3. RTF/latency do tren CPU may dev, KHONG phai CPU container node CarSky.
+  4. Chua chay tren CarSky lan nao (V7 chua lam).
+
+QUAN SAT DANG CHU Y (chua sua, ghi lai de khong quen):
+  - Nhieu clip mat TU DAU CAU ("Da dat quat muc 0" -> "da dac quat muc khong",
+    "Minh chua nghe ro" -> "nghe ro"). Nghi do thieu khoang lang dau clip.
+  - Loi pho bien la PHU AM/DAU gan giong: "dat"->"dac", "do C"->"do xe".
+    WER dem la sai hoan toan, nhung intent router lam viec tren tu khoa nen
+    anh huong that su can do bang intent accuracy, khong phai WER.
+  - tts_volume_up tra ve chuoi rong -> WER 1.0.

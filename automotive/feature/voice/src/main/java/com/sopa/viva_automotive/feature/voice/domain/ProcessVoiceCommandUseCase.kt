@@ -8,15 +8,22 @@ import com.sopa.viva_automotive.feature.voice.domain.model.VehicleIntent
 import com.sopa.viva_automotive.feature.voice.domain.model.VehicleIntentTypes
 import com.sopa.viva_automotive.vehicleservice.api.VehicleZone
 import com.viva.voice.intent.GrammarIntentRouter
+import com.viva.voice.intent.IntentRouter
 import com.viva.voice.intent.RouteResult
 import javax.inject.Inject
 
+/**
+ * [grammarRouter] is injected rather than constructed inline so the grammar
+ * tier can be switched off for the N4 ablation — `16-QUYET-DINH-DUONG-NLU.md`
+ * calls for exactly that measurement ("bỏ grammar → mọi lệnh phụ thuộc ngưỡng
+ * cosine"). Production wiring in `VoiceModule` binds the real
+ * [GrammarIntentRouter]; behaviour is unchanged.
+ */
 class ProcessVoiceCommandUseCase @Inject constructor(
     private val commandMappingRepository: CommandMappingRepository,
     private val semanticIntentMatcher: SemanticIntentMatcher,
+    private val grammarRouter: IntentRouter,
 ) {
-
-    private val grammarRouter = GrammarIntentRouter()
 
     suspend operator fun invoke(utterance: String): VehicleIntent {
         val text = normalize(utterance)
@@ -27,6 +34,7 @@ class ProcessVoiceCommandUseCase @Inject constructor(
                 is AutomotiveVoiceAction.VehicleControl -> action.intent
                 is AutomotiveVoiceAction.VolumeAdjust -> VehicleIntent.VolumeAdjust(action.delta)
                 AutomotiveVoiceAction.MediaNext -> VehicleIntent.MediaNext
+                is AutomotiveVoiceAction.Delivery -> VehicleIntent.Delivery(action.command)
                 null -> if (isVehicleIntent(coreRoute.intent.name)) {
                     VehicleIntent.Unknown(utterance)
                 } else {

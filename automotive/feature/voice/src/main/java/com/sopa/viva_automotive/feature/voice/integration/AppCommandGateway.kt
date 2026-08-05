@@ -2,7 +2,11 @@ package com.sopa.viva_automotive.feature.voice.integration
 
 import com.sopa.viva_automotive.feature.voice.domain.CommandNotWiredException
 import com.sopa.viva_automotive.feature.voice.domain.CommandValidationException
+import com.sopa.viva_automotive.feature.voice.domain.ConfirmationRequiredException
 import com.sopa.viva_automotive.feature.voice.domain.ExecuteVehicleControlUseCase
+import com.sopa.viva_automotive.feature.voice.domain.model.VehicleIntent
+import com.sopa.viva_automotive.vehicleservice.api.SafetyConfirmationRequiredException
+import com.sopa.viva_automotive.vehicleservice.api.SafetyDeniedException
 import com.viva.voice.agent.CommandGateway
 import com.viva.voice.agent.CommandResult
 import com.viva.voice.intent.Intent
@@ -22,10 +26,9 @@ class AppCommandGateway @Inject constructor(
 
         val vehicleIntent = when (action) {
             is AutomotiveVoiceAction.VehicleControl -> action.intent
-            is AutomotiveVoiceAction.VolumeAdjust ->
-                com.sopa.viva_automotive.feature.voice.domain.model.VehicleIntent.VolumeAdjust(action.delta)
-            AutomotiveVoiceAction.MediaNext ->
-                com.sopa.viva_automotive.feature.voice.domain.model.VehicleIntent.MediaNext
+            is AutomotiveVoiceAction.VolumeAdjust -> VehicleIntent.VolumeAdjust(action.delta)
+            AutomotiveVoiceAction.MediaNext -> VehicleIntent.MediaNext
+            is AutomotiveVoiceAction.Delivery -> VehicleIntent.Delivery(action.command)
         }
 
         return executeVehicleControl(vehicleIntent).fold(
@@ -35,6 +38,12 @@ class AppCommandGateway @Inject constructor(
             },
             onFailure = { error ->
                 when (error) {
+                    is SafetyDeniedException ->
+                        CommandResult.Denied(error.rule, error.reasonVi)
+                    is SafetyConfirmationRequiredException ->
+                        CommandResult.ConfirmationRequired(error.rule, error.questionVi)
+                    is ConfirmationRequiredException ->
+                        CommandResult.ConfirmationRequired(error.rule, error.questionVi)
                     is CommandValidationException ->
                         CommandResult.Failed(error.message ?: "validation failed")
                     is CommandNotWiredException ->

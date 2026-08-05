@@ -2,6 +2,7 @@ package carsky
 
 import (
 	"encoding/json"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -63,12 +64,44 @@ func TestCloneBlueprint_UsesPOST_NoRetryOn500(t *testing.T) {
 	defer srv.Close()
 
 	c := New(testConfig(srv.URL))
-	_, err := c.CloneBlueprint("bp-1")
+	_, err := c.CloneBlueprint("bp-1", "bp-1-copy")
 	if err == nil {
 		t.Fatal("expected error from 500 response")
 	}
 	if got := atomic.LoadInt32(&calls); got != 1 {
 		t.Fatalf("server was called %d times, want exactly 1 (POST must never auto-retry)", got)
+	}
+}
+
+func TestCloneBlueprint_SendsNameInBody(t *testing.T) {
+	// The API marks `name` required. Posting an empty body — which this client
+	// did until 03/08 — fails with 400 the first time anyone runs it with a
+	// working credential, i.e. exactly when it matters.
+	var gotBody []byte
+	var gotContentType string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotBody, _ = io.ReadAll(r.Body)
+		gotContentType = r.Header.Get("Content-Type")
+		w.Write([]byte(`{"id":"bp-2"}`))
+	}))
+	defer srv.Close()
+
+	c := New(testConfig(srv.URL))
+	if _, err := c.CloneBlueprint("bp-1", "VIVA-deploy-clone"); err != nil {
+		t.Fatalf("CloneBlueprint: %v", err)
+	}
+
+	var payload struct {
+		Name string `json:"name"`
+	}
+	if err := json.Unmarshal(gotBody, &payload); err != nil {
+		t.Fatalf("body %q is not JSON: %v", gotBody, err)
+	}
+	if payload.Name != "VIVA-deploy-clone" {
+		t.Errorf("name = %q, want the value passed in", payload.Name)
+	}
+	if gotContentType != "application/json" {
+		t.Errorf("Content-Type = %q, want application/json", gotContentType)
 	}
 }
 
