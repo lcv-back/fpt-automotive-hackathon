@@ -11,6 +11,7 @@ import com.sopa.viva_automotive.core.database.settings.SettingsDataStore
 import com.sopa.viva_automotive.core.ui.locale.VoiceLanguage
 import com.sopa.viva_automotive.feature.voice.data.SpeechRecognitionEngine
 import com.sopa.viva_automotive.feature.voice.data.TranscriptionEvent
+import com.viva.voice.intent.CommandVocabulary
 import dagger.hilt.android.qualifiers.ApplicationContext
 import java.io.File
 import javax.inject.Inject
@@ -96,7 +97,7 @@ class VoskSpeechRecognitionEngine @Inject constructor(
         }
 
         endOfUtteranceRequested = false
-        val recognizer = Recognizer(loadedModel, SAMPLE_RATE.toFloat())
+        val recognizer = createRecognizer(loadedModel, language)
         val minBuffer = AudioRecord.getMinBufferSize(
             SAMPLE_RATE,
             AudioFormat.CHANNEL_IN_MONO,
@@ -190,6 +191,58 @@ class VoskSpeechRecognitionEngine @Inject constructor(
             recognizer.close()
         }
     }.flowOn(ioDispatcher)
+
+    /**
+     * Dựng recognizer, và **chỉ giới hạn vốn từ khi model thật sự hỗ trợ**.
+     *
+     * ## Vì sao phải kiểm, không được cứ thế truyền grammar vào
+     *
+     * `Recognizer(model, rate, grammar)` chỉ có tác dụng với model dựng theo
+     * **đồ thị động** (`graph/HCLr.fst` + `graph/Gr.fst`). Với model dựng sẵn
+     * đồ thị tĩnh (`graph/HCLG.fst`), Vosk **âm thầm bỏ qua** grammar và vẫn
+     * giải mã bằng toàn bộ ngôn ngữ mô hình — không lỗi, không cảnh báo.
+     *
+     * Đo trên máy 05/08:
+     * ```
+     * model-vi    : HCLG.fst                              -> KHÔNG hỗ trợ
+     * model-en-us : HCLr.fst + Gr.fst + disambig_tid.int   -> có hỗ trợ
+     * ```
+     * Truyền grammar cho `vn-0.4` rồi log "đã giới hạn 76 từ" là tự khai một
+     * thứ không xảy ra: transcript sau đó vẫn chứa `bây giờ`, `muốn`, `hạ vi` —
+     * toàn từ ngoài danh sách. Một dòng log sai kiểu đó nguy hiểm hơn không có
+     * log, vì nó làm cả đội tin rằng đã sửa xong.
+     *
+     * Vốn từ vẫn được giữ trong [CommandVocabulary]: nó là cơ sở cho lớp khớp
+     * mờ ở tầng NLU, và nếu sau này thay bằng model tiếng Việt dựng đồ thị động
+     * thì ràng buộc tự bật lên mà không phải sửa gì ở đây.
+     */
+    private fun createRecognizer(model: Model, language: VoiceLanguage): Recognizer {
+        val open = Recognizer(model, SAMPLE_RATE.toFloat())
+        if (language != VoiceLanguage.VIETNAMESE) return open
+
+        if (!supportsRuntimeGrammar(language)) {
+            Log.i(
+                TAG,
+                "Model ${language.voskAssetDir} dung do thi tinh (HCLG.fst) nen KHONG gioi han " +
+                    "duoc von tu — giai ma mo tren toan bo ngon ngu mo hinh.",
+            )
+            return open
+        }
+
+        return runCatching {
+            open.close()
+            Recognizer(model, SAMPLE_RATE.toFloat(), CommandVocabulary.asVoskGrammar()).also {
+                Log.i(TAG, "Da gioi han von tu: ${CommandVocabulary.words.size} tu + [unk]")
+            }
+        }.getOrElse { error ->
+            Log.w(TAG, "Khong dung duoc grammar, quay ve giai ma mo", error)
+            Recognizer(model, SAMPLE_RATE.toFloat())
+        }
+    }
+
+    /** Đồ thị động mới nhận grammar lúc chạy; đồ thị tĩnh thì không. */
+    private fun supportsRuntimeGrammar(language: VoiceLanguage): Boolean =
+        File(context.filesDir, language.voskAssetDir).resolve("graph/Gr.fst").exists()
 
     private fun releaseModelLocked() {
         runCatching { model?.close() }
