@@ -79,14 +79,77 @@ mục 8.
 502 {"error":"SERVICE_UNAVAILABLE","message":"Conduit service not configured"}
 ```
 
-Ba phép thử loại trừ nguyên nhân từ phía đội:
+Bốn phép thử loại trừ nguyên nhân từ phía đội:
 
 1. Mọi endpoint **không** cần conduit đều 200 với cùng API key → không phải quyền.
 2. Lỗi y hệt trên **script-node** (`container-exec` ở IVI Gateway), không riêng node
    Android → không phải do node skycraft.
 3. `/account-limits/effective/…` **không có cờ nào** bật/tắt conduit → không phải quota.
+4. 🆕 **05/08 21:35 — thử lại với room vừa deploy sạch, 22/22 node `Running`:** vẫn
+   `502`. Xem mục 4b.
 
 → Thiếu cấu hình phía nền tảng. **Câu hỏi cho BTC/mentor**, kèm nguyên văn lỗi trên.
+
+### 4b. Đường dẫn đúng của họ endpoint này — bản trước ghi thiếu
+
+Mục 4 liệt kê tên endpoint nhưng không ghi route, và đoán route theo kiểu
+`/deployments/{room}/nodes/{node}/shell` sẽ nhận `404 Route not found` — **404 đó
+không phải Conduit chết**, chỉ là gõ sai địa chỉ. Route thật, lấy từ
+`/api/v1/openapi.json` (73 route):
+
+```
+POST /api/v1/vms/{roomId}/{nodeKey}/adb-shell     ← cai APK, chay lenh
+POST /api/v1/vms/{roomId}/{nodeKey}/shell
+POST /api/v1/vms/{roomId}/{nodeKey}/screenshot · /tap · /text · /key · /swipe
+POST /api/v1/deployments/{roomId}/adb-exec/{nodeKey}
+POST /api/v1/deployments/{roomId}/container-exec/{nodeKey}
+GET  /api/v1/signals/{roomId}/{nodeKey}/values    ← doc tin hieu VSS
+POST /api/v1/signals/{roomId}/{nodeKey}/actuate   ← dat tin hieu (A1 dat toc do)
+```
+
+Gọi đúng `POST /vms/{room}/{node}/adb-shell` với node `IVI - Android` lúc room
+đang chạy đủ 22 node vẫn trả:
+
+```
+502 {"error":"SERVICE_UNAVAILABLE","message":"Conduit service not configured"}
+```
+
+**Đây là bằng chứng mạnh nhất để leo thang.** Trước đây còn có thể nghi "tại room
+không chạy"; nay room chạy đủ, `adb-tunnel` trả cấu hình hợp lệ, mọi endpoint khác
+200, riêng họ Conduit 502. Không còn giả thuyết nào từ phía đội.
+
+### 4c. Room từng biến mất — 05/08
+
+Chiều 05/08, giao diện web không kết nối được: `Data WebSocket closed (code 4000)`
+và mọi part (`Device Proxy`, `face-screen`, `face-audio`, `face-touch-panel`) đều
+hết giờ. Nguyên nhân **không phải Conduit**:
+
+```
+GET /deployments/v37aa3knc6t1embelr5yi/nodes
+404 {"error":"NOT_FOUND","message":"No deployment found for this room in current profile"}
+```
+
+Cả 4 device (`Gemini`, `Gemini 2`, `VIVA`, `VIVA (Copy)`) đều `operational: IDLE`,
+`lastSeenAt: null` — **không có deployment nào tồn tại**. Room `og4erd2wzaxe5xod8otuj`
+từng chạy 22/22 node ở V7 cũng không còn trong danh sách device: device đó đã bị xoá.
+
+Khắc phục: deploy lại blueprint `6deadb05-…` (chính bản đã dựng ra room V7) lên
+device `VIVA`:
+
+```
+POST /deployments {blueprintId, roomId: v37aa3knc6t1embelr5yi, name: "VIVA-demo-0805"}
+→ id 933cf72a-0a81-4b48-a401-725850eca3d8, namespace room-5s98rj6x, status PENDING
+→ sau ~3 phut: 22/22 node Running, device VIVA chuyen IDLE → BUSY
+```
+
+**Bài học vận hành:** deployment CarSky không sống mãi. Trước mỗi buổi làm việc
+hoặc trước khi quay demo, kiểm một dòng:
+
+```powershell
+go run ./cmd/viva-tools carsky nodes --room $env:CARSKY_ROOM_ID
+```
+
+404 nghĩa là phải deploy lại, không phải nền tảng hỏng.
 
 **Hệ quả:** kế hoạch V11 (`send_signals → screenshot → find_text`) chưa chạy được
 qua HTTPS. Đường thay thế là tunnel ở mục 5.
