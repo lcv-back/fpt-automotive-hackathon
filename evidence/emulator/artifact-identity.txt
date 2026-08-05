@@ -1,0 +1,54 @@
+ARTIFACT IDENTITY — EMULATOR AAOS, KHONG PHAI CARSKY
+=====================================================
+
+Nhan: emulator evidence. KHONG dong duoc E02 trong 18-CLAIM-EVIDENCE-MAP
+      (E02 doi APK cai tren Device VIVA cua CarSky).
+Xem them: evidence/emulator/README.md
+
+Thoi diem thu (Asia/Saigon): 2026-08-05T15:42+07:00
+
+Ma nguon
+--------
+Commit      : 635aab695360e96f55398fcca0436ace401ec043
+Branch      : feature/guard-verdict-trace
+Working tree: sach o thoi diem build lai va cai lai (chi con file chua
+              theo doi thuoc corpus V12)
+
+Artifact
+--------
+File        : automotive/app/build/outputs/apk/mock/debug/app-mock-debug.apk
+Flavor      : mock / debug
+SHA-256     : 18F2C740E4F9A0FA7F8A6D8366CF45D2E95CF811DFB6234EFFC8968D1D761CBF
+Kich thuoc  : 334.935.734 byte (goi kem model Vosk vn-0.4, en-US va MiniLM ONNX)
+Build luc   : 2026-08-05T15:39:32+07:00
+Lenh build  : automotive/gradlew :app:assembleMockDebug
+
+Ghi chu: SHA-256 tren la cua APK build TRUOC khi commit 635aab6 duoc tao,
+nhung noi dung cay ma nguon tai thoi diem build va tai commit do la MOT.
+Khong co thay doi ma nao xen giua build va commit.
+
+May cai dat
+-----------
+Package     : com.sopa.viva_automotive.mock
+versionName : 1.0
+flags       : DEBUGGABLE HAS_CODE ALLOW_CLEAR_USER_DATA ALLOW_BACKUP
+lastUpdate  : 2026-08-05 15:40:13 (gio thiet bi)
+
+Thiet bi
+--------
+Loai        : Android Automotive emulator (KHONG phai Cuttlefish cua CarSky)
+Serial      : EMULATOR37X1X11X0
+Model       : Car on x86_64 emulator
+Fingerprint : google/sdk_gcar_x86_64/emulator_car64_x86_64:14/
+              UAA1.250512.001/13479943:userdebug/dev-keys
+Android     : 14
+System image: system-images;android-34-ext9;android-automotive;x86_64
+AVD         : viva_aaos34 (profile automotive_1080p_landscape)
+Co audio    : co, emulator chay voi -allow-host-audio
+
+Lenh da chay (nguyen van)
+-------------------------
+adb install -r -t app-mock-debug.apk
+adb shell am start -n com.sopa.viva_automotive.mock/com.sopa.viva_automotive.MainActivity
+adb shell pm grant com.sopa.viva_automotive.mock android.permission.RECORD_AUDIO
+adb shell pm grant com.sopa.viva_automotive.mock android.permission.POST_NOTIFICATIONS
