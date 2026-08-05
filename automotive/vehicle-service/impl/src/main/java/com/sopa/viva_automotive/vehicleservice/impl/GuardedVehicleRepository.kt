@@ -2,6 +2,8 @@ package com.sopa.viva_automotive.vehicleservice.impl
 
 import com.sopa.viva_automotive.vehicleservice.api.CarPropertyResult
 import com.sopa.viva_automotive.vehicleservice.api.PropertyStatus
+import com.sopa.viva_automotive.vehicleservice.api.SafetyConfirmationRequiredException
+import com.sopa.viva_automotive.vehicleservice.api.SafetyDeniedException
 import com.sopa.viva_automotive.vehicleservice.api.SafetyGuard
 import com.sopa.viva_automotive.vehicleservice.api.VehicleAreas
 import com.sopa.viva_automotive.vehicleservice.api.VehicleProperties
@@ -11,23 +13,6 @@ import com.sopa.viva_automotive.vehicleservice.api.VehicleWriteRequest
 import com.sopa.viva_automotive.vehicleservice.api.VehicleWriteContext
 import com.sopa.viva_automotive.vehicleservice.api.Verdict
 import kotlinx.coroutines.flow.Flow
-
-/**
- * Lệnh bị tầng an toàn chặn. Mang theo **mã luật** để log ra
- * `Deny:<RULE_ID>` đúng grammar `03-contracts.md` §1.2 — đó là khoá join của
- * bảng ablation N4b, không phải để cho đẹp.
- */
-class SafetyDeniedException(
-    val rule: String,
-    val reasonVi: String,
-    val suggestion: String? = null,
-) : IllegalStateException(reasonVi)
-
-/** Lệnh hợp lệ nhưng phải hỏi lại tài xế trước khi thực hiện. */
-class SafetyConfirmationRequiredException(
-    val rule: String,
-    val questionVi: String,
-) : IllegalStateException(questionVi)
 
 /**
  * Bọc một [VehicleRepository] và chạy [SafetyGuard] trước **mọi** lệnh ghi.

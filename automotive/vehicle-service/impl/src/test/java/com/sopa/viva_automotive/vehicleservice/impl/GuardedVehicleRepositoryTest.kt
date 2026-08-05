@@ -1,5 +1,7 @@
 package com.sopa.viva_automotive.vehicleservice.impl
 
+import com.sopa.viva_automotive.vehicleservice.api.SafetyConfirmationRequiredException
+import com.sopa.viva_automotive.vehicleservice.api.SafetyDeniedException
 import com.sopa.viva_automotive.vehicleservice.api.SafetyGuard
 import com.sopa.viva_automotive.vehicleservice.api.SafetyRules
 import com.sopa.viva_automotive.vehicleservice.api.CarPropertyResult
