@@ -5,19 +5,12 @@ import com.sopa.viva_automotive.feature.voice.domain.model.VehicleIntent
 import com.sopa.viva_automotive.vehicleservice.api.FanSpeed
 import com.viva.voice.intent.Intent
 
-/** Action understood by Dương's app layer after Long's voice core has routed text. */
 sealed interface AutomotiveVoiceAction {
     data class VehicleControl(val intent: VehicleIntent) : AutomotiveVoiceAction
     data class VolumeAdjust(val delta: Int) : AutomotiveVoiceAction
     data object MediaNext : AutomotiveVoiceAction
 }
 
-/**
- * The only type translation between `:voice-core` and `:feature:voice`.
- *
- * Returning null is deliberate: malformed slots stop at the module boundary
- * instead of becoming a default vehicle command.
- */
 object CoreIntentMapper {
     fun map(intent: Intent): AutomotiveVoiceAction? = when (intent.name) {
         "hvac_set_temp" -> intent.number("value")

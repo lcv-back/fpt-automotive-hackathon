@@ -34,12 +34,12 @@ class GrammarIntentRouter(
             )
         }
 
-        if (command.contains("lạnh quá")) {
+        if (command.contains("lanh qua")) {
             return RouteResult.NeedsClarification(
                 "Bạn muốn tăng nhiệt độ điều hòa lên bao nhiêu độ?",
             )
         }
-        if (command.contains("nóng quá")) {
+        if (command.contains("nong qua")) {
             return RouteResult.NeedsClarification(
                 "Bạn muốn giảm nhiệt độ điều hòa xuống bao nhiêu độ?",
             )
@@ -48,38 +48,38 @@ class GrammarIntentRouter(
         if (isTemperatureCommand(command)) {
             return routeTemperature(command)
         }
-        if (command.contains("quạt")) {
+        if (command.contains("quat")) {
             return routeFan(command)
         }
-        if (command.contains("mở cửa") || command.contains("mở khóa cửa")) {
+        if (command.contains("mo cua") || command.contains("mo khoa cua")) {
             return matched("door_lock", mapOf("lock" to false))
         }
-        if (command.contains("khóa cửa")) {
+        if (command.contains("khoa cua")) {
             return matched("door_lock", mapOf("lock" to true))
         }
-        if (command.contains("tăng âm lượng")) {
+        if (command.contains("tang am luong")) {
             return matched("volume_adjust", mapOf("delta" to 1))
         }
-        if (command.contains("giảm âm lượng")) {
+        if (command.contains("giam am luong")) {
             return matched("volume_adjust", mapOf("delta" to -1))
         }
-        if (command.contains("dừng nhạc") || command.contains("tạm dừng nhạc")) {
+        if (command.contains("dung nhac") || command.contains("tam dung nhac")) {
             return matched("media_pause")
         }
-        if (command.contains("chuyển bài") || command.contains("bài tiếp theo")) {
+        if (command.contains("chuyen bai") || command.contains("bai tiep theo")) {
             return matched("media_next")
         }
-        if (command.startsWith("phát nhạc") || command.startsWith("phát playlist")) {
-            val query = command.removePrefix("phát ").takeUnless { it == "nhạc" }
+        if (command.startsWith("phat nhac") || command.startsWith("phat playlist")) {
+            val query = command.removePrefix("phat ").takeUnless { it == "nhac" }
             return matched("media_play", query?.let { mapOf("query" to it) }.orEmpty())
         }
-        if (command.contains("chặng tiếp theo") || command.contains("điểm dừng tiếp theo")) {
+        if (command.contains("chang tiep theo") || command.contains("diem dung tiep theo")) {
             return matched("delivery_next_stop")
         }
-        if (command.contains("đơn") && DELIVERY_STATUS_CUES.any(command::contains)) {
+        if (command.contains("don") && DELIVERY_STATUS_CUES.any(command::contains)) {
             return matched("delivery_order_status", orderIdSlot(command))
         }
-        if (command.contains("xác nhận") && command.contains("giao")) {
+        if (command.contains("xac nhan") && command.contains("giao")) {
             return matched("delivery_confirm", orderIdSlot(command))
         }
         extensionRules.forEach { rule ->
@@ -113,9 +113,9 @@ class GrammarIntentRouter(
     }
 
     private fun isTemperatureCommand(command: String): Boolean {
-        if (command.contains("nhiệt độ")) return true
-        if (!command.contains("điều hòa")) return false
-        return NUMBER.containsMatchIn(command) || TEMPERATURE_CUES.any { cue -> command.contains(cue) }
+        if (command.contains("nhiet do")) return true
+        if (!command.contains("dieu hoa")) return false
+        return NUMBER.containsMatchIn(command) || TEMPERATURE_CUES.any { cue -> containsWord(command, cue) }
     }
 
     private fun routeFan(command: String): RouteResult {
@@ -142,6 +142,17 @@ class GrammarIntentRouter(
         .replace(PUNCTUATION, " ")
         .replace(WHITESPACE, " ")
         .trim()
+        .let(::foldVietnamese)
+
+    private fun foldVietnamese(text: String): String {
+        val normalized = java.text.Normalizer.normalize(text, java.text.Normalizer.Form.NFD)
+        return DIACRITICS.replace(normalized, "")
+            .replace('đ', 'd')
+            .replace('Đ', 'd')
+    }
+
+    private fun containsWord(haystack: String, needle: String): Boolean =
+        Regex("""(?:^|\s)${Regex.escape(needle)}(?:\s|$)""").containsMatchIn(haystack)
 
     companion object {
         private const val MIN_TEMPERATURE_C = 16
@@ -153,16 +164,17 @@ class GrammarIntentRouter(
         private val NUMBER = Regex("""(\d{1,2})""")
         private val PUNCTUATION = Regex("""[,.!?;:]""")
         private val WHITESPACE = Regex("""\s+""")
-        private val SUPPORTED_WAKE = Regex("""^(?:viva|vivi)\s+ơi(?:\s+|$)""")
-        private val UNSUPPORTED_WAKE = Regex("""^(?:siri|alexa|hey google)\s+ơi?(?:\s+|$)""")
+        private val DIACRITICS = Regex("""\p{M}+""")
+        private val SUPPORTED_WAKE = Regex("""^(?:viva|vivi)\s+oi(?:\s+|$)""")
+        private val UNSUPPORTED_WAKE = Regex("""^(?:siri|alexa|hey google)\s+oi?(?:\s+|$)""")
         private val ORDER_ID = Regex("""\b([a-z]\d{1,6})\b""")
-        private val DELIVERY_STATUS_CUES = listOf("thế nào", "trạng thái", "đến đâu")
+        private val DELIVERY_STATUS_CUES = listOf("the nao", "trang thai", "den dau")
         private val REMOVED_COMMANDS = listOf(
-            Regex("""\b(?:bật|tắt)\s+(?:điều hòa|ac)\b"""),
-            Regex("""đặt\s+âm lượng"""),
-            Regex("""\b(?:bài trước|quay lại bài trước)\b"""),
-            Regex("""\b(?:dtc|mã lỗi|xe có lỗi)\b"""),
+            Regex("""\b(?:bat|tat)\s+(?:dieu hoa|ac)\b"""),
+            Regex("""dat\s+am luong"""),
+            Regex("""\b(?:bai truoc|quay lai bai truoc)\b"""),
+            Regex("""\b(?:dtc|ma loi|xe co loi)\b"""),
         )
-        private val TEMPERATURE_CUES = listOf("đặt", "hạ", "tăng", "giảm", "xuống", "lên", "độ")
+        private val TEMPERATURE_CUES = listOf("dat", "ha", "tang", "giam", "xuong", "len", "do")
     }
 }

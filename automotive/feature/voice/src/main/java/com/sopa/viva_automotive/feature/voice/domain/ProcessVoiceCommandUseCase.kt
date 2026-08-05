@@ -27,10 +27,6 @@ class ProcessVoiceCommandUseCase @Inject constructor(
                 is AutomotiveVoiceAction.VehicleControl -> action.intent
                 is AutomotiveVoiceAction.VolumeAdjust -> VehicleIntent.VolumeAdjust(action.delta)
                 AutomotiveVoiceAction.MediaNext -> VehicleIntent.MediaNext
-                // The mapper returns null for two different reasons, and they owe
-                // the driver two different answers: a vehicle intent it could not
-                // fill (bad slot) is genuinely not understood, while a media or
-                // delivery intent simply has no adapter in this build.
                 null -> if (isVehicleIntent(coreRoute.intent.name)) {
                     VehicleIntent.Unknown(utterance)
                 } else {
@@ -92,15 +88,54 @@ class ProcessVoiceCommandUseCase @Inject constructor(
             VehicleIntentTypes.QUERY_FUEL -> VehicleIntent.QueryStatus(VehicleIntent.StatusQueryKind.FUEL)
             VehicleIntentTypes.QUERY_BATTERY -> VehicleIntent.QueryStatus(VehicleIntent.StatusQueryKind.BATTERY)
             VehicleIntentTypes.QUERY_TEMPERATURE -> VehicleIntent.QueryStatus(VehicleIntent.StatusQueryKind.TEMPERATURE)
+            VehicleIntentTypes.MEDIA_PLAY -> VehicleIntent.MediaPlay(extractMediaQuery(text))
+            VehicleIntentTypes.MEDIA_PAUSE -> VehicleIntent.MediaPause
+            VehicleIntentTypes.MEDIA_NEXT -> VehicleIntent.MediaNext
+            VehicleIntentTypes.RADIO_TUNE -> VehicleIntent.RadioTune(extractRadioQuery(text))
+            VehicleIntentTypes.RADIO_NEXT -> VehicleIntent.RadioNextStation
+            VehicleIntentTypes.VOLUME_UP -> VehicleIntent.VolumeAdjust(1)
+            VehicleIntentTypes.VOLUME_DOWN -> VehicleIntent.VolumeAdjust(-1)
             else -> VehicleIntent.Unknown(originalUtterance)
         }
     }
 
-    /** Intent families that reach the vehicle through [ExecuteVehicleControlUseCase]. */
     private fun isVehicleIntent(intentName: String): Boolean =
         intentName.startsWith("hvac_") || intentName == "door_lock"
 
-        private fun normalize(utterance: String): String =
+    private fun extractMediaQuery(text: String): String? {
+        val cleaned = text
+            .replace("play some", " ")
+            .replace("play the", " ")
+            .replace("play", " ")
+            .replace("phát nhạc", " ")
+            .replace("phát bài", " ")
+            .replace("phát", " ")
+            .replace("music", " ")
+            .replace("nhạc", " ")
+            .replace(Regex("""\s+"""), " ")
+            .trim()
+        return cleaned.takeIf { it.isNotEmpty() }
+    }
+
+    private fun extractRadioQuery(text: String): String? {
+        val cleaned = text
+            .replace("tune to", " ")
+            .replace("tune", " ")
+            .replace("play radio", " ")
+            .replace("turn on the radio", " ")
+            .replace("turn on radio", " ")
+            .replace("radio", " ")
+            .replace("bật đài", " ")
+            .replace("bật radio", " ")
+            .replace("mở đài", " ")
+            .replace("nghe đài", " ")
+            .replace("đài", " ")
+            .replace(Regex("""\s+"""), " ")
+            .trim()
+        return cleaned.takeIf { it.isNotEmpty() }
+    }
+
+    private fun normalize(utterance: String): String =
         utterance.lowercase().trim()
             .replace(Regex("""\s+"""), " ")
             .replace(Regex("""\ba\s+c\b"""), "ac")

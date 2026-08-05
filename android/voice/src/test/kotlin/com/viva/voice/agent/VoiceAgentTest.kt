@@ -161,7 +161,7 @@ class VoiceAgentTest {
     }
 
     @Test
-    fun `text entry point lets Duong integrate before microphone and ASR are ready`() = runImmediate {
+    fun `handleText runs without microphone or ASR`() = runImmediate {
         val tts = RecordingTts()
         val gateway = FakeGateway(CommandResult.Applied("Đã chuyển bài.", emptyMap()))
         val agent = VoiceAgent(

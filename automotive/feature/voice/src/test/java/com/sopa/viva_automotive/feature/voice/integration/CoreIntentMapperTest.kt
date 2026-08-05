@@ -8,7 +8,7 @@ import org.junit.Test
 class CoreIntentMapperTest {
 
     @Test
-    fun `climate temperature maps to Duong vehicle intent`() {
+    fun `climate temperature maps to vehicle intent`() {
         val action = CoreIntentMapper.map(intent("hvac_set_temp", "value" to 24f))
 
         assertEquals(
@@ -18,7 +18,7 @@ class CoreIntentMapperTest {
     }
 
     @Test
-    fun `all five backbone commands cross the module boundary`() {
+    fun `maps all five backbone commands`() {
         val cases = mapOf(
             intent("hvac_set_temp", "value" to 24f) to AutomotiveVoiceAction.VehicleControl(
                 VehicleIntent.SetTemperature(24.0),
@@ -39,7 +39,7 @@ class CoreIntentMapperTest {
     }
 
     @Test
-    fun `missing or wrong slot is rejected at the module boundary`() {
+    fun `missing or wrong slot returns null`() {
         assertEquals(null, CoreIntentMapper.map(intent("hvac_set_temp")))
         assertEquals(null, CoreIntentMapper.map(intent("door_lock", "lock" to "true")))
         assertEquals(null, CoreIntentMapper.map(intent("hvac_set_temp", "value" to Float.NaN)))

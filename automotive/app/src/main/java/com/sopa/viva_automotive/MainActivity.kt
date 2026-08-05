@@ -20,6 +20,7 @@ import com.sopa.viva_automotive.core.ui.theme.VivaTheme
 import com.sopa.viva_automotive.locale.LocaleController
 import com.sopa.viva_automotive.locale.LocalizedContent
 import com.sopa.viva_automotive.navigation.VivaApp
+import com.sopa.viva_automotive.feature.voice.service.VoiceAssistantService
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
 
@@ -72,10 +73,26 @@ class MainActivity : ComponentActivity() {
                 }
             }
         }
+
+        dispatchVoiceText(intent)
+    }
+
+    override fun onNewIntent(intent: android.content.Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        dispatchVoiceText(intent)
+    }
+
+    private fun dispatchVoiceText(intent: android.content.Intent?) {
+        val text = intent?.getStringExtra(EXTRA_VOICE_TEXT)?.trim().orEmpty()
+        if (text.isNotEmpty()) {
+            VoiceAssistantService.processText(this, text)
+        }
     }
 
     private companion object {
         const val LOCALE_PREFS = "viva_locale"
         const val KEY_LANGUAGE = "language"
+        const val EXTRA_VOICE_TEXT = "viva_voice_text"
     }
 }

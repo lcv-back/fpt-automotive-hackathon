@@ -5,7 +5,7 @@
     <string name="settings_show_transcription">Hiện nhận dạng trực tiếp</string>
     <string name="settings_audio_cues">Phát tín hiệu âm thanh</string>
     <string name="settings_voice_language">Ngôn ngữ giọng nói</string>
-    <string name="settings_voice_language_hint">Ngôn ngữ STT offline. Tiếng Anh: Vosk en-US; Tiếng Việt: Vosk vn-0.4.</string>
+    <string name="settings_voice_language_hint">Ngữ pháp cabin và TTS tiếng Việt. STT qua AsrClient của voice-core (endpoint đang chờ).</string>
     <string name="settings_display">Hiển thị</string>
     <string name="settings_theme_auto">Tự động</string>
     <string name="settings_theme_light">Sáng</string>

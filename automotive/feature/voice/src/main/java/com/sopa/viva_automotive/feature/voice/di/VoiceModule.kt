@@ -1,10 +1,14 @@
 package com.sopa.viva_automotive.feature.voice.di
 
 import android.content.Context
-import com.sopa.viva_automotive.feature.voice.data.SpeechRecognitionEngine
 import com.sopa.viva_automotive.feature.voice.data.embedding.OnnxEmbeddingIntentMatcher
-import com.sopa.viva_automotive.feature.voice.data.vosk.VoskSpeechRecognitionEngine
 import com.sopa.viva_automotive.feature.voice.domain.embedding.SemanticIntentMatcher
+import com.sopa.viva_automotive.feature.voice.integration.AppCommandGateway
+import com.viva.voice.agent.CommandGateway
+import com.viva.voice.agent.VoiceAgent
+import com.viva.voice.asr.AsrClient
+import com.viva.voice.asr.FakeAsrClient
+import com.viva.voice.intent.GrammarIntentRouter
 import com.viva.voice.tts.AndroidTtsSpeaker
 import com.viva.voice.tts.TtsSpeaker
 import dagger.Binds
@@ -21,26 +25,37 @@ abstract class VoiceModule {
 
     @Binds
     @Singleton
-    abstract fun bindSpeechRecognitionEngine(
-        impl: VoskSpeechRecognitionEngine,
-    ): SpeechRecognitionEngine
-
-    @Binds
-    @Singleton
     abstract fun bindSemanticIntentMatcher(
         impl: OnnxEmbeddingIntentMatcher,
     ): SemanticIntentMatcher
 
+    @Binds
+    @Singleton
+    abstract fun bindCommandGateway(
+        impl: AppCommandGateway,
+    ): CommandGateway
+
     companion object {
-        /**
-         * Application-scoped: `TextToSpeech` init costs hundreds of
-         * milliseconds, and paying it inside a turn would land straight in the
-         * p95 the 1500ms claim is about. It owns its own audio focus, which is
-         * what ducks the music while the assistant answers (L7).
-         */
         @Provides
         @Singleton
         fun provideTtsSpeaker(@ApplicationContext context: Context): TtsSpeaker =
             AndroidTtsSpeaker(context)
+
+        @Provides
+        @Singleton
+        fun provideAsrClient(): AsrClient = FakeAsrClient()
+
+        @Provides
+        @Singleton
+        fun provideVoiceAgent(
+            asr: AsrClient,
+            gateway: CommandGateway,
+            tts: TtsSpeaker,
+        ): VoiceAgent = VoiceAgent(
+            asr = asr,
+            router = GrammarIntentRouter(),
+            gateway = gateway,
+            tts = tts,
+        )
     }
 }

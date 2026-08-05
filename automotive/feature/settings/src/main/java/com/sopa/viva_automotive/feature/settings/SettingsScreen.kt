@@ -30,7 +30,6 @@ import com.sopa.viva_automotive.core.common.buildinfo.BuildInfo
 import com.sopa.viva_automotive.core.ui.components.SectionCard
 import com.sopa.viva_automotive.core.ui.components.VivaToggleRow
 import com.sopa.viva_automotive.core.ui.locale.AppLanguage
-import com.sopa.viva_automotive.core.ui.locale.VoiceLanguage
 import com.sopa.viva_automotive.core.ui.theme.ThemeMode
 import com.sopa.viva_automotive.core.ui.theme.VivaDimens
 
@@ -76,34 +75,6 @@ fun SettingsScreen(
                 onCheckedChange = viewModel::setPlayAudioCues,
                 icon = Icons.Default.MusicNote,
             )
-            Text(
-                text = stringResource(R.string.settings_voice_language),
-                style = MaterialTheme.typography.titleSmall,
-                color = MaterialTheme.colorScheme.onSurface,
-            )
-            val currentVoiceLanguage = VoiceLanguage.fromStorageKey(settings.voiceLanguage)
-            SingleChoiceSegmentedButtonRow(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(VivaDimens.ButtonHeight),
-            ) {
-                VoiceLanguage.entries.forEachIndexed { index, language ->
-                    SegmentedButton(
-                        selected = currentVoiceLanguage == language,
-                        onClick = { viewModel.setVoiceLanguage(language) },
-                        shape = SegmentedButtonDefaults.itemShape(
-                            index = index,
-                            count = VoiceLanguage.entries.size,
-                        ),
-                        label = {
-                            Text(
-                                text = voiceLanguageLabel(language),
-                                style = MaterialTheme.typography.labelLarge,
-                            )
-                        },
-                    )
-                }
-            }
             Text(
                 text = stringResource(R.string.settings_voice_language_hint),
                 style = MaterialTheme.typography.bodySmall,
@@ -222,14 +193,6 @@ private fun languageLabel(language: AppLanguage): String = stringResource(
         AppLanguage.SYSTEM -> R.string.settings_language_system
         AppLanguage.ENGLISH -> R.string.settings_language_english
         AppLanguage.VIETNAMESE -> R.string.settings_language_vietnamese
-    },
-)
-
-@Composable
-private fun voiceLanguageLabel(language: VoiceLanguage): String = stringResource(
-    when (language) {
-        VoiceLanguage.ENGLISH -> R.string.settings_language_english
-        VoiceLanguage.VIETNAMESE -> R.string.settings_language_vietnamese
     },
 )
 

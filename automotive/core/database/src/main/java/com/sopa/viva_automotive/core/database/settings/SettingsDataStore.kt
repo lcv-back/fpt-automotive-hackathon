@@ -18,9 +18,9 @@ data class VoiceSettings(
     val useFahrenheit: Boolean = false,
     val showPartialTranscription: Boolean = true,
     val playAudioCues: Boolean = true,
-        val themeMode: String = "system",
-        val language: String = "system",
-        val voiceLanguage: String = "en",
+    val themeMode: String = "system",
+    val language: String = "system",
+    val voiceLanguage: String = "vi",
 )
 
 private val Context.settingsDataStore: DataStore<Preferences> by preferencesDataStore(
@@ -49,7 +49,7 @@ class SettingsDataStore @Inject constructor(
             playAudioCues = prefs[Keys.AUDIO_CUES] ?: true,
             themeMode = prefs[Keys.THEME_MODE] ?: "system",
             language = prefs[Keys.LANGUAGE] ?: "system",
-            voiceLanguage = prefs[Keys.VOICE_LANGUAGE] ?: "en",
+            voiceLanguage = prefs[Keys.VOICE_LANGUAGE] ?: "vi",
         )
     }
 

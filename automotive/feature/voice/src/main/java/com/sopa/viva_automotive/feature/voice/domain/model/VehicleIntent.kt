@@ -28,16 +28,16 @@ sealed interface VehicleIntent {
 
     data class VolumeAdjust(val delta: Int) : VehicleIntent
 
+    data class MediaPlay(val query: String? = null) : VehicleIntent
+
+    data object MediaPause : VehicleIntent
+
     data object MediaNext : VehicleIntent
 
-    /**
-     * The grammar understood the command but this build has no adapter that can
-     * carry it out yet (media transport, delivery skill).
-     *
-     * Kept distinct from [Unknown] on purpose: telling the driver "I didn't
-     * understand" for a command we routed correctly is a false statement, and it
-     * hides the gap from the demo instead of labelling it.
-     */
+    data class RadioTune(val query: String? = null) : VehicleIntent
+
+    data object RadioNextStation : VehicleIntent
+
     data class NotWired(val intentName: String) : VehicleIntent
 
     data class Clarification(val promptVi: String) : VehicleIntent
@@ -64,4 +64,11 @@ object VehicleIntentTypes {
     const val QUERY_FUEL = "QUERY_FUEL"
     const val QUERY_BATTERY = "QUERY_BATTERY"
     const val QUERY_TEMPERATURE = "QUERY_TEMPERATURE"
+    const val MEDIA_PLAY = "MEDIA_PLAY"
+    const val MEDIA_PAUSE = "MEDIA_PAUSE"
+    const val MEDIA_NEXT = "MEDIA_NEXT"
+    const val RADIO_TUNE = "RADIO_TUNE"
+    const val RADIO_NEXT = "RADIO_NEXT"
+    const val VOLUME_UP = "VOLUME_UP"
+    const val VOLUME_DOWN = "VOLUME_DOWN"
 }

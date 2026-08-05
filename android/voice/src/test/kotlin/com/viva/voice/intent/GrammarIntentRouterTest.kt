@@ -20,6 +20,14 @@ class GrammarIntentRouterTest {
     }
 
     @Test
+    fun `ascii asr transcript without diacritics still routes`() {
+        val result = router.route("Viva oi, dat nhiet do dieu hoa 24 do") as RouteResult.Matched
+
+        assertEquals("hvac_set_temp", result.intent.name)
+        assertEquals(24f, result.intent.slots["value"])
+    }
+
+    @Test
     fun `vivi wake phrase is accepted as product alias`() {
         val result = router.route("Vivi ơi quạt mức 2") as RouteResult.Matched
 
@@ -91,7 +99,7 @@ class GrammarIntentRouterTest {
         val result = router.route("phát playlist đi làm") as RouteResult.Matched
 
         assertEquals("media_play", result.intent.name)
-        assertEquals("playlist đi làm", result.intent.slots["query"])
+        assertEquals("playlist di lam", result.intent.slots["query"])
     }
 
     @Test
@@ -133,7 +141,7 @@ class GrammarIntentRouterTest {
         val extendedRouter = GrammarIntentRouter(
             extensionRules = listOf(
                 GrammarRule { command ->
-                    if (command == "mở cốp") {
+                    if (command == "mo cop") {
                         RouteResult.Matched(
                             Intent(
                                 name = "trunk_open",

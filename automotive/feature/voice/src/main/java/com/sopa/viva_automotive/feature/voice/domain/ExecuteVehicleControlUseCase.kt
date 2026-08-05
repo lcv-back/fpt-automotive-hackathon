@@ -2,6 +2,8 @@ package com.sopa.viva_automotive.feature.voice.domain
 
 import com.sopa.viva_automotive.core.common.units.TemperatureUnits
 import com.sopa.viva_automotive.core.database.settings.SettingsDataStore
+import com.sopa.viva_automotive.feature.media.domain.MediaRepository
+import com.sopa.viva_automotive.feature.media.domain.MediaSource
 import com.sopa.viva_automotive.feature.voice.domain.model.VehicleIntent
 import com.sopa.viva_automotive.vehicleservice.api.FanSpeed
 import com.sopa.viva_automotive.vehicleservice.api.VehicleAreas
@@ -14,18 +16,12 @@ import kotlinx.coroutines.flow.first
 
 class CommandValidationException(message: String) : IllegalArgumentException(message)
 
-/**
- * The command was routed correctly but no adapter in this build can execute it.
- *
- * Separate from [CommandValidationException] so the HMI, the demo script and the
- * integration table can report "understood, not wired" without dressing it up as
- * a misheard command.
- */
 class CommandNotWiredException(message: String) : IllegalStateException(message)
 
 class ExecuteVehicleControlUseCase @Inject constructor(
     private val vehicleRepository: VehicleRepository,
     private val settingsDataStore: SettingsDataStore,
+    private val mediaRepository: MediaRepository,
 ) {
 
     suspend operator fun invoke(intent: VehicleIntent): Result<String> = when (intent) {
@@ -82,19 +78,16 @@ class ExecuteVehicleControlUseCase @Inject constructor(
 
         is VehicleIntent.QueryStatus -> queryStatus(intent.kind)
 
-        is VehicleIntent.VolumeAdjust ->
-            Result.failure(
-                CommandNotWiredException(
-                    "Mình nghe rõ lệnh âm lượng, nhưng bản demo này chưa nối bộ điều khiển âm lượng.",
-                ),
-            )
+        is VehicleIntent.VolumeAdjust -> mediaRepository.adjustVolume(intent.delta)
 
-        is VehicleIntent.MediaNext ->
-            Result.failure(
-                CommandNotWiredException(
-                    "Mình nghe rõ lệnh chuyển bài, nhưng bản demo này chưa nối trình phát nhạc.",
-                ),
-            )
+        is VehicleIntent.MediaPlay -> mediaRepository.play(intent.query)
+        is VehicleIntent.MediaPause -> mediaRepository.pause()
+        is VehicleIntent.MediaNext -> mediaRepository.next()
+        is VehicleIntent.RadioTune -> mediaRepository.tuneRadio(intent.query)
+        is VehicleIntent.RadioNextStation -> {
+            mediaRepository.setSource(MediaSource.RADIO)
+            mediaRepository.next()
+        }
 
         is VehicleIntent.NotWired ->
             Result.failure(

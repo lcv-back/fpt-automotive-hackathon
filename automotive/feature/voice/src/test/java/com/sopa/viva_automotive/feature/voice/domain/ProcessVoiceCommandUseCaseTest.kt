@@ -103,7 +103,7 @@ class ProcessVoiceCommandUseCaseTest {
     }
 
     @Test
-    fun `Long grammar handles wake phrase temperature before embedding fallback`() = runTest {
+    fun `grammar handles wake phrase temperature before embedding fallback`() = runTest {
         assertEquals(
             VehicleIntent.SetTemperature(24.0, VehicleZone.DRIVER),
             useCase("Viva ơi hạ điều hòa xuống 24 độ"),
@@ -129,13 +129,32 @@ class ProcessVoiceCommandUseCaseTest {
     }
 
     @Test
-    fun `unrecognized utterance maps to unknown`() = runTest {
+    fun `play music maps to media play`() = runTest {
         val intent = useCase("play some jazz music")
+        assertTrue(intent is VehicleIntent.MediaPlay)
+    }
+
+    @Test
+    fun `next song and pause music`() = runTest {
+        assertEquals(VehicleIntent.MediaNext, useCase("next song"))
+        assertEquals(VehicleIntent.MediaPause, useCase("pause the music"))
+    }
+
+    @Test
+    fun `radio tune and next station`() = runTest {
+        assertTrue(useCase("play radio") is VehicleIntent.RadioTune)
+        assertEquals(VehicleIntent.RadioNextStation, useCase("next station"))
+        assertTrue(useCase("bật đài") is VehicleIntent.RadioTune)
+    }
+
+    @Test
+    fun `unrecognized utterance maps to unknown`() = runTest {
+        val intent = useCase("order sushi for dinner")
         assertTrue(intent is VehicleIntent.Unknown)
     }
 
     @Test
-    fun `media next survives the module boundary instead of becoming unknown`() = runTest {
+    fun `media next maps instead of becoming unknown`() = runTest {
         assertEquals(VehicleIntent.MediaNext, useCase("chuyển bài"))
     }
 

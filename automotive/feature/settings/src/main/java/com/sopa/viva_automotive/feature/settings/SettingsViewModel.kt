@@ -7,7 +7,6 @@ import com.sopa.viva_automotive.core.common.buildinfo.BuildInfoProvider
 import com.sopa.viva_automotive.core.database.settings.SettingsDataStore
 import com.sopa.viva_automotive.core.database.settings.VoiceSettings
 import com.sopa.viva_automotive.core.ui.locale.AppLanguage
-import com.sopa.viva_automotive.core.ui.locale.VoiceLanguage
 import com.sopa.viva_automotive.core.ui.theme.ThemeMode
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
@@ -49,9 +48,5 @@ class SettingsViewModel @Inject constructor(
 
     fun setLanguage(language: AppLanguage) {
         viewModelScope.launch { settingsDataStore.setLanguage(language.storageKey) }
-    }
-
-    fun setVoiceLanguage(language: VoiceLanguage) {
-        viewModelScope.launch { settingsDataStore.setVoiceLanguage(language.storageKey) }
     }
 }

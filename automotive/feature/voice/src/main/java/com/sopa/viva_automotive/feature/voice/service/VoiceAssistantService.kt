@@ -6,52 +6,50 @@ import android.app.NotificationManager
 import android.content.Context
 import android.content.Intent
 import android.content.pm.ServiceInfo
-import android.util.Log
+import android.os.SystemClock
 import androidx.lifecycle.LifecycleService
 import androidx.lifecycle.lifecycleScope
-import com.sopa.viva_automotive.feature.voice.data.SpeechRecognitionEngine
-import com.sopa.viva_automotive.feature.voice.data.TranscriptionEvent
-import com.sopa.viva_automotive.feature.voice.domain.ExecuteVehicleControlUseCase
-import com.sopa.viva_automotive.feature.voice.domain.ProcessVoiceCommandUseCase
 import com.sopa.viva_automotive.feature.voice.domain.VoiceAssistantStateManager
-import com.sopa.viva_automotive.feature.voice.domain.VoiceTurnReport
-import com.sopa.viva_automotive.feature.voice.domain.embedding.SemanticIntentMatcher
-import com.sopa.viva_automotive.feature.voice.domain.model.VehicleIntent
-import com.viva.voice.trace.LatencyTrace
+import com.viva.voice.agent.VoiceAgent
+import com.viva.voice.agent.VoiceTurnResult
+import com.viva.voice.agent.VoiceTurnStatus
+import com.viva.voice.audio.AndroidPcmSource
+import com.viva.voice.audio.PushToTalkRecorder
 import com.viva.voice.trace.Stage
-import com.viva.voice.trace.TraceVerdict
+import com.viva.voice.trace.SystemNanoClock
 import com.viva.voice.trace.startVoiceTrace
-import com.viva.voice.tts.TtsSpeaker
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withTimeoutOrNull
+import kotlinx.coroutines.withContext
 
 @AndroidEntryPoint
 class VoiceAssistantService : LifecycleService() {
 
-    @Inject lateinit var speechEngine: SpeechRecognitionEngine
     @Inject lateinit var stateManager: VoiceAssistantStateManager
-    @Inject lateinit var processVoiceCommand: ProcessVoiceCommandUseCase
-    @Inject lateinit var executeVehicleControl: ExecuteVehicleControlUseCase
-    @Inject lateinit var semanticIntentMatcher: SemanticIntentMatcher
-    @Inject lateinit var ttsSpeaker: TtsSpeaker
+    @Inject lateinit var voiceAgent: VoiceAgent
 
     private var pipelineJob: Job? = null
-    private var warmUpJob: Job? = null
+    private val pendingTextCommands = ArrayDeque<String>()
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         super.onStartCommand(intent, flags, startId)
         when (intent?.action) {
             ACTION_START_LISTENING -> {
                 startForegroundWithNotification()
-                warmUpEmbeddings()
                 startPipeline()
+            }
+            ACTION_PROCESS_TEXT -> {
+                val text = intent.getStringExtra(EXTRA_TEXT).orEmpty()
+                startForegroundWithNotification()
+                startTextPipeline(text)
             }
             ACTION_STOP -> {
                 pipelineJob?.cancel()
+                pendingTextCommands.clear()
                 stateManager.transitionToIdle()
                 stopSelf()
             }
@@ -70,139 +68,77 @@ class VoiceAssistantService : LifecycleService() {
         }
     }
 
-        private fun warmUpEmbeddings() {
-        if (warmUpJob?.isActive == true) return
-        warmUpJob = lifecycleScope.launch {
-            runCatching { semanticIntentMatcher.warmUp() }
+    private fun startTextPipeline(text: String) {
+        if (pipelineJob?.isActive == true) {
+            pendingTextCommands.addLast(text)
+            return
+        }
+        pipelineJob = lifecycleScope.launch {
+            try {
+                var next: String? = text
+                while (next != null) {
+                    applyAgentResult(voiceAgent.handleText(next, startVoiceTrace().also {
+                        it.mark(Stage.SPEECH_END)
+                        it.mark(Stage.ASR_DONE)
+                    }), displayTranscript = next)
+                    next = pendingTextCommands.removeFirstOrNull()
+                }
+            } finally {
+                stopSelf()
+            }
         }
     }
 
     private suspend fun runInteraction() {
-        speechEngine.initialize().onFailure { error ->
-            stateManager.transitionToError(
-                error.message ?: "Voice recognition is unavailable",
-            )
+        stateManager.transitionToListening()
+
+        val captured = runCatching {
+            withContext(Dispatchers.IO) {
+                val deadline = SystemClock.elapsedRealtime() + LISTENING_TIMEOUT_MS
+                PushToTalkRecorder(AndroidPcmSource(), SystemNanoClock).record {
+                    SystemClock.elapsedRealtime() < deadline
+                }
+            }
+        }.getOrElse { error ->
+            stateManager.transitionToError(error.message ?: "Microphone is unavailable")
             delay(RESULT_DISPLAY_MS)
             stateManager.transitionToIdle()
             return
         }
 
-        stateManager.transitionToListening()
-
-        // One trace per turn, opened when the microphone starts. This pipeline
-        // has no VAD endpointer of its own, so `speech_start` is the moment we
-        // begin listening rather than a detected onset, and `speech_end` is the
-        // recognizer's own endpoint decision. Both are honest for a streaming
-        // on-device ASR; do not back-date them to flatter the number.
-        val trace = startVoiceTrace()
-
-        var finalText: String? = null
-        var engineError: String? = null
-        trace.mark(Stage.ASR_SENT)
-        withTimeoutOrNull(LISTENING_TIMEOUT_MS) {
-            speechEngine.transcribe().collect { event ->
-                when (event) {
-                    is TranscriptionEvent.Partial ->
-                        stateManager.updatePartialTranscription(event.text)
-                    is TranscriptionEvent.Final -> {
-                        trace.mark(Stage.SPEECH_END)
-                        trace.mark(Stage.ASR_DONE)
-                        finalText = event.text
-                    }
-                    is TranscriptionEvent.Error -> engineError = event.message
-                }
-            }
+        if (!captured.isUsable) {
+            stateManager.transitionToError("I didn't hear anything")
+            delay(RESULT_DISPLAY_MS)
+            stateManager.transitionToIdle()
+            return
         }
 
-        val utterance = finalText
-        when {
-            engineError != null -> {
-                stateManager.transitionToError(engineError)
-                speak(VoiceTurnReport.DID_NOT_HEAR, trace)
-                trace.summary("-", "-", TraceVerdict.Error(Stage.ASR_DONE))
-            }
+        val trace = startVoiceTrace(captured.startNanos)
+        trace.markAt(Stage.SPEECH_END, captured.endNanos)
+        stateManager.transitionToProcessing("…")
+        val result = voiceAgent.handleAudio(captured.pcm, captured.sampleRate, trace)
+        applyAgentResult(result, displayTranscript = result.transcript.ifBlank { "…" })
+    }
 
-            utterance == null -> {
-                stateManager.transitionToError("I didn't hear anything")
-                speak(VoiceTurnReport.DID_NOT_HEAR, trace)
-                trace.summary("-", "-", TraceVerdict.Error(Stage.SPEECH_END))
-            }
-
-            else -> {
-                stateManager.transitionToProcessing(utterance)
-                val intent = processVoiceCommand(utterance)
-                trace.mark(Stage.NLU_DONE)
-                if (intent is VehicleIntent.Clarification) {
-                    stateManager.transitionToClarification(intent.promptVi)
-                    finish(trace, utterance, intent, error = null)
-                } else {
-                    stateManager.transitionToExecuting(describe(intent))
-                    executeVehicleControl(intent).fold(
-                        onSuccess = { message ->
-                            trace.mark(Stage.EXEC_DONE)
-                            stateManager.transitionToSuccess(message)
-                            // The executor already answers in Vietnamese for the
-                            // intents that have a pre-rendered clip, so the same
-                            // string drives the HMI and the voice.
-                            speak(message, trace)
-                            trace.summary(
-                                utterance,
-                                VoiceTurnReport.intentName(intent),
-                                TraceVerdict.Allow,
-                            )
-                        },
-                        onFailure = { error ->
-                            stateManager.transitionToError(error.message ?: "Command failed")
-                            finish(trace, utterance, intent, error)
-                        },
-                    )
-                }
-            }
+    private suspend fun applyAgentResult(
+        result: VoiceTurnResult,
+        displayTranscript: String,
+    ) {
+        if (displayTranscript.isNotBlank() && displayTranscript != "…") {
+            stateManager.transitionToProcessing(displayTranscript)
         }
-
+        when (result.status) {
+            VoiceTurnStatus.APPLIED -> stateManager.transitionToSuccess(result.spokenVi)
+            VoiceTurnStatus.NEEDS_CLARIFICATION,
+            VoiceTurnStatus.NEEDS_CONFIRMATION,
+            -> stateManager.transitionToClarification(result.spokenVi)
+            VoiceTurnStatus.DENIED,
+            VoiceTurnStatus.UNSUPPORTED,
+            VoiceTurnStatus.FAILED,
+            -> stateManager.transitionToError(result.spokenVi)
+        }
         delay(RESULT_DISPLAY_MS)
         stateManager.transitionToIdle()
-    }
-
-    /** Speaks the turn's outcome and closes its trace. */
-    private suspend fun finish(
-        trace: LatencyTrace,
-        utterance: String,
-        intent: VehicleIntent,
-        error: Throwable?,
-    ) {
-        speak(VoiceTurnReport.failureSpeech(intent, error), trace)
-        trace.summary(
-            utterance,
-            VoiceTurnReport.intentName(intent),
-            VoiceTurnReport.verdictFor(intent, error),
-        )
-    }
-
-    /**
-     * TTS is best-effort: it takes audio focus, and a rejected focus request or
-     * a missing vi-VN voice throws. Losing the spoken answer is a degraded turn,
-     * not a reason to take the assistant down mid-demo — but the failure is
-     * logged so a silent run is diagnosable afterwards.
-     */
-    private suspend fun speak(text: String, trace: LatencyTrace) {
-        runCatching { ttsSpeaker.speak(text, trace) }
-            .onFailure { error -> Log.w(VOICE_TAG, "TTS failed for \"$text\": ${error.message}") }
-    }
-
-    private fun describe(intent: VehicleIntent): String = when (intent) {
-        is VehicleIntent.SetTemperature -> "Setting temperature"
-        is VehicleIntent.AdjustTemperature -> "Adjusting temperature"
-        is VehicleIntent.SetFanSpeed, is VehicleIntent.AdjustFanSpeed -> "Adjusting fan"
-        is VehicleIntent.SetAc -> "Switching air conditioning"
-        is VehicleIntent.SetHvacPower -> "Switching climate system"
-        is VehicleIntent.SetDoorLock -> "Updating door locks"
-        is VehicleIntent.QueryStatus -> "Checking vehicle status"
-        is VehicleIntent.VolumeAdjust -> "Adjusting volume"
-        is VehicleIntent.MediaNext -> "Skipping to the next track"
-        is VehicleIntent.NotWired -> "Routing command"
-        is VehicleIntent.Clarification -> "Clarifying command"
-        is VehicleIntent.Unknown -> "Interpreting command"
     }
 
     private fun startForegroundWithNotification() {
@@ -229,14 +165,13 @@ class VoiceAssistantService : LifecycleService() {
 
     companion object {
         private const val ACTION_START_LISTENING = "com.sopa.viva_automotive.action.START_LISTENING"
+        private const val ACTION_PROCESS_TEXT = "com.sopa.viva_automotive.action.PROCESS_TEXT"
         private const val ACTION_STOP = "com.sopa.viva_automotive.action.STOP"
+        private const val EXTRA_TEXT = "text"
         private const val CHANNEL_ID = "voice_assistant"
         private const val NOTIFICATION_ID = 0x5641
-        private const val LISTENING_TIMEOUT_MS = 15_000L
+        private const val LISTENING_TIMEOUT_MS = 8_000L
         private const val RESULT_DISPLAY_MS = 3_000L
-
-        /** Diagnostics tag. Never VIVA_TRACE — that stream is the benchmark input. */
-        private const val VOICE_TAG = "VIVA_VOICE"
 
         fun startListening(context: Context) {
             context.startForegroundService(
@@ -244,7 +179,15 @@ class VoiceAssistantService : LifecycleService() {
             )
         }
 
-                fun stop(context: Context) {
+        fun processText(context: Context, text: String) {
+            context.startForegroundService(
+                Intent(context, VoiceAssistantService::class.java)
+                    .setAction(ACTION_PROCESS_TEXT)
+                    .putExtra(EXTRA_TEXT, text),
+            )
+        }
+
+        fun stop(context: Context) {
             context.startService(
                 Intent(context, VoiceAssistantService::class.java).setAction(ACTION_STOP),
             )

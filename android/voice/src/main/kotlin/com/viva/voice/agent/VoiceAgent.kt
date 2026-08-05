@@ -9,11 +9,6 @@ import com.viva.voice.trace.Stage
 import com.viva.voice.trace.TraceVerdict
 import com.viva.voice.tts.TtsSpeaker
 
-/**
- * Boundary implemented by the app shell today and by VivaCarService/skills later.
- * Returning [CommandResult.Applied] means the downstream layer verified the new state; accepting
- * a request is not enough to produce a success response.
- */
 fun interface CommandGateway {
     suspend fun execute(intent: Intent, trace: LatencyTrace): CommandResult
 }
@@ -93,7 +88,6 @@ class VoiceAgent(
         return handleRecognisedText(recognised.text, recognised.confidence, trace)
     }
 
-    /** Lets the app/HMI integrate now while microphone and real ASR are still being wired. */
     suspend fun handleText(text: String, trace: LatencyTrace): VoiceTurnResult =
         handleRecognisedText(text, 1f, trace)
 
@@ -210,8 +204,6 @@ class VoiceAgent(
                 result.intent?.name ?: "unknown",
                 TraceVerdict.Error(Stage.TTS_START),
             )
-            // Audio output is not command execution. Keep the verified status and HMI text;
-            // the Android speaker already attempts a short cue as its last fallback.
             result
         }
     }
