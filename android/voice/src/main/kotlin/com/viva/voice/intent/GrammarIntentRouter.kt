@@ -64,7 +64,23 @@ class GrammarIntentRouter(
         // "nhiệt độ hiện tại" mà để rơi vào nhánh đặt nhiệt độ thì router đi
         // tìm một con số không tồn tại rồi hỏi lại — tài xế hỏi một câu và bị
         // hỏi ngược. Phân biệt bằng chỗ có số hay không: hỏi thì không có số.
-        if (command.has("tốc độ") && !command.has("đặt")) {
+        // "tốc độ quạt" là MỨC QUẠT, không phải tốc độ xe — và câu hỏi thì
+        // không mang số. Thiếu hai điều kiện này, luật nuốt sạch lệnh quạt:
+        // đo trên máy 05/08, 4 trong 8 lượt nói thật bị định tuyến nhầm, gồm
+        // "tốc độ quạt xuống hai đi" và "giảm ảnh tốc độ quạt xuống hai".
+        if (command.has("tốc độ") &&
+            !command.has("quạt") &&
+            spokenOrDigitNumber(command) == null
+        ) {
+            return matched("vehicle_status_speed")
+        }
+        // "xe đang chạy bao nhiêu" — cách hỏi tốc độ tự nhiên, không có chữ
+        // "tốc độ". Tầng keyword vốn đã liệt kê nó, nhưng tầng keyword khớp
+        // chính xác từng chữ có dấu nên sai một thanh là trượt.
+        if (command.has("đang chạy") &&
+            command.has(*STATUS_CUES) &&
+            spokenOrDigitNumber(command) == null
+        ) {
             return matched("vehicle_status_speed")
         }
         if (command.has("xăng", "nhiên liệu")) {

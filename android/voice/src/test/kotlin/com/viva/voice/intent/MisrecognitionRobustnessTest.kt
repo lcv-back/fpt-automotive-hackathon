@@ -218,6 +218,20 @@ class MisrecognitionRobustnessTest {
             "quạt mức ba" to "hvac_set_fan",
             "quat muc ba" to "hvac_set_fan",
             "quạt mức năm" to "hvac_set_fan",
+            // — "tốc độ quạt" là MỨC QUẠT, không phải tốc độ xe —
+            //
+            // Bốn câu đầu chép nguyên văn từ logcat phiên nói thật 05/08, lúc
+            // luật truy vấn tốc độ vừa thêm vào nuốt sạch lệnh quạt. Corpus cũ
+            // không có câu nào chứa "tốc độ quạt" nên không bắt được.
+            "tốc độ quạt xuống hai đi" to "hvac_set_fan",
+            "giảm ảnh tốc độ quạt xuống hai" to "hvac_set_fan",
+            "chị thắm tốc độ quạt sung hai" to "hvac_set_fan",
+            "cho hư tốc độ quạt lớn năm" to "hvac_set_fan",
+            "giảm tốc độ quạt xuống hai" to "hvac_set_fan",
+            // Ngược lại: hỏi tốc độ XE thì vẫn phải ra truy vấn trạng thái.
+            "tốc độ hiện tại" to "vehicle_status_speed",
+            "tốc độ bao nhiêu" to "vehicle_status_speed",
+            "xe đang chạy bao nhiêu" to "vehicle_status_speed",
             // — âm lượng —
             "tăng âm lượng" to "volume_adjust",
             "tang am luong" to "volume_adjust",
