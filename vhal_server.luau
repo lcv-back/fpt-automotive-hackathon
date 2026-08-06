@@ -1,15 +1,4 @@
--- ===================================================================
--- VIVA PROJECT - VEHICLE HARDWARE ABSTRACTION LAYER (VHAL) SERVER SCRIPT
--- Ngôn ngữ: Luau (Dùng cho Script Node trên CarSky Platform)
--- Task T2: Script Node Luau VHAL ↔ CAN hai chiều + AI Safety Guard G1/G2
--- Tác giả: Lê Đức Tùng (VHAL Embedded Engineer - Team VIVA)
--- ===================================================================
--- Hỗ trợ 3 file DBC: body_can.dbc, powertrain_can.dbc, car_signals.dbc
--- Cập nhật kiến trúc 30/07 theo chỉ đạo Mentor:
--- VHAL nhận (propertyId, areaId, value) trực tiếp thay vì Intent name.
--- ===================================================================
-
--- 1. ĐỊNH NGHĨA CÁC VHAL PROPERTY ID CHUẨN ANDROID AUTOMOTIVE OS (VehicleProperties.kt)
+-- 1. ĐỊNH NGHĨA CÁC VHAL PROPERTY ID (VehicleProperties.kt)
 local VHAL_PROP = {
     HVAC_TEMPERATURE_SET = 0x15600503, -- 358614275: Nhiệt độ điều hòa (°C) [Driver: Area 0, Passenger: Area 1]
     HVAC_FAN_SPEED       = 0x15400500, -- 356517120: Mức quạt gió (1 - 5)
@@ -26,7 +15,7 @@ local VHAL_PROP = {
     AUDIO_VOLUME         = 0x11400901  -- 289429249: Âm lượng buồng lái (0 - 100)
 }
 
--- Chuẩn hóa Property ID đầu vào (Hỗ trợ Hex Integer, Decimal Integer, Hex String "0x...")
+-- Chuẩn hóa Property ID đầu vào 
 local function normalize_prop_id(prop_id)
     if type(prop_id) == "number" then
         return math.floor(prop_id)
@@ -40,7 +29,7 @@ local function normalize_prop_id(prop_id)
     return prop_id
 end
 
--- 2. TRẠNG THÁI XE THỜI GIAN THỰC (Real-time Vehicle State)
+-- 2. TRẠNG THÁI XE THỜI GIAN THỰC 
 local VehicleState = {
     speed = 0.0,            -- Tốc độ xe (km/h)
     motor_rpm = 0.0,        -- Vòng tua máy (rpm)
@@ -59,7 +48,7 @@ local VehicleState = {
     volume = 50             -- Âm lượng buồng lái
 }
 
--- 3. TẦNG BẢO VỆ AN TOÀN TẤT ĐỊNH (AI SAFETY GUARD - RULES G1 & G2)
+-- 3. TẦNG BẢO VỆ AN TOÀN TẤT ĐỊNH 
 -- Kiểm tra trực tiếp trên Property ID và Target Value
 function check_safety_guard(prop_id, area_id, target_val)
     local norm_id = normalize_prop_id(prop_id)
@@ -150,7 +139,7 @@ function publish_can_signal(signal_name, value)
     end
 end
 
--- 6. BỘ ĐIỀU PHỐI VHAL PROPERTY CHÍNH (VHAL PROPERTY DISPATCHER: (propertyId, areaId, value) -> CAN)
+-- 6. BỘ ĐIỀU PHỐI VHAL PROPERTY CHÍNH (VHAL PROPERTY DISPATCHER:
 -- Đây chính là hàm tiếp nhận chính từ Android Service FW / AAOS Native client
 function process_vhal_set_property(property_id, area_id, value)
     local norm_id = normalize_prop_id(property_id)
@@ -231,7 +220,7 @@ function process_vhal_set_property(property_id, area_id, value)
     return { status = "UNKNOWN_PROPERTY", message = string.format("Property 0x%X chưa được định nghĩa.", norm_id or 0) }
 end
 
--- LẮNG NGHE SỰ KIỆN TỪ SKYCRAFT VHAL PIN (Nydus Guest VM Callbacks)
+-- LẮNG NGHE SỰ KIỆN TỪ SKYCRAFT VHAL PIN 
 local vhal_pin = (pins and (pins.vhal0 or pins.vhal)) or (Pin and Pin.VHAL_IN)
 if vhal_pin and vhal_pin.on_change then
     vhal_pin:on_change(function(ev)
@@ -241,7 +230,7 @@ if vhal_pin and vhal_pin.on_change then
     end)
 end
 
--- 7. LẮNG NGHE TÍN HIỆU TỪ MẠNG CAN (Inbound CAN: CAN Bus -> VHAL & VehicleState)
+-- 7. LẮNG NGHE TÍN HIỆU TỪ MẠNG CAN 
 function init_can_inbound_listeners()
     local can_pin = pins and (pins.can0 or pins.can)
     if not (can_pin and can_pin.db) then
