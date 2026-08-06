@@ -80,7 +80,6 @@ ENV ASR_MODEL_PATH=/models/asr-ct2 \
     ASR_COMPUTE_TYPE=int8 \
     ASR_LANGUAGE=vi \
     ASR_BEAM_SIZE=1 \
-    ASR_INITIAL_PROMPT="Lệnh điều khiển xe: điều hòa, nhiệt độ, độ C, quạt gió, mức quạt, mở khóa cửa, khóa cửa, ghế sưởi, âm lượng, phát nhạc, chuyển bài, bật, tắt, tăng, giảm." \
     VIVA_GIT_COMMIT=${VIVA_GIT_COMMIT} \
     PYTHONUNBUFFERED=1
 

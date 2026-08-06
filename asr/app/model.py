@@ -80,6 +80,10 @@ def build_transcribe_kwargs(settings: Settings) -> dict:
     }
     if settings.initial_prompt:
         kwargs["initial_prompt"] = settings.initial_prompt
+    if settings.hotwords:
+        kwargs["hotwords"] = settings.hotwords
+    if settings.max_new_tokens > 0:
+        kwargs["max_new_tokens"] = settings.max_new_tokens
     return kwargs
 
 

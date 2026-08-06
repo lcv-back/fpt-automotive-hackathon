@@ -137,11 +137,56 @@ class GrammarIntentRouter(
             ),
         )
 
-    private fun normalize(raw: String): String = raw
-        .lowercase(Locale.ROOT)
-        .replace(PUNCTUATION, " ")
-        .replace(WHITESPACE, " ")
-        .trim()
+    private fun normalize(raw: String): String {
+        var normalized = raw
+            .lowercase(Locale.ROOT)
+            .replace(PUNCTUATION, " ")
+            .replace(WHITESPACE, " ")
+            .trim()
+
+        val numberMap = mapOf(
+            "không" to "0",
+            "một" to "1",
+            "hai" to "2",
+            "ba" to "3",
+            "bốn" to "4",
+            "năm" to "5",
+            "sáu" to "6",
+            "bảy" to "7",
+            "tám" to "8",
+            "chín" to "9",
+            "mười" to "10",
+            "mười một" to "11",
+            "mười hai" to "12",
+            "mười ba" to "13",
+            "mười bốn" to "14",
+            "mười lăm" to "15",
+            "mười sáu" to "16",
+            "mười bảy" to "17",
+            "mười tám" to "18",
+            "mười chín" to "19",
+            "hai mươi" to "20",
+            "hai mươi một" to "21", "hai mốt" to "21", "hai một" to "21",
+            "hai mươi hai" to "22", "hai hai" to "22",
+            "hai mươi ba" to "23", "hai ba" to "23",
+            "hai mươi bốn" to "24", "hai mươi tư" to "24", "hai bốn" to "24", "hai tư" to "24",
+            "hai mươi lăm" to "25", "hai lăm" to "25", "hai năm" to "25",
+            "hai mươi sáu" to "26", "hai sáu" to "26",
+            "hai mươi bảy" to "27", "hai bảy" to "27",
+            "hai mươi tám" to "28", "hai tám" to "28",
+            "hai mươi chín" to "29", "hai chín" to "29",
+            "ba mươi" to "30",
+            "ba mươi một" to "31", "ba mốt" to "31", "ba một" to "31",
+            "ba mươi hai" to "32", "ba hai" to "32"
+        )
+
+        val sortedKeys = numberMap.keys.sortedByDescending { it.length }
+        for (key in sortedKeys) {
+            normalized = normalized.replace(Regex("(?<=\\s|^)$key(?=\\s|$)"), numberMap[key]!!)
+        }
+
+        return normalized
+    }
 
     companion object {
         private const val MIN_TEMPERATURE_C = 16

@@ -68,6 +68,9 @@ class Settings:
     #
     # None, not "": an empty prompt still gets tokenized and prepended.
     initial_prompt: str | None = None
+    
+    hotwords: str | None = None
+    max_new_tokens: int = 0
 
     # 30 s of 16 kHz mono PCM16. A client that sends more is streaming a whole
     # session instead of one utterance; fail fast with 413 instead of timing
@@ -90,6 +93,8 @@ class Settings:
             language=os.getenv("ASR_LANGUAGE", Settings.language),
             beam_size=_env_int("ASR_BEAM_SIZE", Settings.beam_size),
             initial_prompt=_env_text("ASR_INITIAL_PROMPT", Settings.initial_prompt),
+            hotwords=_env_text("ASR_HOTWORDS", Settings.hotwords),
+            max_new_tokens=_env_int("ASR_MAX_NEW_TOKENS", Settings.max_new_tokens),
             max_body_bytes=_env_int("ASR_MAX_BODY_BYTES", Settings.max_body_bytes),
             min_audio_ms=_env_int("ASR_MIN_AUDIO_MS", Settings.min_audio_ms),
         )
