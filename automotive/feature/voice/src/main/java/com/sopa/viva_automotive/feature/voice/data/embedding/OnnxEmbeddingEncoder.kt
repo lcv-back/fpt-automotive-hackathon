@@ -51,6 +51,7 @@ class OnnxEmbeddingEncoder @Inject constructor(
                 tokenizer = BertWordPieceTokenizer.fromVocabLines(
                     vocabFile.readLines(Charsets.UTF_8),
                     maxLength = MAX_SEQ_LEN,
+                    lowercase = false,
                 )
                 Log.i(TAG, "Multilingual embedding encoder ready (${modelFile.length() / 1024} KB)")
             }.onFailure {
