@@ -41,6 +41,19 @@ class VoskSpeechRecognitionEngine @Inject constructor(
     @Volatile
     private var loadedLanguage: VoiceLanguage? = null
 
+    /**
+     * Model đang nạp có **đồ thị động** hay không, quyết định lúc [initialize].
+     *
+     * Chỉ model dựng theo kiểu `HCLr.fst` + `Gr.fst` mới nhận được grammar lúc
+     * chạy. Với model đồ thị tĩnh (`HCLG.fst` — ví dụ `vosk-model-vn-0.4` bản
+     * lớn), Vosk **âm thầm bỏ qua** grammar truyền vào và vẫn giải mã trên toàn
+     * bộ vốn từ. Không có cờ này thì việc thu hẹp vốn từ trông như đang chạy
+     * trong khi thực tế không làm gì cả — đúng cái bẫy đã mất một buổi để phát
+     * hiện. Kiểm sự tồn tại của file rồi ghi log, thay vì tin.
+     */
+    @Volatile
+    private var hasDynamicGraph: Boolean = false
+
     @Volatile
     private var endOfUtteranceRequested: Boolean = false
 
@@ -69,7 +82,17 @@ class VoskSpeechRecognitionEngine @Inject constructor(
                 }
                 model = Model(modelDir.absolutePath)
                 loadedLanguage = language
+                hasDynamicGraph = modelDir.resolve("graph/Gr.fst").exists()
                 Log.i(TAG, "Loaded Vosk model for ${language.storageKey} ($assetDir)")
+                Log.i(
+                    TAG,
+                    if (hasDynamicGraph) {
+                        "Do thi dong (Gr.fst): rang buoc von tu ${CommandVocabulary.size} tu SE co hieu luc"
+                    } else {
+                        "Do thi TINH (khong co Gr.fst): rang buoc von tu KHONG co hieu luc, " +
+                            "giai ma tren toan bo von tu cua model"
+                    },
+                )
             }.onFailure {
                 Log.e(TAG, "Voice model initialization failed for $language", it)
                 releaseModelLocked()
@@ -99,7 +122,34 @@ class VoskSpeechRecognitionEngine @Inject constructor(
         }
 
         endOfUtteranceRequested = false
-        val recognizer = Recognizer(loadedModel, SAMPLE_RATE.toFloat())
+
+        // Ràng vốn từ ngay ở decoder, không phải sửa lỗi ở tầng trên.
+        //
+        // Đây là chỗ duy nhất sửa được đúng nguyên nhân của nhóm lỗi
+        // "giảm tốc độ quạt xuống hai" → "giảm nhiệt lũ quét súng hơi hay":
+        // mô hình ngôn ngữ tổng quát kéo kết quả về phía chuỗi từ phổ biến
+        // trong văn bản đời thường. `FuzzyCommandMatcher` chỉ dọn được phần
+        // sai lệch nhẹ; nó không thể dựng lại một câu mà decoder đã vứt đi.
+        // Xem [CommandVocabulary] về việc vì sao là danh sách từ chứ không
+        // phải danh sách câu, và vì sao `[unk]` là bắt buộc.
+        val recognizer = if (hasDynamicGraph && language == VoiceLanguage.VIETNAMESE) {
+            Recognizer(loadedModel, SAMPLE_RATE.toFloat(), CommandVocabulary.asGrammarJson())
+        } else {
+            Recognizer(loadedModel, SAMPLE_RATE.toFloat())
+        }
+
+        // Bật confidence theo từng từ — hiện chỉ để ĐO, chưa dùng để quyết định.
+        //
+        // `VoiceTurnReport.MIN_ACOUSTIC_CONFIDENCE` tồn tại từ đầu nhưng là luật
+        // chết: Vosk mặc định không trả confidence, nên `needsRepeatForConfidence`
+        // luôn nhận `null` và luôn trả false. `setWords(true)` làm `finalResult`
+        // kèm mảng `result[]` có `conf` cho từng từ, tức con số đó tồn tại thật.
+        //
+        // Cố ý CHƯA nối vào đường quyết định. Chọn ngưỡng mà không có bộ 20–30
+        // lượt nói thật thì chỉ là đoán, và đoán sai ở đây nghĩa là trợ lý hỏi
+        // lại một lệnh nó đã nghe đúng. Ghi log trước, chỉnh ngưỡng theo số đo
+        // sau — đúng thứ tự.
+        recognizer.setWords(true)
         val startedAtMs = SystemClock.elapsedRealtime()
         Log.d(TAG, "Nhan khung PCM voi Vosk ${language.storageKey}")
 
@@ -179,8 +229,9 @@ class VoskSpeechRecognitionEngine @Inject constructor(
         lastPartial: String,
         startedAtMs: Long,
     ): TranscriptionEvent {
-        val forced = JSONObject(recognizer.finalResult).optString("text").trim()
-            .ifEmpty { lastPartial }
+        val result = JSONObject(recognizer.finalResult)
+        val forced = result.optString("text").trim().ifEmpty { lastPartial }
+        logWordConfidences(result)
         return if (forced.isNotEmpty()) {
             TranscriptionEvent.Final(
                 text = forced,
@@ -195,6 +246,33 @@ class VoskSpeechRecognitionEngine @Inject constructor(
                 diagnostic = "recognizer produced no text before the endpoint",
             )
         }
+    }
+
+    /**
+     * Ghi `conf` từng từ mà `setWords(true)` sinh ra, kèm giá trị nhỏ nhất.
+     *
+     * Đây là dữ liệu để chọn ngưỡng cho `VoiceTurnReport.MIN_ACOUSTIC_CONFIDENCE`
+     * sau một phiên nói thật: từ yếu nhất trong câu mới là thứ nói lên câu đó có
+     * đáng tin hay không, chứ không phải trung bình — một lệnh mở khoá cửa nghe
+     * đúng chín từ và sai từ "mở" vẫn là một lệnh không được phép chạy.
+     *
+     * Chỉ ghi log, không đổi kết quả trả về.
+     */
+    private fun logWordConfidences(result: JSONObject) {
+        val words = result.optJSONArray("result") ?: return
+        if (words.length() == 0) return
+        var min = Double.MAX_VALUE
+        val parts = StringBuilder()
+        for (i in 0 until words.length()) {
+            val w = words.optJSONObject(i) ?: continue
+            val conf = w.optDouble("conf", Double.NaN)
+            if (conf.isNaN()) continue
+            if (conf < min) min = conf
+            if (parts.isNotEmpty()) parts.append(' ')
+            parts.append(w.optString("word")).append('=').append(String.format("%.2f", conf))
+        }
+        if (min == Double.MAX_VALUE) return
+        Log.d(TAG, "Conf tung tu: $parts | thap nhat=${String.format("%.2f", min)}")
     }
 
     private fun elapsedSince(startedAtMs: Long): Int =

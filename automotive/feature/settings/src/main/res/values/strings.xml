@@ -5,7 +5,7 @@
     <string name="settings_show_transcription">Show live transcription</string>
     <string name="settings_audio_cues">Play audio cues</string>
     <string name="settings_voice_language">Voice language</string>
-    <string name="settings_voice_language_hint">Offline STT language. English uses Vosk en-US; Vietnamese uses Vosk vn-0.4.</string>
+    <string name="settings_voice_language_hint">Offline STT language. English uses Vosk en-US; Vietnamese uses Vosk small-vn-0.4.</string>
     <string name="settings_display">Display</string>
     <string name="settings_theme_auto">Auto</string>
     <string name="settings_theme_light">Light</string>
