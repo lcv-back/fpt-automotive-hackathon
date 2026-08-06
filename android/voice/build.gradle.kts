@@ -42,6 +42,15 @@ android {
         getByName("main").java.srcDirs("src/main/kotlin")
         getByName("test").java.srcDirs("src/test/kotlin")
     }
+
+    testOptions {
+        unitTests.all {
+            // Gradle forks the test JVM and does not inherit the daemon's -D
+            // flags. Without this, -Dviva.bench.csv silently arrives as null and
+            // the bench-scoring test passes without scoring anything.
+            it.systemProperty("viva.bench.csv", System.getProperty("viva.bench.csv") ?: "")
+        }
+    }
 }
 
 dependencies {

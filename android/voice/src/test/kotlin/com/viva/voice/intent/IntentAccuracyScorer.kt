@@ -19,7 +19,13 @@ class IntentAccuracyScorer(private val router: IntentRouter) {
     data class Score(
         val total: Int,
         val correct: Int,
-        /** Rows whose reference itself does not route — a corpus problem, not a model one. */
+        /**
+         * Rows whose reference itself does not route to an action — a corpus
+         * problem, not a model one. Covers both [RouteResult.Unsupported] and
+         * [RouteResult.NeedsClarification]: neither one is an action the car
+         * takes, so a reference landing on either can't be used to judge
+         * whether the ASR error changed the outcome.
+         */
         val referenceUnroutable: Int,
     ) {
         val accuracy: Double get() = if (total == 0) 0.0 else correct.toDouble() / total
@@ -31,7 +37,9 @@ class IntentAccuracyScorer(private val router: IntentRouter) {
         for (row in rows) {
             val referenceKey = outcomeKey(router.route(row.reference))
             val hypothesisKey = outcomeKey(router.route(row.hypothesis))
-            if (referenceKey.startsWith("unsupported")) referenceUnroutable++
+            if (referenceKey.startsWith("unsupported") || referenceKey.startsWith("clarify")) {
+                referenceUnroutable++
+            }
             if (referenceKey == hypothesisKey) correct++
         }
         return Score(total = rows.size, correct = correct, referenceUnroutable = referenceUnroutable)
@@ -41,7 +49,10 @@ class IntentAccuracyScorer(private val router: IntentRouter) {
      * Collapses a route into the identity of the action taken.
      *
      * Slots are part of the key: `hvac_set_temp(24)` and `hvac_set_temp(20)` are
-     * two different actions, not two spellings of one.
+     * two different actions, not two spellings of one. [RouteResult.Unsupported.canFallback]
+     * is part of the key too: all three call sites in [GrammarIntentRouter] share
+     * the default `rule = "G3_UNSUPPORTED"`, but `canFallback` decides whether a
+     * lower tier gets a turn — that's a real behavioural difference, not noise.
      */
     fun outcomeKey(result: RouteResult): String = when (result) {
         is RouteResult.Matched -> {
@@ -51,7 +62,7 @@ class IntentAccuracyScorer(private val router: IntentRouter) {
             "matched:${result.intent.name}($slots)"
         }
         is RouteResult.NeedsClarification -> "clarify:${result.rule}"
-        is RouteResult.Unsupported -> "unsupported:${result.rule}"
+        is RouteResult.Unsupported -> "unsupported:${result.rule}:canFallback=${result.canFallback}"
     }
 
     companion object {

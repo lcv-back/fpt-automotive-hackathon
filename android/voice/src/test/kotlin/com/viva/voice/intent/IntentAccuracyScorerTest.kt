@@ -77,23 +77,71 @@ class IntentAccuracyScorerTest {
         assertEquals("nói \"viva ơi\"", rows[0].reference)
     }
 
+    @Test
+    fun `unsupported outcomes with different canFallback are different actions`() {
+        // Both routes hit RouteResult.Unsupported with the shared default rule
+        // "G3_UNSUPPORTED", so a key built from `rule` alone would collapse them.
+        // canFallback differs (false vs true) and that decides whether a lower
+        // tier gets a turn — a real behavioural difference, not noise.
+        val reference = GrammarIntentRouter().route("tắt điều hòa")
+        val hypothesis = GrammarIntentRouter().route("xin chào bạn đẹp trai")
+        assertTrue("expected reference to be Unsupported: $reference", reference is RouteResult.Unsupported)
+        assertTrue("expected hypothesis to be Unsupported: $hypothesis", hypothesis is RouteResult.Unsupported)
+        assertTrue(
+            "outcome keys must differ when canFallback differs",
+            scorer.outcomeKey(reference) != scorer.outcomeKey(hypothesis),
+        )
+
+        val rows = listOf(
+            IntentAccuracyScorer.Row("c1", "tắt điều hòa", "xin chào bạn đẹp trai"),
+        )
+        assertEquals(0, scorer.score(rows).correct)
+    }
+
+    @Test
+    fun `reference that needs clarification counts as unroutable`() {
+        // "quạt" without a level routes to NeedsClarification, not an action.
+        // referenceUnroutable's own doc says "reference itself does not route" —
+        // that covers NeedsClarification, not just Unsupported.
+        val rows = listOf(
+            IntentAccuracyScorer.Row("c1", "quạt", "quạt"),
+        )
+        assertEquals(1, scorer.score(rows).referenceUnroutable)
+    }
+
     /**
      * Scores a real bench CSV when one is handed in:
      *
      *   ./gradlew :voice-core:testDebugUnitTest -Dviva.bench.csv=/abs/path/asr-bench.csv
      *
+     * Gradle forks the test JVM and won't forward -D flags on its own; the
+     * `testOptions.unitTests.all { it.systemProperty(...) }` block in
+     * build.gradle.kts forwards it explicitly, falling back to "" when absent.
+     * So the guard here must treat blank the same as missing, not just null.
+     *
      * Skipped otherwise so CI stays green without the corpus.
      */
     @Test
     fun `score a bench csv when the path is supplied`() {
-        val path = System.getProperty("viva.bench.csv") ?: return
+        val path = System.getProperty("viva.bench.csv")
+        if (path.isNullOrBlank()) return
         val file = java.io.File(path)
         assertTrue("bench CSV not found: $path", file.exists())
 
         val rows = IntentAccuracyScorer.parseCsv(file.readText(Charsets.UTF_8))
+        assertTrue("bench CSV had no rows to parse: $path", rows.isNotEmpty())
+
         val score = scorer.score(rows)
         println("VIVA_INTENT_ACCURACY rows=${score.total} correct=${score.correct} " +
             "accuracy=${"%.4f".format(score.accuracy)} reference_unroutable=${score.referenceUnroutable}")
+
+        // Prove the scoring actually ran against the parsed corpus, not just
+        // that some default/empty Score slipped past the assertions below.
+        assertEquals("scored row count must match parsed row count", rows.size, score.total)
         assertTrue("bench CSV had no scorable rows", score.total > 0)
+        assertTrue(
+            "correct count out of range: ${score.correct}/${score.total}",
+            score.correct in 0..score.total,
+        )
     }
 }
