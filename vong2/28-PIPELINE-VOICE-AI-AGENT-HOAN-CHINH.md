@@ -91,13 +91,13 @@ ACTION_START_LISTENING / nút mic
 |---|---|---|
 | AudioCapture duy nhất | `AudioCapture`, `PcmSourceAudioCapture`, `AndroidPcmSource` | **Trên đường chạy APK**; `AndroidPcmSource` là `AudioRecord` duy nhất còn lại trong repo |
 | Silero VAD live | `SileroVadOnnxScorer`, `VadEndpointer`, `VadStreamDriver` | **Trên đường chạy APK**, có pre-roll 500ms; ngưỡng vẫn là baseline synthetic |
-| ASR theo khung PCM | `SpeechRecognitionEngine.transcribe(Flow<PcmFrame>)`, `VoskSpeechRecognitionEngine` | **Trên đường chạy APK**; engine không còn sở hữu mic |
+| ASR theo khung PCM | `SpeechRecognitionEngine.transcribe(Flow<PcmFrame>)`, Vosk + remote PhoWhisper adapters | **Trên đường chạy APK**; Vosk là mặc định, PhoWhisper chọn bằng build property; không engine nào sở hữu mic |
 | Acoustic confidence | `TranscriptionEvent.Final.acousticConfidence: Float?`, `AsrResult.acousticConfidence` | Có contract; Vosk trả `null` **có chủ đích**, không bịa 1.0 |
 | Push-to-talk hold | `PushToTalkRecorder` | Chưa dùng: HMI hiện là **chạm để nói**, chưa có cử chỉ giữ nút. Nhả nút chưa phải tín hiệu endpoint |
 | Voice orchestration | `VoiceAgent`, `CommandGateway`, `CommandResult` | **Vẫn chưa nằm trên đường chạy** — xem §8 P0.4 |
 | Adapter `AsrClient` thật | `AsrClient`, `FakeAsrClient` | Chưa có adapter thật; app đi qua `SpeechRecognitionEngine` |
 | Wake-word | Chưa có detector/model/benchmark | Chưa triển khai |
-| Remote PhoWhisper | Container có; app chưa gọi được | Không nằm trên đường APK |
+| Remote PhoWhisper | `RemotePhoWhisperSpeechRecognitionEngine`, `HttpRemoteAsrTransport` | **Đã nối ở source, opt-in** bằng `-PvivaAsrEngine=remote`; unit test xanh, chưa có emulator/Device evidence |
 | `VivaCarService` | Chưa có | App vẫn gọi repository nội bộ |
 
 ### 1.3 Phần đã thay đổi sau snapshot `25-LECH-KIEN-TRUC-VOICE-PIPELINE.md`
@@ -500,7 +500,7 @@ claim của đội. Claim chỉ lấy từ benchmark tái lập trên dữ liệ
 
 ### P3 — Tùy chọn sau MVP
 
-- remote PhoWhisper adapter;
+- ✅ remote PhoWhisper adapter đã vào source (opt-in; chưa có emulator/Device evidence);
 - LLM T2 theo typed schema + allowlist;
 - barge-in/full-duplex;
 - multi-seat/diarization;
