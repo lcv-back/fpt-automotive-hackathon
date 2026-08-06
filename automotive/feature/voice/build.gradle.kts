@@ -77,9 +77,24 @@ val downloadVoskViModel by tasks.registering {
     notCompatibleWithConfigurationCache("Downloads Vosk model over the network")
     outputs.file(voskViDir.file("conf/model.conf"))
     doLast {
+        // Ban SMALL, khong phai ban lon — co chu dinh.
+        //
+        // Ca hai cung WER 15.70 tren VIVOS theo cong bo cua Alphacephei, nhung
+        // chung khac nhau o cach dung do thi:
+        //
+        //   vosk-model-vn-0.4        HCLG.fst (158 MB)              do thi TINH
+        //   vosk-model-small-vn-0.4  HCLr.fst + Gr.fst + disambig   do thi DONG
+        //
+        // Chi do thi dong moi nhan grammar luc chay. Voi do thi tinh, Vosk AM
+        // THAM bo qua grammar va van giai ma tren toan bo 19.529 tu — do la ly
+        // do cau "tang nhiet do len hai muoi tu do" tung ra
+        // "chang nhiet do len ha my tu do".
+        //
+        // Doi sang ban nay de CommandVocabulary that su co tac dung. Kem theo:
+        // APK nho hon 46 MB.
         downloadAndUnpackVoskModel(
-            zipName = "vosk-model-vn-0.4.zip",
-            unpackedFolderName = "vosk-model-vn-0.4",
+            zipName = "vosk-model-small-vn-0.4.zip",
+            unpackedFolderName = "vosk-model-small-vn-0.4",
             destDir = voskViDir.asFile,
         )
     }
@@ -175,4 +190,9 @@ dependencies {
 
     testImplementation(libs.junit)
     testImplementation(libs.kotlinx.coroutines.test)
+
+    // `org.json` trong android.jar chỉ là stub, mọi lời gọi ném "not mocked" khi
+    // chạy trên JVM. Bản thật này để `CommandVocabularyTest` kiểm được rằng
+    // grammar sinh ra thực sự parse được — thứ mà Vosk sẽ im lặng bỏ qua nếu hỏng.
+    testImplementation(libs.org.json)
 }

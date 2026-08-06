@@ -2,6 +2,7 @@ package com.sopa.viva_automotive.feature.voice.domain
 
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
+import com.viva.voice.text.SpokenNumberParser
 import org.junit.Test
 
 class SpokenNumberParserTest {
