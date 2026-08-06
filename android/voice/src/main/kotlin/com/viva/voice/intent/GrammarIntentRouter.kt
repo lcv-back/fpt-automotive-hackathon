@@ -91,16 +91,18 @@ class GrammarIntentRouter(
     private fun isRemovedCommand(command: String): Boolean =
         REMOVED_COMMANDS.any { pattern -> pattern.containsMatchIn(command) }
 
-    private fun orderIdSlot(command: String): Map<String, Any> =
-        ORDER_ID.find(command)
-            ?.groupValues
-            ?.get(1)
-            ?.uppercase(Locale.ROOT)
-            ?.let { mapOf("orderId" to it) }
-            .orEmpty()
+    private fun orderIdSlot(command: String): Map<String, Any> {
+        val parsedCommand = parseVietnameseNumber(command)
+        val match = ORDER_ID.find(parsedCommand) ?: return emptyMap()
+        val letter = match.groupValues[1]
+        val numbers = match.groupValues[2].replace(Regex("""\s+"""), "")
+        val orderId = (letter + numbers).uppercase(Locale.ROOT)
+        return mapOf("orderId" to orderId)
+    }
 
     private fun routeTemperature(command: String): RouteResult {
-        val value = NUMBER.find(command)?.groupValues?.get(1)?.toIntOrNull()
+        val parsed = parseVietnameseNumber(command)
+        val value = NUMBER.find(parsed)?.groupValues?.get(1)?.toIntOrNull()
             ?: return RouteResult.NeedsClarification(
                 "Bạn muốn đặt nhiệt độ điều hòa ở bao nhiêu độ?",
             )
@@ -115,11 +117,13 @@ class GrammarIntentRouter(
     private fun isTemperatureCommand(command: String): Boolean {
         if (command.contains("nhiệt độ")) return true
         if (!command.contains("điều hòa")) return false
-        return NUMBER.containsMatchIn(command) || TEMPERATURE_CUES.any { cue -> command.contains(cue) }
+        val parsed = parseVietnameseNumber(command)
+        return NUMBER.containsMatchIn(parsed) || TEMPERATURE_CUES.any { cue -> command.contains(cue) }
     }
 
     private fun routeFan(command: String): RouteResult {
-        val level = NUMBER.find(command)?.groupValues?.get(1)?.toIntOrNull()
+        val parsed = parseVietnameseNumber(command)
+        val level = NUMBER.find(parsed)?.groupValues?.get(1)?.toIntOrNull()
             ?: return RouteResult.NeedsClarification("Bạn muốn đặt quạt ở mức mấy, từ 0 đến 5?")
         if (level !in MIN_FAN_LEVEL..MAX_FAN_LEVEL) {
             return RouteResult.NeedsClarification("Mức quạt hỗ trợ từ 0 đến 5. Bạn chọn mức nào?")
@@ -138,12 +142,15 @@ class GrammarIntentRouter(
         )
 
     private fun normalize(raw: String): String {
-        var normalized = raw
+        return raw
             .lowercase(Locale.ROOT)
             .replace(PUNCTUATION, " ")
             .replace(WHITESPACE, " ")
             .trim()
+    }
 
+    private fun parseVietnameseNumber(raw: String): String {
+        var normalized = raw
         val numberMap = mapOf(
             "không" to "0",
             "một" to "1",
@@ -200,7 +207,7 @@ class GrammarIntentRouter(
         private val WHITESPACE = Regex("""\s+""")
         private val SUPPORTED_WAKE = Regex("""^(?:viva|vivi)\s+ơi(?:\s+|$)""")
         private val UNSUPPORTED_WAKE = Regex("""^(?:siri|alexa|hey google)\s+ơi?(?:\s+|$)""")
-        private val ORDER_ID = Regex("""\b([a-z]\d{1,6})\b""")
+        private val ORDER_ID = Regex("""\b([a-z])\s*((?:\d\s*){1,6})\b""")
         private val DELIVERY_STATUS_CUES = listOf("thế nào", "trạng thái", "đến đâu")
         private val REMOVED_COMMANDS = listOf(
             Regex("""\b(?:bật|tắt)\s+(?:điều hòa|ac)\b"""),

@@ -87,11 +87,11 @@ class GrammarIntentRouterTest {
     }
 
     @Test
-    fun `media play keeps an optional query`() {
-        val result = router.route("phát playlist đi làm") as RouteResult.Matched
+    fun `media play keeps an optional query without normalizing numbers inside it`() {
+        val result = router.route("phát playlist một ngày mới") as RouteResult.Matched
 
         assertEquals("media_play", result.intent.name)
-        assertEquals("playlist đi làm", result.intent.slots["query"])
+        assertEquals("một ngày mới", result.intent.slots["query"]) // number word should not be replaced
     }
 
     @Test
@@ -101,6 +101,43 @@ class GrammarIntentRouterTest {
 
         assertEquals("A12", status.intent.slots["orderId"])
         assertEquals("B07", confirmation.intent.slots["orderId"])
+    }
+
+    @Test
+    fun `delivery commands parse spoken spelled-out numbers`() {
+        val status = router.route("đơn a một hai ba thế nào") as RouteResult.Matched
+
+        assertEquals("A123", status.intent.slots["orderId"])
+    }
+
+    @Test
+    fun `fan boundary checks`() {
+        assertTrue(router.route("quạt mức 6") is RouteResult.NeedsClarification)
+        assertEquals(0, (router.route("quạt mức 0") as RouteResult.Matched).intent.slots["level"])
+        assertEquals(5, (router.route("quạt mức 5") as RouteResult.Matched).intent.slots["level"])
+    }
+
+    @Test
+    fun `temperature boundary checks`() {
+        assertTrue(router.route("đặt điều hòa 15 độ") is RouteResult.NeedsClarification)
+        assertTrue(router.route("đặt điều hòa 33 độ") is RouteResult.NeedsClarification)
+        assertEquals(16f, (router.route("đặt điều hòa 16 độ") as RouteResult.Matched).intent.slots["value"])
+        assertEquals(32f, (router.route("đặt điều hòa 32 độ") as RouteResult.Matched).intent.slots["value"])
+    }
+
+    @Test
+    fun `vietnamese numbers are parsed gracefully for multiple variations`() {
+        val cases = mapOf(
+            "hạ điều hòa xuống hai mốt độ" to 21f,
+            "hạ điều hòa xuống hai tư độ" to 24f,
+            "hạ điều hòa xuống hai lăm độ" to 25f,
+            "hạ điều hòa xuống hai sáu độ" to 26f,
+        )
+
+        cases.forEach { (text, expectedValue) ->
+            val result = router.route(text) as RouteResult.Matched
+            assertEquals(expectedValue, result.intent.slots["value"])
+        }
     }
 
     @Test
@@ -133,7 +170,7 @@ class GrammarIntentRouterTest {
         val extendedRouter = GrammarIntentRouter(
             extensionRules = listOf(
                 GrammarRule { command ->
-                    if (command == "mở cốp") {
+                    if (command == "mở cốp số một") { // Expecting "một" not "1"
                         RouteResult.Matched(
                             Intent(
                                 name = "trunk_open",
@@ -148,7 +185,7 @@ class GrammarIntentRouterTest {
             ),
         )
 
-        val result = extendedRouter.route("Viva ơi, mở cốp") as RouteResult.Matched
+        val result = extendedRouter.route("Viva ơi, mở cốp số một") as RouteResult.Matched
 
         assertEquals("trunk_open", result.intent.name)
     }
