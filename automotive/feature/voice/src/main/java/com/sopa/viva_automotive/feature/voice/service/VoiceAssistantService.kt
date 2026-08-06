@@ -150,7 +150,9 @@ class VoiceAssistantService : LifecycleService() {
         val captureFailure = runCatching {
             withTimeoutOrNull(LISTENING_TIMEOUT_MS) {
                 val frames = audioCapture.frames().onEach { frame ->
-                    if (trace.nanosOf(Stage.ASR_SENT) == null) {
+                    if (speechEngine.sendsAudioWhileCapturing &&
+                        trace.nanosOf(Stage.ASR_SENT) == null
+                    ) {
                         // Streaming ASR: audio bắt đầu chảy vào recognizer từ khung
                         // đầu tiên, nên `asr_sent` đứng trước `speech_end` — đúng bản
                         // chất của engine, không phải lỗi thứ tự.
@@ -178,6 +180,8 @@ class VoiceAssistantService : LifecycleService() {
 
                 speechEngine.transcribe(frames).collect { event ->
                     when (event) {
+                        TranscriptionEvent.RequestStarted -> trace.mark(Stage.ASR_SENT)
+
                         is TranscriptionEvent.Partial ->
                             stateManager.updatePartialTranscription(event.text)
 

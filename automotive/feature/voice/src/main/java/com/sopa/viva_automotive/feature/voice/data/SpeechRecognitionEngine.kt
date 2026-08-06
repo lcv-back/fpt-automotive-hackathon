@@ -4,6 +4,9 @@ import com.viva.voice.audio.PcmFrame
 import kotlinx.coroutines.flow.Flow
 
 sealed interface TranscriptionEvent {
+    /** Remote utterance ASR đã bắt đầu gửi request; dùng để đặt trace `asr_sent` đúng lúc. */
+    data object RequestStarted : TranscriptionEvent
+
     /** Chỉ để cập nhật HMI. **Không bao giờ** được route hay execute (28-PIPELINE §2.4). */
     data class Partial(val text: String) : TranscriptionEvent
 
@@ -46,6 +49,9 @@ sealed interface TranscriptionEvent {
  * on-device và ASR remote cùng đọc một nguồn duy nhất thay vì tranh mic của nhau.
  */
 interface SpeechRecognitionEngine {
+    /** `true` với Vosk streaming; `false` với endpoint chỉ nhận cả utterance. */
+    val sendsAudioWhileCapturing: Boolean get() = true
+
     suspend fun initialize(): Result<Unit>
 
     fun transcribe(frames: Flow<PcmFrame>): Flow<TranscriptionEvent>

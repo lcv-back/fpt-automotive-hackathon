@@ -131,6 +131,16 @@ android {
 
     defaultConfig {
         minSdk = 32
+        buildConfigField(
+            "String",
+            "ASR_ENGINE",
+            "\"" + (project.findProperty("vivaAsrEngine") ?: "vosk") + "\"",
+        )
+        buildConfigField(
+            "String",
+            "ASR_BASE_URL",
+            "\"" + (project.findProperty("vivaAsrBaseUrl") ?: "http://127.0.0.1:8080") + "\"",
+        )
     }
 
     compileOptions {
@@ -140,6 +150,7 @@ android {
 
     buildFeatures {
         compose = true
+        buildConfig = true
     }
 
     androidResources {

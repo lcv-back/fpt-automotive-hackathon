@@ -1,10 +1,15 @@
 package com.sopa.viva_automotive.feature.voice.di
 
 import android.content.Context
+import com.sopa.viva_automotive.core.common.coroutines.IoDispatcher
+import com.sopa.viva_automotive.feature.voice.BuildConfig
 import com.sopa.viva_automotive.feature.voice.data.SpeechRecognitionEngine
 import com.sopa.viva_automotive.feature.voice.data.audio.AndroidVolumeController
 import com.sopa.viva_automotive.feature.voice.data.embedding.OnnxEmbeddingIntentMatcher
 import com.sopa.viva_automotive.feature.voice.data.vosk.VoskSpeechRecognitionEngine
+import com.sopa.viva_automotive.feature.voice.data.remote.HttpRemoteAsrTransport
+import com.sopa.viva_automotive.feature.voice.data.remote.RemoteAsrTransport
+import com.sopa.viva_automotive.feature.voice.data.remote.RemotePhoWhisperSpeechRecognitionEngine
 import com.sopa.viva_automotive.feature.voice.domain.delivery.DeliveryRepository
 import com.sopa.viva_automotive.feature.voice.domain.delivery.InMemoryDeliveryRepository
 import com.sopa.viva_automotive.feature.voice.domain.audio.VolumeController
@@ -24,16 +29,11 @@ import dagger.hilt.InstallIn
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
 import javax.inject.Singleton
+import kotlinx.coroutines.CoroutineDispatcher
 
 @Module
 @InstallIn(SingletonComponent::class)
 abstract class VoiceModule {
-
-    @Binds
-    @Singleton
-    abstract fun bindSpeechRecognitionEngine(
-        impl: VoskSpeechRecognitionEngine,
-    ): SpeechRecognitionEngine
 
     @Binds
     @Singleton
@@ -59,6 +59,33 @@ abstract class VoiceModule {
     ): DeliveryRepository
 
     companion object {
+        @Provides
+        @Singleton
+        fun provideRemoteAsrTransport(
+            @IoDispatcher ioDispatcher: CoroutineDispatcher,
+        ): RemoteAsrTransport = HttpRemoteAsrTransport(
+            baseUrl = BuildConfig.ASR_BASE_URL,
+            ioDispatcher = ioDispatcher,
+        )
+
+        /**
+         * `vosk` remains the offline-safe default. `-PvivaAsrEngine=remote` swaps
+         * only the ASR adapter; microphone/VAD/NLU/safety stay on the same path.
+         */
+        @Provides
+        @Singleton
+        fun provideSpeechRecognitionEngine(
+            vosk: VoskSpeechRecognitionEngine,
+            remoteTransport: RemoteAsrTransport,
+        ): SpeechRecognitionEngine = when (BuildConfig.ASR_ENGINE.lowercase()) {
+            "vosk" -> vosk
+            "remote", "phowhisper" ->
+                RemotePhoWhisperSpeechRecognitionEngine(remoteTransport)
+            else -> error(
+                "Unsupported vivaAsrEngine=${BuildConfig.ASR_ENGINE}; expected vosk or remote",
+            )
+        }
+
         /**
          * Chủ sở hữu microphone **duy nhất** của app (28-PIPELINE §0, quyết định 1).
          *

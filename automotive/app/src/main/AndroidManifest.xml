@@ -11,6 +11,8 @@
 
     <!-- Local voice assistant: on-device STT from the microphone. -->
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
+    <!-- Required only when the opt-in remote PhoWhisper adapter is selected. -->
+    <uses-permission android:name="android.permission.INTERNET" />
     <!-- Chỉnh âm lượng luồng nhạc cho intent volume_adjust. Quyền normal, cấp
          lúc cài — khác CAR_CONTROL_AUDIO_VOLUME của CarAudioManager (cần
          privileged, xem AndroidVolumeController). -->
@@ -39,6 +41,7 @@
         android:icon="@mipmap/ic_launcher"
         android:label="@string/app_name"
         android:localeConfig="@xml/locales_config"
+        android:networkSecurityConfig="@xml/network_security_config"
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
         android:theme="@style/Theme.Vivaautomotive">
