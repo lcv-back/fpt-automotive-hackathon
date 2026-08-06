@@ -5,7 +5,8 @@
 > **Ràng buộc lịch:** code freeze 08/08, nộp 10/08. Tức còn **2 ngày code**.
 >
 > **Nguồn đối chiếu:** source tại `6046c4e`; `28-PIPELINE-VOICE-AI-AGENT-HOAN-CHINH.md`;
-> `15-QUYET-DINH-BENCHMARK-ASR.md`; `03-contracts.md`; `evidence/asr/asr-bench-manifest.txt`.
+> `15-QUYET-DINH-BENCHMARK-ASR.md`; `03-contracts.md`; `evidence/asr/asr-bench-manifest.txt`;
+> notebook research speech AI `cd947b95` (truy vấn 06/08 — xem cảnh báo trích dẫn ở §4.1).
 
 ---
 
@@ -98,10 +99,29 @@ Ba image, cùng corpus, cùng cách chấm. **Luật chọn, chốt trước khi
 2. `ASR_NUM_WORKERS` — giữ 1 cho lượt đơn; chỉ tăng nếu đo thấy có lợi.
 3. `beam_size` giữ nguyên 1. Beam search đổi latency lấy chất lượng — sai hướng ở đây.
 
-**Vì sao không FireRedASR2 / Qwen3-ASR / Whisper-large-v3-turbo:** đều là model tích hợp
-LLM hoặc cỡ lớn, cần GPU hoặc API bên ngoài. Không có node GPU; còn đi API thì mất câu
-chuyện offline và thêm một phụ thuộc mạng nữa vào đúng chỗ đang hỏng
-(`26-BAO-CAO-TIEN-DO` §2: gate app→container đang ĐÓNG vì mạng).
+#### Ứng viên từ research đã cân nhắc và loại
+
+Đối chiếu với notebook research ngày 06/08 (`cd947b95`). **Cảnh báo trích dẫn: mọi con số
+WER trong nguồn đó là leaderboard TIẾNG ANH (`en_shortform` / Open ASR), không phải hiệu
+năng tiếng Việt.** Không được trích chúng như số tiếng Việt của VIVA.
+
+| Ứng viên | Cỡ | Vì sao loại |
+|---|---|---|
+| Cohere Transcribe | 2.0B | Conformer 2B; "Running on CPU" là badge của Demo Space, không phải cam kết latency. Không có số CPU tự host |
+| Qwen3-ASR | 1.7B | Nguồn ghi thẳng **không hỗ trợ suy luận CPU-only**. Container là CPU → loại dứt điểm |
+| Whisper large-v3 | 1.55B | Chính nguồn đánh giá chạy CPU là *"barely usable"*, RTF 0.3–0.8 |
+| Whisper large-v3-turbo | 809M | Vẫn quá lớn cho CPU trong ngân sách 1500ms |
+| FireRedASR2 | — | Tích hợp LLM, cần GPU |
+| **Moonshine** | 27M–331M | **Kiến trúc đúng nhất cho bài này** — streaming encoder, xử lý audio độ dài thay đổi thay vì pad 30s, chạy CPU tốt, có đường sherpa-onnx. Nhưng nguồn ghi: **gốc tiếng Anh, tiếng Việt mới chỉ có biến thể cộng đồng**. Không đủ chín cho sản phẩm tiếng Việt trong 2 ngày |
+| Meta Omnilingual ASR | 300M–7.8B | 1600+ ngôn ngữ, có biến thể giải mã **CTC**, bản 300M hứa hẹn cho edge. Nguồn không xác nhận riêng tiếng Việt và không có số CPU. **Ứng viên đáng theo sau hackathon** |
+
+**Notebook không chứa model ASR nào fine-tune riêng cho tiếng Việt** — không PhoWhisper,
+không wav2vec2-vietnamese. Đó là lý do thang model ở trên vẫn dựa trên PhoWhisper: nó là
+model tiếng Việt tốt nhất *đang có đường chạy trong repo này*, không phải vì nó thắng một
+cuộc so sánh nào.
+
+Bài học kiến trúc rút từ Moonshine được giữ lại và áp vào đường lùi ngay dưới: **thứ giết
+latency không phải số tham số, mà là việc Whisper pad mọi câu lên 30 giây.**
 
 **Phương án dự phòng nếu cả ba bậc Whisper đều vỡ ngân sách:** chuyển sang model **CTC**
 (`nguyenvulebinh/wav2vec2-base-vietnamese-250h`). CTC là encoder-only, một lượt, **không
@@ -338,6 +358,18 @@ trả lời được câu *"vì sao không làm X"* bằng lý do kỹ thuật t
 | **Diarization** | ❌ Không cần | Trợ lý một lệnh một lượt; "ai nói khi nào" không giải bài toán nào đang có |
 | **Paralinguistic** | ❌ Subsystem riêng | Không được dùng cảm xúc/buồn ngủ để tự động thực thi lệnh xe |
 | **LLM T2** | ❌ Đã loại từ trước | `15-QUYET-DINH`: trái mục tiêu offline và rủi ro vượt ngân sách 1.5s |
+
+### 10.1 Đáng theo sau hackathon
+
+Hai ứng viên bị loại vì lịch chứ không vì kỹ thuật — ghi lại để không phải research lại:
+
+- **Moonshine** (`usefulsensors/moonshine`, 27M–331M): streaming encoder xử lý audio độ dài
+  thay đổi, không pad 30 giây — đúng kiến trúc cho lệnh ngắn 1–3 giây trong xe, chạy CPU
+  tốt, có sherpa-onnx nên hợp cả đường on-device (trục 5). **Chặn bởi:** tiếng Việt mới chỉ
+  có biến thể cộng đồng. Việc cần làm: đánh giá các biến thể đó, hoặc fine-tune tiếng Việt.
+- **Meta Omnilingual ASR 300M, biến thể giải mã CTC**: CTC không tự hồi quy nên rẻ hơn hẳn
+  trên câu ngắn; phủ 1600+ ngôn ngữ. **Chặn bởi:** nguồn chưa xác nhận riêng tiếng Việt và
+  chưa có số CPU. Việc cần làm: kiểm tiếng Việt có trong tập được hỗ trợ không, đo CER.
 
 ---
 
