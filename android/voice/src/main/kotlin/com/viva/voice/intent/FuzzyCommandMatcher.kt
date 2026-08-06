@@ -75,14 +75,38 @@ class FuzzyCommandMatcher {
         )
     }
 
-    /** Tỉ lệ từ khoá nghe ra được, so theo âm. */
+    /**
+     * Tỉ lệ từ khoá nghe ra được, so theo âm.
+     *
+     * Template **một từ khoá** đòi khớp **trùng khít**, không được sai ký tự
+     * nào. Lý do đo được ngày 06/08: template `vehicle_status_fuel` chỉ có từ
+     * `xăng`, và `súng` rút khoá âm ra `xung` — lệch đúng một ký tự so với
+     * `xang`, nên nó khớp. Hai lượt nói thật bị đẩy thành truy vấn xăng:
+     *
+     * ```
+     * "thành nổ súng máy biết tự động"      -> vehicle_status_fuel | Allow
+     * "giảm nhiệt lũ quét súng hơi hay"     -> vehicle_status_fuel | Allow
+     * ```
+     *
+     * Với template nhiều từ khoá, sai một ký tự ở một từ vẫn còn các từ khác
+     * làm chứng. Với template một từ thì không có gì đỡ — một cú khớp yếu là
+     * đủ 100% điểm. Nên chỗ này không có biên độ nào cả.
+     */
     private fun score(template: Template, tokens: List<String>): Double {
         val blocked = template.excludes.any { excluded ->
             tokens.any { token -> PhoneticKey.matchesStrict(token, excluded) }
         }
         if (blocked) return 0.0
+
+        val exactOnly = template.keywords.size == 1
         val hit = template.keywords.count { keyword ->
-            tokens.any { token -> PhoneticKey.matchesStrict(token, keyword) }
+            tokens.any { token ->
+                if (exactOnly) {
+                    PhoneticKey.of(token) == PhoneticKey.of(keyword)
+                } else {
+                    PhoneticKey.matchesStrict(token, keyword)
+                }
+            }
         }
         return hit.toDouble() / template.keywords.size
     }

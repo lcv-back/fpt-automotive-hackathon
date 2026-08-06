@@ -75,6 +75,12 @@ class FuzzyCommandMatcherTest {
         assertNull(matcher.match("hôm nay trời đẹp quá"))
         // Transcript rác thật, chép từ logcat 05/08 lúc mic bắt nhiễu phòng.
         assertNull(matcher.match("họp mặt sạch hóa thạch và suýt rách vực âm nhạc mỹ thuật việt nam"))
+        // Hai câu dưới chép từ logcat 06/08. `súng` rút khoá âm ra `xung`,
+        // lệch đúng một ký tự so với `xang` (= `xăng`), nên chúng từng bị đẩy
+        // thành truy vấn xăng rồi THUC THI.
+        assertNull(matcher.match("thành nổ súng máy biết tự động"))
+        assertNull(matcher.match("giảm nhiệt lũ quét súng hơi hay"))
+        assertNull(matcher.match("giảm nhịp độ xuân thị bị trừ thụ"))
     }
 
     @Test
