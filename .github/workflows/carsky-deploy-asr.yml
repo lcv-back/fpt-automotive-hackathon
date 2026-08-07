@@ -1,6 +1,36 @@
 name: carsky-deploy-asr
 
-# Cập nhật container `viva-asr` đang chạy trên CarSky, có thể lùi lại được.
+# Restart container `viva-asr` trên CarSky sau khi đã đổi image, và xác minh nó
+# trở lại Running.
+#
+# ## 🔴 Workflow này KHÔNG tự đổi được image — đọc trước khi dùng
+#
+# Bản đầu của file này tự PATCH trường `image` của node. Gọi thật ngày 07/08 thì:
+#
+#   PATCH /api/v1/nodes/{nodeId}  ->  404
+#
+# Endpoint đó CÓ trong `openapi.json` (73 endpoint) nhưng server không có route —
+# đúng lớp lỗi đã ghi ở `docs/backend-docs/carsky-api.md` §10 cho
+# `POST /nodes/{nodeId}/pins`. Spec của CarSky khai nhiều hơn thứ nó chạy được,
+# nên đừng tin spec khi chưa gọi thử.
+#
+# Ba đường thay thế đều tắc, đã kiểm bằng chính `openapi.json`:
+#
+#   PATCH /blueprints/{id}        chỉ nhận `name` + `description`
+#   POST  /blueprints/{id}/batch  chỉ có addNode | addPin | addEdge — toàn thao tác THÊM
+#   POST  /blueprints/import      400, enum pinType không nhận ETHERNET (§10)
+#
+# ⚠️ Và ĐỪNG `DELETE /nodes/{nodeId}` rồi tạo lại: node này cần một pin ETHERNET
+# nối vào `IVI Switch`, mà pin ETHERNET **chỉ tạo được trong web UI** (§10). Xoá
+# node là đường một chiều làm hỏng room demo.
+#
+# ## Cách dùng đúng
+#
+# 1. Đổi trường image của node trong **web UI CarSky** sang digest mới.
+# 2. Chạy workflow này với đúng digest đó. Nó đối chiếu image thật trên node,
+#    từ chối chạy nếu chưa khớp, rồi restart và chờ node Running trở lại.
+#
+# Bước 1 không tự động hoá được cho tới khi CarSky bật route PATCH.
 #
 # ## Vì sao KHÔNG phải `on: push`
 #
@@ -9,22 +39,14 @@ name: carsky-deploy-asr
 # động lại container giữa lúc đang tổng duyệt. Chạy tay trước; khi đã trơn vài
 # lần thì đổi trigger là một dòng.
 #
-# ## Vì sao 4 bước chứ không phải "push :latest rồi restart"
+# ## Vì sao vẫn phải là digest, không phải tag
 #
-# Node `VIVA ASR` ghim image bằng **digest**, không phải tag:
+# Node `VIVA ASR` ghim image bằng **digest**:
 #
 #   registry.hackathon-2.carsky.io/viva/viva-asr@sha256:63c2c56a...
 #
 # Push đè lên một tag rồi restart sẽ kéo lại đúng image cũ — pipeline chạy mà
-# không đổi gì. Bắt buộc phải PATCH trường `image` của node sang digest mới.
-#
-# ## Cái bẫy chết người của PATCH
-#
-# `config` của node còn chứa ba biến môi trường (ASR_DEVICE, ASR_MODEL_NAME,
-# ASR_COMPUTE_TYPE). Spec khai `config` là object tự do, nên gửi mỗi `image`
-# rất có thể ghi đè cả object và xoá sạch ba biến đó — ASR sẽ khởi động với
-# model mặc định và không ai biết vì sao WER đột nhiên tệ đi. Job này luôn
-# ĐỌC config hiện tại, trộn `image` vào, rồi mới ghi.
+# không đổi gì. Đổi image trong UI cũng phải dán digest, đừng dán tag.
 #
 # ## Cái workflow này KHÔNG làm được
 #
@@ -136,10 +158,10 @@ jobs:
             echo "| room | \`$ROOM\` |"
             echo "| blueprint | \`$BP\` |"
             echo "| node | \`${{ inputs.node_id }}\` ($(echo "$NODE" | jq -r .label)) |"
-            echo "| image cũ | \`$OLD_IMAGE\` |"
-            echo "| image mới | \`${{ inputs.image }}\` |"
+            echo "| image trên node | \`$OLD_IMAGE\` |"
+            echo "| image mong đợi | \`${{ inputs.image }}\` |"
             echo ""
-            echo "Config sẽ được giữ nguyên ngoài trường \`image\`:"
+            echo "Config hiện tại của node:"
             echo ""
             echo '```json'
             jq . /tmp/config-old.json
@@ -149,22 +171,29 @@ jobs:
       - name: dừng ở đây nếu dry-run
         if: ${{ inputs.dry_run }}
         run: |
-          echo "dry_run=true — không gọi PATCH hay restart."
+          echo "dry_run=true — không restart."
           echo "Chạy lại với dry_run=false để áp dụng." >> "$GITHUB_STEP_SUMMARY"
 
-      - name: PATCH image của node
+      - name: đối chiếu image trên node
         if: ${{ !inputs.dry_run }}
         run: |
           set -euo pipefail
-          # Trộn: giữ nguyên env và mọi khoá khác, chỉ thay `image`.
-          jq -c --arg img '${{ inputs.image }}' '.image = $img' /tmp/config-old.json > /tmp/config-new.json
-          jq -n --slurpfile c /tmp/config-new.json '{config: $c[0]}' > /tmp/patch.json
-
-          curl -fsS -X PATCH "$BASE/nodes/${{ inputs.node_id }}" \
-            -H "x-api-key: ${{ secrets.CARSKY_API_KEY }}" \
-            -H "Content-Type: application/json" \
-            --data @/tmp/patch.json > /tmp/patch-response.json
-          echo "PATCH xong."
+          # Không PATCH được (route 404 — xem đầu file), nên thứ duy nhất làm
+          # được là TỪ CHỐI chạy khi node chưa mang image mong đợi. Bỏ bước này
+          # thì workflow sẽ restart node với image CŨ rồi báo xanh — một bản
+          # deploy không đổi gì mà trông như đã thành công.
+          OLD='${{ steps.current.outputs.old_image }}'
+          WANT='${{ inputs.image }}'
+          if [ "$OLD" != "$WANT" ]; then
+            {
+              echo "::error::Node đang mang image khác với ô \`image\` bạn nhập."
+              echo "  trên node : $OLD"
+              echo "  bạn nhập  : $WANT"
+              echo "  Đổi image trong web UI CarSky trước, rồi chạy lại workflow này."
+            } >&2
+            exit 1
+          fi
+          echo "Image trên node khớp với digest mong đợi."
 
       - name: restart node
         if: ${{ !inputs.dry_run }}
@@ -203,24 +232,23 @@ jobs:
           fi
           echo "Node đã Running với image mới." >> "$GITHUB_STEP_SUMMARY"
 
-      - name: lùi lại image cũ nếu hỏng
-        # Chạy cả khi bước trên fail. Để room demo kẹt ở ImagePullBackOff là
-        # thiệt hại lớn hơn nhiều so với việc bản deploy mới không lên được.
+      - name: hướng dẫn lùi lại nếu node không lên
+        # Không còn bước lùi tự động: bản cũ lùi bằng `PATCH /nodes/{id}`, mà
+        # route đó 404 nên nó chỉ fail thêm một lần nữa và làm log khó đọc.
+        # Đổi image ngược lại cũng phải làm trong UI, nên thứ hữu ích nhất
+        # workflow làm được ở đây là nói rõ phải bấm gì.
         if: ${{ failure() && !inputs.dry_run && steps.current.outputs.old_image != '' }}
         run: |
-          set -euo pipefail
-          echo "::warning::Lùi node về ${{ steps.current.outputs.old_image }}"
-          jq -n --slurpfile c /tmp/config-old.json '{config: $c[0]}' > /tmp/rollback.json
-          curl -fsS -X PATCH "$BASE/nodes/${{ inputs.node_id }}" \
-            -H "x-api-key: ${{ secrets.CARSKY_API_KEY }}" \
-            -H "Content-Type: application/json" \
-            --data @/tmp/rollback.json
-          curl -fsS -X POST "$BASE/deployments/${{ inputs.room_id }}/restart/${{ inputs.node_id }}" \
-            -H "x-api-key: ${{ secrets.CARSKY_API_KEY }}" -H "Content-Length: 0"
           {
             echo ""
-            echo "### ⚠️ Đã lùi lại"
+            echo "### ⚠️ Node không trở lại Running"
             echo ""
-            echo "Node được trả về \`${{ steps.current.outputs.old_image }}\` và restart."
-            echo "Kiểm lại bằng mắt trước khi coi là xong."
+            echo "Không có bước lùi tự động — \`PATCH /nodes/{id}\` trả 404 (xem đầu file)."
+            echo "Lùi bằng tay trong web UI CarSky: đổi image của node về"
+            echo ""
+            echo '```'
+            echo "${{ steps.current.outputs.old_image }}"
+            echo '```'
+            echo ""
+            echo "rồi chạy lại workflow này với đúng digest đó để restart và xác minh."
           } >> "$GITHUB_STEP_SUMMARY"
