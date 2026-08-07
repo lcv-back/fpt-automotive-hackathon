@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="media_title">Media</string>
+    <string name="media_now_playing">Đang phát</string>
+    <string name="media_idle">Sẵn sàng phát</string>
+    <string name="media_play">Phát</string>
+    <string name="media_pause">Tạm dừng</string>
+    <string name="media_next">Bài tiếp</string>
+    <string name="media_previous">Bài trước</string>
+    <string name="media_volume">Âm lượng</string>
+    <string name="media_volume_up">Tăng âm lượng</string>
+    <string name="media_volume_down">Giảm âm lượng</string>
+    <string name="media_playlist">Danh sách demo</string>
+    <string name="media_track_format">%1$d / %2$d</string>
+    <string name="media_source_library">Thư viện</string>
+    <string name="media_source_radio">Radio</string>
+    <string name="media_radio_presets">Kênh FM</string>
+    <string name="media_radio_frequency">%1$.1f FM</string>
+    <string name="media_radio_seek_next">Đài tiếp</string>
+    <string name="media_radio_seek_previous">Đài trước</string>
+    <string name="media_radio_idle">Chọn một đài</string>
+    <string name="media_card_now_playing">Đang phát</string>
+    <string name="media_card_radio">Radio</string>
+    <string name="media_card_radio_hint">Chạm preset để dò đài</string>
+    <string name="media_card_radio_tuned">%1$s · %2$.1f FM</string>
+    <string name="media_cast_route">Cast</string>
+    <string name="media_route_local">Đang phát trên xe</string>
+    <string name="media_route_cast">Đang cast ra màn hình</string>
+    <string name="media_cast_unavailable">Cast không khả dụng trên image này</string>
+    <string name="media_not_available">Not Available</string>
+    <string name="media_artwork">Ảnh bìa</string>
+    <string name="media_duration_label">Thời lượng</string>
+    <string name="media_artist_label">Nghệ sĩ</string>
+</resources>

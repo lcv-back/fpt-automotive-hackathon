@@ -55,6 +55,7 @@ dependencies {
     implementation(project(":core:ui"))
     implementation(project(":core:database"))
     implementation(project(":feature:voice"))
+    implementation(project(":feature:media"))
     implementation(project(":feature:hvac"))
     implementation(project(":feature:vehicle-status"))
     implementation(project(":feature:settings"))
