@@ -1,0 +1,106 @@
+name: carsky-push-asr-image
+
+# Build `viva-asr` rồi push lên registry của CarSky, và in ra **digest**.
+#
+# Digest đó là đầu vào của workflow `carsky-deploy-asr`. Hai workflow tách rời
+# có chủ đích: push là thao tác chỉ thêm (không ai đang chạy bị ảnh hưởng), còn
+# deploy động vào room demo. Gộp chung thì mỗi lần muốn build thử lại phải cân
+# nhắc xem có làm sập buổi duyệt không.
+#
+# ## ⚠️ Chưa chạy được — thiếu credential
+#
+# Registry đòi credential riêng; API key CarSky KHÔNG dùng được. Đã thử
+# 06/08/2026 trên `GET /v2/viva/viva-asr/tags/list`:
+#
+#   Basic viva:<api-key>  → 401 UNAUTHORIZED
+#   Bearer <api-key>      → 401 UNAUTHORIZED
+#   ẩn danh               → 401 UNAUTHORIZED
+#
+# Image hiện tại đã nằm trên registry nên chắc chắn có người push được — theo
+# vong2/00-KE-HOACH-VONG-2.md là Vĩ. Cần đúng cặp credential đó, đặt vào
+# Settings → Secrets → Actions với tên CARSKY_REGISTRY_USERNAME và
+# CARSKY_REGISTRY_PASSWORD. Bước `kiểm secret` dưới đây dừng sớm và nói rõ
+# thiếu gì, thay vì để `docker login` fail với một dòng 401 khó hiểu.
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Tag để push (digest vẫn là thứ dùng khi deploy)"
+        required: true
+        default: "phowhisper-tiny-int8"
+        type: string
+      hf_model:
+        description: "Model gốc trên HuggingFace"
+        required: true
+        default: "vinai/PhoWhisper-tiny"
+        type: string
+
+env:
+  IMAGE: registry.hackathon-2.carsky.io/viva/viva-asr
+
+jobs:
+  push:
+    name: build + push + in digest
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: kiểm secret
+        run: |
+          missing=""
+          [ -z "${{ secrets.CARSKY_REGISTRY_USERNAME }}" ] && missing="$missing CARSKY_REGISTRY_USERNAME"
+          [ -z "${{ secrets.CARSKY_REGISTRY_PASSWORD }}" ] && missing="$missing CARSKY_REGISTRY_PASSWORD"
+          if [ -n "$missing" ]; then
+            echo "::error::Thiếu secret:$missing — xem phần đầu file workflow."
+            exit 1
+          fi
+
+      - uses: docker/setup-buildx-action@v3
+
+      - uses: docker/login-action@v3
+        with:
+          registry: registry.hackathon-2.carsky.io
+          username: ${{ secrets.CARSKY_REGISTRY_USERNAME }}
+          password: ${{ secrets.CARSKY_REGISTRY_PASSWORD }}
+
+      - name: build và push
+        id: build
+        uses: docker/build-push-action@v6
+        with:
+          context: asr
+          push: true
+          # Node chạy trên cluster x86; build đa kiến trúc chỉ làm job lâu gấp
+          # đôi mà không ai dùng tới bản arm64.
+          platforms: linux/amd64
+          tags: ${{ env.IMAGE }}:${{ inputs.tag }}
+          build-args: |
+            ASR_HF_MODEL=${{ inputs.hf_model }}
+            ASR_MODEL_NAME=${{ inputs.tag }}
+            # Không truyền thì Dockerfile lấy mặc định `unknown` và nướng nó vào
+            # ENV của image — mọi bản đẩy lên sẽ không truy ngược được về commit,
+            # đúng thứ mà kỷ luật ghim-digest sinh ra để bảo vệ.
+            VIVA_GIT_COMMIT=${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: in digest để đem sang bước deploy
+        run: |
+          REF="${{ env.IMAGE }}@${{ steps.build.outputs.digest }}"
+          {
+            echo "### Image đã push"
+            echo ""
+            echo "| | |"
+            echo "|---|---|"
+            echo "| tag | \`${{ env.IMAGE }}:${{ inputs.tag }}\` |"
+            echo "| digest | \`${{ steps.build.outputs.digest }}\` |"
+            echo ""
+            echo "Chạy \`carsky-deploy-asr\` với ô **image**:"
+            echo ""
+            echo '```'
+            echo "$REF"
+            echo '```'
+            echo ""
+            echo "Dùng digest chứ không dùng tag: tag là con trỏ động, còn digest"
+            echo "khoá luôn cả model đã convert nằm trong image."
+          } >> "$GITHUB_STEP_SUMMARY"
