@@ -1,0 +1,89 @@
+
+                       WER thap hon la tot hon
+====================================================================================================
+
+[cmd_temp_24] đặt nhiệt độ 24 độ
+   grammar TAT  wer=1.20  "nhập nhèm đủ hai mươi được"
+   grammar BAT  wer=0.80  "nhận độ hai mươi"  (min conf=0.64)  TOT HON
+
+[cmd_temp_22] hạ điều hòa xuống 22 độ
+   grammar TAT  wer=0.83  "hot diệu hoa xuân thời hai đủ"
+   grammar BAT  wer=0.50  "liệu hòa xuống hai độ"  (min conf=0.50)  TOT HON
+
+[cmd_temp_26] tăng nhiệt độ lên 26 độ
+   grammar TAT  wer=1.33  "ăn ý giữa đường link thời sâu đục"
+   grammar BAT  wer=0.50  "âm nhiệt độ lên ơi sáu độ"  (min conf=0.58)  TOT HON
+
+[cmd_temp_wake] viva ơi đặt nhiệt độ 25 độ
+   grammar TAT  wer=0.71  "yes vợ hồi đặt nhiệt độ hai lâm đô"
+   grammar BAT  wer=0.71  "gì gió mười đặt nhiệt độ hai lăm độ"  (min conf=0.76)    
+
+[cmd_temp_noslot] giảm nhiệt độ
+   grammar TAT  wer=0.67  "giám đốc"
+   grammar BAT  wer=0.33  "giảm độ"  (min conf=0.97)  TOT HON
+
+[cmd_fan_3] đặt quạt mức 3
+   grammar TAT  wer=0.75  "bất quá mức ba"
+   grammar BAT  wer=0.25  "đặt quạt mức ba"  (min conf=0.97)  TOT HON
+
+[cmd_fan_0] tắt quạt gió về mức 0
+   grammar TAT  wer=0.67  "bạch quốc vỗ về mức không"
+   grammar BAT  wer=0.50  "đặt quạt gió về không"  (min conf=0.54)  TOT HON
+
+[cmd_fan_5] quạt gió mức 5
+   grammar TAT  wer=0.75  "cua sò mức năm"
+   grammar BAT  wer=0.75  "quy sáu mức năm"  (min conf=0.39)    
+
+[cmd_door_unlock] mở khóa cửa
+   grammar TAT  wer=0.33  "một khóa cửa"
+   grammar BAT  wer=0.67  "một hòa cửa"  (min conf=0.40)  TE HON
+
+[cmd_door_lock] khóa cửa lại
+   grammar TAT  wer=1.00  "xoa vừa mới"
+   grammar BAT  wer=0.33  "khóa cửa mở"  (min conf=0.47)  TOT HON
+
+[cmd_vol_up] tăng âm lượng
+   grammar TAT  wer=1.00  "ăn trộm lướt"
+   grammar BAT  wer=0.33  "tăng lượng"  (min conf=1.00)  TOT HON
+
+[cmd_vol_down] giảm âm lượng
+   grammar TAT  wer=1.00  "giọng ông lược"
+   grammar BAT  wer=0.00  "giảm âm lượng"  (min conf=0.99)  TOT HON
+
+[cmd_media_next] chuyển bài
+   grammar TAT  wer=0.50  "soạn bài"
+   grammar BAT  wer=0.50  "rưỡi bài"  (min conf=0.84)    
+
+[cmd_media_pause] dừng nhạc
+   grammar TAT  wer=1.00  "yeu nhau"
+   grammar BAT  wer=1.00  "giao"  (min conf=0.91)    
+
+[cmd_media_play] phát nhạc
+   grammar TAT  wer=1.00  "pháp nhau"
+   grammar BAT  wer=0.50  "phát nhỏ"  (min conf=0.58)  TOT HON
+
+[cmd_delivery_next] chặng tiếp theo
+   grammar TAT  wer=0.33  "tập tiếp theo"
+   grammar BAT  wer=0.33  "tiếp theo"  (min conf=0.91)    
+
+[cmd_delivery_status] đơn a123 thế nào
+   grammar TAT  wer=1.50  "đường hoa một hai ba thủy nào"
+   grammar BAT  wer=1.25  "đơn ba một hai ba g nào"  (min conf=0.43)  TOT HON
+
+[cmd_cold] lạnh quá
+   grammar TAT  wer=1.00  "khoa"
+   grammar BAT  wer=1.00  "khóa"  (min conf=0.50)    
+
+[cmd_out_of_scope] đặt bàn ăn tối lúc bảy giờ
+   grammar TAT  wer=0.57  "băng hành tuổi lúc bấy giờ"
+   grammar BAT  wer=0.71  "b âm mạnh rưỡi là bảy gió"  (min conf=0.18)  TE HON
+
+[cmd_removed] bật điều hòa
+   grammar TAT  wer=0.67  "dâu hoa"
+   grammar BAT  wer=0.33  "điều hòa"  (min conf=0.50)  TOT HON
+
+====================================================================================================
+So cau        : 20
+WER grammar TAT: 0.841
+WER grammar BAT: 0.566
+Chenh lech     : +0.275 (grammar giup)
