@@ -224,7 +224,7 @@ Làm được, nhưng **không phải cho thứ quan trọng nhất**:
 | Việc | Tự động được? | Vì sao |
 |---|---|---|
 | Deploy/redeploy blueprint | ✅ | `POST /deployments` + `DELETE /deployments/{roomId}`, chỉ cần API key trong GitHub Secrets |
-| Cập nhật container `viva-asr` | ⚠️ một phần | Đường đi đã rõ (xem 9b); còn chặn ở **credential registry** |
+| Cập nhật container `viva-asr` | ⚠️ một phần | Build + push + restart ✅ tự động; **đổi image phải làm tay trong web UI** vì `PATCH /nodes/{id}` trả 404 (xem 9c) |
 | **Cài APK lên node Android** | ❌ | Cần `adb`, mà `adb-exec`/`shell` đang chết vì Conduit (mục 4). Không có đường HTTPS nào thay thế |
 
 ### 9b. Bổ sung 06/08 — hai endpoint bảng trên chưa tính tới
@@ -257,9 +257,58 @@ Thử 06/08 trên `GET /v2/viva/viva-asr/tags/list` — `Basic viva:<key>`,
 `Bearer <key>` và ẩn danh đều **401**. Image hiện tại đã nằm trên registry nên
 có người push được rồi; cần xin lại đúng cặp credential đó.
 
-**Đã có sẵn:** `.github/workflows/carsky-deploy-asr.yml` (PATCH + restart +
-verify + tự lùi lại khi hỏng) và `carsky-push-asr-image.yml` (build + push, dừng
-sớm khi thiếu secret). Cả hai là `workflow_dispatch`.
+> ✅ **Đã gỡ 07/08.** `backend/.env` giờ có `CARSKY_REGISTRY_USER` +
+> `CARSKY_REGISTRY_TOKEN`, và cặp đó chạy thật: `GET /v2/viva/viva-asr/tags/list`
+> → **200**. Đã push thành công tag `0.2.0`
+> (`sha256:da1ea85e…`) qua workflow. Ba secret cũng đã đặt trên repo:
+> `CARSKY_API_KEY`, `CARSKY_REGISTRY_USERNAME`, `CARSKY_REGISTRY_PASSWORD`.
+
+**Đã có sẵn:** `.github/workflows/carsky-deploy-asr.yml` và
+`carsky-push-asr-image.yml`. Cả hai là `workflow_dispatch`.
+
+### 9c. Đính chính 07/08 — `PATCH /nodes/{id}` KHÔNG tồn tại
+
+Mục 9b ở trên lấy `PATCH /api/v1/nodes/{nodeId}` **từ `openapi.json` mà chưa gọi
+thử**. Gọi thật ngày 07/08:
+
+```
+PATCH /api/v1/nodes/b8eada00-d137-4fdc-a131-2197b1d1356b   →  404
+```
+
+Cả lần PATCH chính lẫn lần lùi lại đều 404 trên cùng endpoint đó. Đây đúng lớp
+lỗi mục 10 đã ghi cho `POST /nodes/{nodeId}/pins`: **spec khai nhiều hơn thứ
+server chạy được.** Bài học: đừng kết luận "đường đi đã rõ" từ `openapi.json`
+khi chưa gọi một lần.
+
+**Ba đường thay thế đều tắc**, kiểm bằng chính `openapi.json`:
+
+| Đường | Vì sao không dùng được |
+|---|---|
+| `PATCH /blueprints/{id}` | Schema chỉ nhận `name` + `description` |
+| `POST /blueprints/{id}/batch` | Chỉ có 3 op: `addNode`, `addPin`, `addEdge` — toàn thao tác THÊM, không có update |
+| `POST /blueprints/import` | 400, enum `pinType` không nhận `ETHERNET` (mục 10) |
+
+🔴 **Đừng `DELETE /nodes/{nodeId}` rồi tạo lại.** Node cần một pin `ETHERNET` nối
+vào `IVI Switch`, mà mục 10 đã chứng minh pin `ETHERNET` **chỉ tạo được trong web
+UI**. Xoá node là đường một chiều làm hỏng room demo.
+
+**Chuỗi đúng — bốn bước, bước 3 làm tay:**
+
+```
+build image → push registry → đổi image trong WEB UI → restart/{node}
+```
+
+`POST /deployments/{roomId}/restart/{node}` là endpoint **có thật**, đã chạy
+được, nên bước 4 vẫn tự động. Chỉ bước 3 kẹt cho tới khi CarSky bật route PATCH.
+
+**Hệ quả cho `carsky-deploy-asr.yml`:** workflow đã bỏ bước PATCH, thay bằng bước
+đối chiếu image trên node với ô `image` và từ chối chạy nếu chưa khớp — không có
+bước đó thì nó sẽ restart node với image **cũ** rồi báo xanh. Bước lùi tự động
+cũng bỏ, vì nó lùi bằng chính route 404 đó.
+
+**Đã xác nhận đúng, không phải nghi ngờ:** `GET /deployments/{roomId}/nodes` trả
+node id vào trường **`name`** (không phải `id`), nên bước verify của workflow so
+`.name == node_id` là đúng.
 
 ⚠️ **`CARSKY_DEVICE_ID` trong `backend/.env` đang sai**: giá trị
 `og4erd2wzaxe5xod8otuj` là **VIVA 2**, không phải room demo, nên
