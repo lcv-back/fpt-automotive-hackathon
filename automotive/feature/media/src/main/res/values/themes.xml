@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- MediaRouteButton requires an opaque colorBackground (AppCompat).
+         Compose/Material3 contexts often resolve translucent #0 and crash. -->
+    <style name="Theme.Viva.MediaRouteButton" parent="Theme.AppCompat.DayNight">
+        <item name="colorPrimary">#FF1565C0</item>
+        <item name="colorPrimaryDark">#FF0D47A1</item>
+        <item name="colorAccent">#FF1565C0</item>
+        <item name="android:colorBackground">#FFFFFFFF</item>
+        <item name="colorBackgroundFloating">#FFFFFFFF</item>
+        <item name="android:windowBackground">#FFFFFFFF</item>
+        <item name="android:textColorPrimary">#DE000000</item>
+    </style>
+</resources>
