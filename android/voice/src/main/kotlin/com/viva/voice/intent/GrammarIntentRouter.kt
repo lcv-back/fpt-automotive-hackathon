@@ -70,7 +70,15 @@ class GrammarIntentRouter(
             return matched("media_next")
         }
         if (command.startsWith("phát nhạc") || command.startsWith("phát playlist")) {
-            val query = command.removePrefix("phát ").takeUnless { it == "nhạc" }
+            // Slot `query` là thứ đem đi tìm bài, nên từ loại phải bị cắt cùng với
+            // động từ: "phát playlist một ngày mới" cho "một ngày mới". Bản trước
+            // chỉ cắt "phát " nên mọi query đều dính "nhạc "/"playlist " ở đầu và
+            // sẽ được gửi nguyên như vậy xuống trình phát.
+            val query = command
+                .removePrefix("phát ")
+                .removePrefix("playlist ")
+                .removePrefix("nhạc ")
+                .takeUnless { it == "nhạc" || it == "playlist" }
             return matched("media_play", query?.let { mapOf("query" to it) }.orEmpty())
         }
         if (command.contains("chặng tiếp theo") || command.contains("điểm dừng tiếp theo")) {
