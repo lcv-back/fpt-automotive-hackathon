@@ -224,8 +224,48 @@ Làm được, nhưng **không phải cho thứ quan trọng nhất**:
 | Việc | Tự động được? | Vì sao |
 |---|---|---|
 | Deploy/redeploy blueprint | ✅ | `POST /deployments` + `DELETE /deployments/{roomId}`, chỉ cần API key trong GitHub Secrets |
-| Cập nhật container `viva-asr` | ⚠️ một phần | Phải push image lên Zot trước; CI chưa có bước đó |
+| Cập nhật container `viva-asr` | ⚠️ một phần | Đường đi đã rõ (xem 9b); còn chặn ở **credential registry** |
 | **Cài APK lên node Android** | ❌ | Cần `adb`, mà `adb-exec`/`shell` đang chết vì Conduit (mục 4). Không có đường HTTPS nào thay thế |
+
+### 9b. Bổ sung 06/08 — hai endpoint bảng trên chưa tính tới
+
+Đọc lại `openapi.json` (73 endpoint) thì có hai cái đổi kết luận:
+
+```
+PATCH  /api/v1/nodes/{nodeId}                       Update node, `config` là object tự do
+POST   /api/v1/deployments/{roomId}/restart/{node}  Restart specific node
+```
+
+Cái thứ hai gỡ phản đối số 2 bên dưới: **không phải dựng lại cả room**, bán kính
+ảnh hưởng còn đúng một container trong 22 node.
+
+Nhưng có một cái bẫy: node `VIVA ASR` (`b8eada00-d137-4fdc-a131-2197b1d1356b`)
+ghim image bằng **digest**, nên push đè lên một tag rồi restart sẽ kéo lại đúng
+image cũ. Chuỗi bắt buộc là bốn bước:
+
+```
+build image → push registry → PATCH /nodes/{id} đổi digest → restart/{node}
+```
+
+Và `config` của node còn chứa ba biến `ASR_DEVICE` / `ASR_MODEL_NAME` /
+`ASR_COMPUTE_TYPE`. PATCH mà chỉ gửi `image` rất có thể ghi đè cả object và xoá
+sạch chúng — ASR khởi động với model mặc định mà không báo lỗi. Phải đọc config
+hiện tại, trộn, rồi mới ghi.
+
+**Chặn ở đâu:** registry đòi credential riêng, API key CarSky không dùng được.
+Thử 06/08 trên `GET /v2/viva/viva-asr/tags/list` — `Basic viva:<key>`,
+`Bearer <key>` và ẩn danh đều **401**. Image hiện tại đã nằm trên registry nên
+có người push được rồi; cần xin lại đúng cặp credential đó.
+
+**Đã có sẵn:** `.github/workflows/carsky-deploy-asr.yml` (PATCH + restart +
+verify + tự lùi lại khi hỏng) và `carsky-push-asr-image.yml` (build + push, dừng
+sớm khi thiếu secret). Cả hai là `workflow_dispatch`.
+
+⚠️ **`CARSKY_DEVICE_ID` trong `backend/.env` đang sai**: giá trị
+`og4erd2wzaxe5xod8otuj` là **VIVA 2**, không phải room demo, nên
+`GET /deployments/find?device=$CARSKY_DEVICE_ID` trả `[]`. Dùng
+`CARSKY_ROOM_ID` (`v37aa3knc6t1embelr5yi`) làm tham số `device` thì ra đúng
+deployment `VIVA-demo-0805`, blueprint `6deadb05-…`.
 
 Nghĩa là "CD lên CarSky" **không** giao được APK — tức là không giao được thứ cả
 demo phụ thuộc vào. Và ba lý do nữa để **không** bật auto-deploy theo push `main`:
