@@ -2,6 +2,7 @@ package com.sopa.viva_automotive.feature.voice.data.vosk
 
 import android.content.Context
 import android.os.SystemClock
+import android.provider.Settings
 import android.util.Log
 import com.sopa.viva_automotive.core.common.coroutines.IoDispatcher
 import com.sopa.viva_automotive.core.database.settings.SettingsDataStore
@@ -132,11 +133,15 @@ class VoskSpeechRecognitionEngine @Inject constructor(
         // sai lệch nhẹ; nó không thể dựng lại một câu mà decoder đã vứt đi.
         // Xem [CommandVocabulary] về việc vì sao là danh sách từ chứ không
         // phải danh sách câu, và vì sao `[unk]` là bắt buộc.
-        val recognizer = if (hasDynamicGraph && language == VoiceLanguage.VIETNAMESE) {
+        val useGrammar = hasDynamicGraph &&
+            language == VoiceLanguage.VIETNAMESE &&
+            grammarEnabled()
+        val recognizer = if (useGrammar) {
             Recognizer(loadedModel, SAMPLE_RATE.toFloat(), CommandVocabulary.asGrammarJson())
         } else {
             Recognizer(loadedModel, SAMPLE_RATE.toFloat())
         }
+        Log.d(TAG, "Recognizer: grammar=${if (useGrammar) "BAT" else "TAT"}")
 
         // Bật confidence theo từng từ — hiện chỉ để ĐO, chưa dùng để quyết định.
         //
@@ -165,6 +170,7 @@ class VoskSpeechRecognitionEngine @Inject constructor(
             // câu. Cách xử lý của hai thứ đó khác hẳn nhau, nên đừng đoán.
             var framedSamples = 0
             var peakInWindow = 0
+            var windowStartedAtMs = SystemClock.elapsedRealtime()
 
             // Vị ngữ chạy **trước** mỗi khung, nên khi thân vòng đặt `finished` thì
             // khung kế tiếp dừng cả chuỗi — kể cả AudioCapture ở đầu nguồn.
@@ -185,13 +191,41 @@ class VoskSpeechRecognitionEngine @Inject constructor(
                 }
                 framedSamples += samples.size
                 if (framedSamples >= SAMPLE_RATE) {
-                    Log.d(TAG, "Muc dau vao: peak=$peakInWindow/32767 (partial=\"$lastPartial\")")
+                    // Tỉ lệ audio-trên-thời-gian-thực, in kèm chứ không để người
+                    // đọc tự nhẩm từ dấu thời gian.
+                    //
+                    // `AudioRecord.read` là blocking: một microphone THẬT không
+                    // thể đẩy nhanh hơn 1,0×. Thấy 3× nghĩa là nguồn đang chạy
+                    // tự do — trên emulator đó là mic ảo không nối vào audio của
+                    // máy host, và nó trả về rác chứ không phải im lặng. Triệu
+                    // chứng khi đó y hệt "ASR nghe kém": biên độ lớn, transcript
+                    // rỗng, VAD không thấy tiếng nói. Không có con số này thì ba
+                    // thứ đó dẫn người đọc đi sai đường.
+                    val wallMs = SystemClock.elapsedRealtime() - windowStartedAtMs
+                    val ratio = if (wallMs > 0) 1000.0 * framedSamples / SAMPLE_RATE / wallMs else 0.0
+                    Log.d(
+                        TAG,
+                        "Muc dau vao: peak=$peakInWindow/32767 " +
+                            "toc do=${String.format("%.1f", ratio)}x thoi gian thuc " +
+                            "(partial=\"$lastPartial\")",
+                    )
                     framedSamples = 0
                     peakInWindow = 0
+                    windowStartedAtMs = SystemClock.elapsedRealtime()
                 }
 
                 if (recognizer.acceptWaveForm(samples, samples.size)) {
-                    val text = JSONObject(recognizer.result).optString("text").trim()
+                    val raw = recognizer.result
+                    val text = JSONObject(raw).optString("text").trim()
+                    // Ghi cả JSON thô khi rỗng: `text` rỗng vẫn có thể đi kèm
+                    // `result[]` chứa `[unk]`. Hai thứ đó nói hai chuyện khác hẳn
+                    // nhau — có `[unk]` nghĩa là decoder CÓ nghe thấy tiếng nói
+                    // nhưng grammar từ chối; rỗng hoàn toàn nghĩa là tiếng nói
+                    // chưa từng tới được decoder. Không có dòng này thì cả hai
+                    // trông giống nhau y hệt trong log.
+                    if (text.isEmpty()) {
+                        Log.d(TAG, "Vosk chot cau RONG, JSON tho: $raw")
+                    }
                     Log.d(TAG, "Vosk chot cau: \"$text\"")
                     if (text.isNotEmpty()) {
                         finished = true
@@ -247,6 +281,27 @@ class VoskSpeechRecognitionEngine @Inject constructor(
             )
         }
     }
+
+    /**
+     * Công tắc tắt ràng buộc vốn từ **mà không phải build lại**.
+     *
+     * ```
+     * adb shell settings put global viva_asr_grammar 0   # tắt
+     * adb shell settings delete global viva_asr_grammar  # bật lại (mặc định)
+     * ```
+     *
+     * Lý do tồn tại: khi một lượt nói ra transcript rỗng, có hai nguyên nhân
+     * đòi hai cách sửa ngược nhau — grammar chặn nhầm tiếng nói hợp lệ, hay
+     * tầng audio/VAD không đưa được tiếng nói tới decoder. Phân biệt chúng cần
+     * đọc **cùng một giọng nói** qua cả hai cấu hình; không có công tắc này thì
+     * mỗi lần đổi phải build lại và giọng nói đã khác đi.
+     *
+     * Mặc định bật. Đọc lỗi thì coi như bật, vì mất ràng buộc âm thầm còn tệ
+     * hơn: nó đưa hệ thống về đúng hành vi cũ mà không ai biết.
+     */
+    private fun grammarEnabled(): Boolean = runCatching {
+        Settings.Global.getInt(context.contentResolver, SETTING_GRAMMAR, 1) == 1
+    }.getOrDefault(true)
 
     /**
      * Ghi `conf` từng từ mà `setWords(true)` sinh ra, kèm giá trị nhỏ nhất.
@@ -307,5 +362,8 @@ class VoskSpeechRecognitionEngine @Inject constructor(
         const val TAG = "VoskEngine"
         const val MODEL_READY_MARKER = ".unpacked"
         const val SAMPLE_RATE = 16_000
+
+        /** Khoa trong `Settings.Global` de tat rang buoc von tu luc chay. */
+        const val SETTING_GRAMMAR = "viva_asr_grammar"
     }
 }
