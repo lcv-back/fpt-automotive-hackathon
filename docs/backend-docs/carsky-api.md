@@ -297,12 +297,7 @@ PATCH  /api/v1/blueprints/pins/:pinId          Sửa pin
 DELETE /api/v1/blueprints/pins/:pinId          Xoá pin
 ```
 
-⚠️ **Mục 10 cần kiểm lại.** Kết luận *"pin `ETHERNET` chỉ tạo được trong web UI"*
-dựa trên `POST /nodes/{nodeId}/pins` → 404 — **cùng một lỗi thiếu tiền tố**.
-Đường thật nhiều khả năng là `POST /api/v1/blueprints/nodes/{nodeId}/pins`.
-**CHƯA THỬ** (thêm pin là thao tác ghi, không dò khan được như PATCH rỗng). Nếu
-đúng thì cái chặn của V7 — "không thêm được Container Node có mạng bằng API" —
-chỉ là lỗi gõ địa chỉ.
+✅ **Mục 10 đã kiểm lại — kết luận của nó ĐÚNG, chỉ cơ chế ghi sai.** Xem 9d.
 
 **Nhưng đổi image xong vẫn cần REDEPLOY, và việc đó không có API.**
 
@@ -327,6 +322,38 @@ thứ mình gửi. Bước lùi tự động cũng khôi phục, cùng đường
 
 ⚠️ Blueprint có cờ **`Locked`** *"để tránh chỉnh sửa nhầm khi đang chạy demo"*.
 Bật khoá thì PATCH sẽ fail — đó là có chủ đích, đừng gỡ giữa buổi duyệt.
+
+### 9d. Đã kiểm mục 10 ở đường dẫn đúng — kết luận đúng, cơ chế sai
+
+Sau khi phát hiện lỗi tiền tố ở 9c, phải kiểm lại xem mục 10 có sai theo không.
+Làm trên **một blueprint clone tạm** (`POST /blueprints/{id}/clone`), không đụng
+room demo, xoá sạch sau khi xong (`DELETE` → 200).
+
+| Gọi | Kết quả |
+|---|---|
+| `POST /api/v1/nodes/{id}/pins` | **404** Route not found |
+| `POST /api/v1/blueprints/nodes/{id}/pins`, `pinType=ETHERNET` | **400** — route CÓ tồn tại, nhưng enum từ chối |
+| cùng route, `pinType=GENERIC` | **422** `Pin type GENERIC is not allowed on container nodes. Allowed: CAN, KUKSA, VIDEO` |
+
+```
+pinType hợp lệ toàn cục : VHAL | KUKSA | CAN | LIN | VIDEO | GPIO | GENERIC
+pinType hợp lệ trên container node : CAN, KUKSA, VIDEO
+```
+
+**Kết luận mục 10 giữ nguyên:** API công khai không tạo được pin `ETHERNET`, V7
+vẫn bị chặn đúng chỗ đó.
+
+**Nhưng cơ chế mục 10 mô tả là sai**, và sự khác biệt quan trọng khi đi hỏi BTC:
+
+- Mục 10 nói *"spec có ghi, server không có route"* → nghe như **lỗi triển khai**,
+  hỏi BTC "bật route giúp".
+- Thực tế: route có, enum **cố ý** không cho `ETHERNET` trên container node → đây
+  là **giới hạn thiết kế**. Câu hỏi đúng là *"làm cách nào thêm một container node
+  có mạng mà không phải dựng bằng tay trong UI?"* — và câu trả lời có thể là
+  "không có, dùng UI", chứ không phải "chờ chúng tôi bật".
+
+Lỗi 422 kèm danh sách `Allowed:` là bằng chứng mạnh hơn hẳn một dòng 404 mơ hồ —
+dùng nguyên văn nó khi leo thang.
 
 **Đã xác nhận đúng, không phải nghi ngờ:** `GET /deployments/{roomId}/nodes` trả
 node id vào trường **`name`** (không phải `id`), nên bước verify của workflow so
@@ -353,14 +380,18 @@ lúc đó mới đáng bàn tới `on: push` cho nhánh release.
 
 ## 10. 🚫 API công khai KHÔNG tạo được pin `ETHERNET` — và hệ quả cho V2
 
-> ⚠️ **CẢ MỤC NÀY ĐANG BỊ NGHI NGỜ — đọc 9c trước.** Kết luận dưới đây dựa trên
-> `POST /nodes/{nodeId}/pins` → 404. Ngày 08/08 phát hiện `openapi.json` **ghi
-> sai đường dẫn**: route thật của họ này có tiền tố `/blueprints`
-> (`PATCH /api/v1/blueprints/nodes/{id}` trả 200, trong khi
-> `PATCH /api/v1/nodes/{id}` trả 404). Rất có thể đường đúng để thêm pin là
-> `POST /api/v1/blueprints/nodes/{nodeId}/pins` và toàn bộ mục này là một lỗi gõ
-> địa chỉ. **Chưa thử** — thêm pin là thao tác ghi thật. Ai đọc tới đây mà cần
-> kết luận này thì hãy thử đường dẫn đúng trước, đừng tin ngay.
+> ✅ **Kết luận của mục này ĐÚNG — đã kiểm lại 08/08 ở đường dẫn đúng (xem 9d).**
+> Nhưng **cơ chế mô tả dưới đây sai**, và chỗ sai đó đổi cả câu hỏi phải hỏi BTC.
+>
+> Mục này kết luận từ `POST /nodes/{nodeId}/pins` → 404, tức hiểu là *server
+> thiếu route*. Thật ra `openapi.json` **ghi sai đường dẫn**: route thật có tiền
+> tố `/blueprints`. Gọi đúng `POST /api/v1/blueprints/nodes/{id}/pins` thì route
+> **có tồn tại** — nó trả **400** vì enum `pinType` không nhận `ETHERNET`, và với
+> `GENERIC` thì trả **422** `Pin type GENERIC is not allowed on container nodes.
+> Allowed: CAN, KUKSA, VIDEO`.
+>
+> Nên đây **không phải route chưa bật** (chờ BTC bật giúp) mà là **giới hạn thiết
+> kế** (container node chỉ được CAN/KUKSA/VIDEO). Đọc mục dưới với hiệu chỉnh đó.
 
 Phát hiện 04/08 khi làm V7 (thêm Container Node `viva-asr`).
 
