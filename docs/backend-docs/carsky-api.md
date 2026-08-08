@@ -266,45 +266,67 @@ có người push được rồi; cần xin lại đúng cặp credential đó.
 **Đã có sẵn:** `.github/workflows/carsky-deploy-asr.yml` và
 `carsky-push-asr-image.yml`. Cả hai là `workflow_dispatch`.
 
-### 9c. Đính chính 07/08 — `PATCH /nodes/{id}` KHÔNG tồn tại
+### 9c. Đính chính 08/08 — `openapi.json` ghi SAI đường dẫn, không phải thiếu route
 
-Mục 9b ở trên lấy `PATCH /api/v1/nodes/{nodeId}` **từ `openapi.json` mà chưa gọi
-thử**. Gọi thật ngày 07/08:
+Mục 9b lấy `PATCH /api/v1/nodes/{nodeId}` **từ `openapi.json` mà chưa gọi thử**.
+Gọi thật 07/08 ra **404**, và tôi đã kết luận nhầm rằng CarSky không cho đổi
+image bằng API. **Kết luận đó sai.**
 
-```
-PATCH /api/v1/nodes/b8eada00-d137-4fdc-a131-2197b1d1356b   →  404
-```
+`Car-Sky-Platform.html` — tài liệu vận hành chính thức nằm sẵn trong repo, mục
+*"API & MCP Tools"* — ghi đường dẫn thật, có thêm tiền tố `/blueprints`:
 
-Cả lần PATCH chính lẫn lần lùi lại đều 404 trên cùng endpoint đó. Đây đúng lớp
-lỗi mục 10 đã ghi cho `POST /nodes/{nodeId}/pins`: **spec khai nhiều hơn thứ
-server chạy được.** Bài học: đừng kết luận "đường đi đã rõ" từ `openapi.json`
-khi chưa gọi một lần.
+| Đường dẫn | Nguồn | Kết quả gọi thật |
+|---|---|---|
+| `PATCH /api/v1/nodes/{nodeId}` | `openapi.json` | **404** Route not found |
+| `PATCH /api/v1/blueprints/nodes/{nodeId}` | `Car-Sky-Platform.html` | ✅ **200** |
 
-**Ba đường thay thế đều tắc**, kiểm bằng chính `openapi.json`:
+Dò bằng body rỗng `{}` nên không ghi gì; kiểm lại ngay sau đó: `config` nguyên
+vẹn (3 biến env + image cũ), pin `eth ETHERNET OUTPUT` còn nguyên.
 
-| Đường | Vì sao không dùng được |
-|---|---|
-| `PATCH /blueprints/{id}` | Schema chỉ nhận `name` + `description` |
-| `POST /blueprints/{id}/batch` | Chỉ có 3 op: `addNode`, `addPin`, `addEdge` — toàn thao tác THÊM, không có update |
-| `POST /blueprints/import` | 400, enum `pinType` không nhận `ETHERNET` (mục 10) |
+**Bài học sửa lại:** `openapi.json` của CarSky không chỉ khai thừa endpoint — nó
+còn **khai sai địa chỉ**. Khi một route trả 404, hãy đối chiếu với
+`Car-Sky-Platform.html` trước khi kết luận nền tảng không hỗ trợ.
 
-🔴 **Đừng `DELETE /nodes/{nodeId}` rồi tạo lại.** Node cần một pin `ETHERNET` nối
-vào `IVI Switch`, mà mục 10 đã chứng minh pin `ETHERNET` **chỉ tạo được trong web
-UI**. Xoá node là đường một chiều làm hỏng room demo.
-
-**Chuỗi đúng — bốn bước, bước 3 làm tay:**
+Bộ đường dẫn đúng cho việc sửa topology, theo tài liệu:
 
 ```
-build image → push registry → đổi image trong WEB UI → restart/{node}
+PATCH  /api/v1/blueprints/nodes/:nodeId        Sửa node
+DELETE /api/v1/blueprints/nodes/:nodeId        Xoá node
+POST   /api/v1/blueprints/nodes/:nodeId/pins   Thêm pin vào node
+PATCH  /api/v1/blueprints/pins/:pinId          Sửa pin
+DELETE /api/v1/blueprints/pins/:pinId          Xoá pin
 ```
 
-`POST /deployments/{roomId}/restart/{node}` là endpoint **có thật**, đã chạy
-được, nên bước 4 vẫn tự động. Chỉ bước 3 kẹt cho tới khi CarSky bật route PATCH.
+⚠️ **Mục 10 cần kiểm lại.** Kết luận *"pin `ETHERNET` chỉ tạo được trong web UI"*
+dựa trên `POST /nodes/{nodeId}/pins` → 404 — **cùng một lỗi thiếu tiền tố**.
+Đường thật nhiều khả năng là `POST /api/v1/blueprints/nodes/{nodeId}/pins`.
+**CHƯA THỬ** (thêm pin là thao tác ghi, không dò khan được như PATCH rỗng). Nếu
+đúng thì cái chặn của V7 — "không thêm được Container Node có mạng bằng API" —
+chỉ là lỗi gõ địa chỉ.
 
-**Hệ quả cho `carsky-deploy-asr.yml`:** workflow đã bỏ bước PATCH, thay bằng bước
-đối chiếu image trên node với ô `image` và từ chối chạy nếu chưa khớp — không có
-bước đó thì nó sẽ restart node với image **cũ** rồi báo xanh. Bước lùi tự động
-cũng bỏ, vì nó lùi bằng chính route 404 đó.
+**Nhưng đổi image xong vẫn cần REDEPLOY, và việc đó không có API.**
+
+Tài liệu mục 3.7 *"Khi nào cần redeploy"* liệt kê rõ: **đổi artifact/image dùng
+trong node** và **cấu hình node thay đổi** đều PHẢI redeploy. Đã grep
+`openapi.json`: không có `redeploy` / `reconcile` / `sync` / `apply`. Redeploy là
+nút trong Deployment Viewer.
+
+Bù lại, bán kính ảnh hưởng nhỏ — tài liệu ghi: *"Redeploy: chỉ restart các node
+có thay đổi"*, không phải dựng lại cả 22 node.
+
+**Chuỗi đúng — ba bước, chỉ bước 3 làm tay:**
+
+```
+build+push image → PATCH /blueprints/nodes/{id} → bấm Redeploy trong UI
+```
+
+**Hệ quả cho `carsky-deploy-asr.yml`:** đã khôi phục bước PATCH ở đường dẫn đúng,
+vẫn đọc-trộn-ghi để không xoá 3 biến env, và thêm bước **đọc lại từ server** sau
+PATCH (so image + đếm số biến env) — vì mã 200 không chứng minh server lưu đúng
+thứ mình gửi. Bước lùi tự động cũng khôi phục, cùng đường dẫn đúng.
+
+⚠️ Blueprint có cờ **`Locked`** *"để tránh chỉnh sửa nhầm khi đang chạy demo"*.
+Bật khoá thì PATCH sẽ fail — đó là có chủ đích, đừng gỡ giữa buổi duyệt.
 
 **Đã xác nhận đúng, không phải nghi ngờ:** `GET /deployments/{roomId}/nodes` trả
 node id vào trường **`name`** (không phải `id`), nên bước verify của workflow so
@@ -330,6 +352,15 @@ commit docs làm sập room lúc 21:00. Khi Conduit được bật thì thêm b�
 lúc đó mới đáng bàn tới `on: push` cho nhánh release.
 
 ## 10. 🚫 API công khai KHÔNG tạo được pin `ETHERNET` — và hệ quả cho V2
+
+> ⚠️ **CẢ MỤC NÀY ĐANG BỊ NGHI NGỜ — đọc 9c trước.** Kết luận dưới đây dựa trên
+> `POST /nodes/{nodeId}/pins` → 404. Ngày 08/08 phát hiện `openapi.json` **ghi
+> sai đường dẫn**: route thật của họ này có tiền tố `/blueprints`
+> (`PATCH /api/v1/blueprints/nodes/{id}` trả 200, trong khi
+> `PATCH /api/v1/nodes/{id}` trả 404). Rất có thể đường đúng để thêm pin là
+> `POST /api/v1/blueprints/nodes/{nodeId}/pins` và toàn bộ mục này là một lỗi gõ
+> địa chỉ. **Chưa thử** — thêm pin là thao tác ghi thật. Ai đọc tới đây mà cần
+> kết luận này thì hãy thử đường dẫn đúng trước, đừng tin ngay.
 
 Phát hiện 04/08 khi làm V7 (thêm Container Node `viva-asr`).
 
