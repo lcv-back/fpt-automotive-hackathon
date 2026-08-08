@@ -472,12 +472,18 @@ lại một thứ đang chạy", không riêng CarSky.
 > xanh toàn bộ — PATCH ✅ restart ✅ verify ✅ rollback `skipped`. Node mang
 > digest `da1ea85e…` (`0.2.0`), 3 biến env nguyên vẹn, 22/22 node `Running`.
 
-⚠️ **Vẫn chưa xác minh được container đang chạy image nào.** Thứ chứng minh được
-là *blueprint đã ghi đúng digest*. Pod có kéo image mới về hay chưa thì không đọc
-được qua API: `container-exec` chết vì Conduit (mục 4), và node `VIVA ASR` không
-khai `exposedPorts` nên không có route HTTP tới `/health`. Muốn chắc thì bấm
-**Redeploy** trong Deployment Viewer — tài liệu mục 3.7 nói đổi image thì phải
-redeploy, và nút đó *"chỉ restart các node có thay đổi"*.
+⚠️ **Job xanh KHÔNG có nghĩa là image mới đã chạy.** Thứ nó chứng minh được chỉ là
+*blueprint đã ghi đúng digest* và *pod đã restart*. Nhưng `restart/{node}` khởi
+động lại pod theo **spec K8s hiện có**, không đọc lại blueprint — nên pod lên lại
+vẫn mang image **cũ**.
+
+Xác minh được bằng log (xem 5b): sau khi job báo xanh, dòng
+`VIVA_ASR model ready …` vẫn của pod cũ `…6cc865b44-gltn9`, không có pod nào mới
+sinh ra.
+
+Đừng dùng `Redeploy` để chữa — nó cũng không áp được đổi image. Đường duy nhất
+chạy được là **xoá deployment rồi dựng lại**; xem **9h** cho quy trình đầy đủ và
+bằng chứng.
 
 ### 9g. Redeploy hỏng thì API KHÔNG cho biết vì sao — 08/08
 
@@ -506,21 +512,64 @@ kê pod** trong 73 route; `list_pods(roomId)` chỉ tồn tại ở tầng MCP.
 **Hệ quả thực dụng:** khi redeploy fail, đừng cố quan sát — **đổi biến rồi thử
 lại**. Ghi ra danh sách khác biệt giữa bản chạy được và bản hỏng, sửa từng cái.
 
-Lần này biến duy nhất là kiến trúc image:
+Đã làm đúng vậy, và **cả hai giả thuyết đầu tiên đều sai**. Xem 9h.
+
+### 9h. Nguyên nhân thật: Redeploy KHÔNG áp được đổi image lên deployment đang chạy
+
+Ba giả thuyết, kiểm bằng thực nghiệm chứ không suy luận:
+
+| Giả thuyết | Cách kiểm | Phán quyết |
+|---|---|---|
+| Image `0.2.0` amd64-only không hợp cluster | build `0.2.1` đa kiến trúc (amd64+arm64) rồi Redeploy | ❌ **sai** — vẫn `1 node(s) failed` |
+| Cluster không kéo được digest mới | dựng deployment **mới** từ cùng blueprint, cùng image `0.2.1` | ❌ **sai hẳn** — ASR `Running` sau **9 giây** |
+| Redeploy không áp được đổi image lên room đang chạy | so hai đường đi trên cùng blueprint + cùng image | ✅ **đúng** |
+
+**Phép thử quyết định** — deploy sang một device thứ hai, giữ nguyên room demo làm
+đối chứng sống:
 
 ```
-0.1.0 (chạy được) : linux/amd64 + linux/arm64
-0.2.0 (hỏng)      : chỉ linux/amd64
+PATCH blueprint → image 0.2.1
+POST /deployments {blueprintId: 6deadb05…, roomId: <device thứ hai>, name: VIVA-test-0808}
+→ 60s : 21/22 Running, ASR Running
+→ log : 2026-08-08 08:53:52 VIVA_ASR model ready in 415 ms   (9 giây sau lệnh dựng)
+→ 90s : 22/22 (IVI - Android lên chậm nhất)
 ```
 
-`carsky-push-asr-image.yml` từng ghi `platforms: linux/amd64` kèm comment *"node
-chạy trên cluster x86"* — **giả định chưa ai kiểm**, và không có cách nào kiểm
-qua API. Đã trả về đa kiến trúc.
+Cùng blueprint, cùng image, cùng cluster. Khác **duy nhất** đường đi: `Redeploy`
+lên room đang chạy thì hỏng, `POST /deployments` dựng mới thì chạy trong 9 giây.
 
-> **Phép thử dứt điểm nếu còn nghi kiến trúc:** PATCH node sang **digest amd64
-> riêng** của `0.1.0` (`sha256:fd047333…`, tách từ OCI index) rồi redeploy. Cùng
-> nội dung đã biết là tốt, khác đúng một biến. Chạy được → cluster amd64. Hỏng →
-> cluster arm64.
+**Kết luận: `Redeploy` của CarSky không reconcile được thay đổi `config.image`
+của container node trên một deployment đã tồn tại.** Nó báo
+`Partial redeploy: 1 node(s) failed` và không lộ lý do. Đây là giới hạn của nền
+tảng, không phải lỗi image, kiến trúc, hay quyền pull.
+
+#### Quy trình ĐÚNG để đổi image
+
+```
+1. build + push image                       (CI)
+2. PATCH /blueprints/nodes/{id}  đổi image  (API — xem 9c)
+3. DELETE /deployments/{roomId}             (API)
+4. POST   /deployments {blueprintId, roomId, name}   (API)
+5. chờ ~3 phút → 22/22
+```
+
+**Không** dùng `Redeploy`, và **không** dùng `restart/{node}` — restart chỉ khởi
+động lại pod theo spec K8s cũ, còn Redeploy thì hỏng. Bước 3+4 là đường duy nhất
+đã chứng minh được.
+
+⚠️ Bước 3 **huỷ pod đang chạy**, mất ~3 phút mới có lại. Đừng làm sát giờ duyệt.
+Muốn không gián đoạn thì dựng trước một deployment thứ hai trên device khác rồi
+mới xoá cái cũ — quota cho phép 2.
+
+#### Xoá-dựng-lại còn sửa được bản ghi hỏng
+
+Trước khi dựng lại, room ở trạng thái mâu thuẫn: `/status` báo `RUNNING` và
+`/nodes` trả 22/22, nhưng `find?device=` trả `[]` và `/devices` báo `VIVA: IDLE`.
+Chính cái `find` rỗng đó làm `carsky-deploy-asr.yml` không chạy được (bước đầu
+của nó lấy `blueprintId` từ đây).
+
+Sau khi xoá và dựng lại: `find` trả 1 bản ghi, device về `BUSY`. Nên nếu gặp
+`find` rỗng mà room vẫn chạy, **dựng lại là cách sửa**.
 
 ## 10. 🚫 API công khai KHÔNG tạo được pin `ETHERNET` — và hệ quả cho V2
 
