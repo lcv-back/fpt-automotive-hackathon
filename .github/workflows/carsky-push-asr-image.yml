@@ -67,6 +67,12 @@ jobs:
             exit 1
           fi
 
+      # Bắt buộc cho build arm64 trên runner x86 — thiếu nó thì stage `runtime`
+      # (có `pip install`) không chạy được dưới kiến trúc khác.
+      - uses: docker/setup-qemu-action@v3
+        with:
+          platforms: arm64
+
       - uses: docker/setup-buildx-action@v3
 
       - uses: docker/login-action@v3
@@ -81,9 +87,20 @@ jobs:
         with:
           context: asr
           push: true
-          # Node chạy trên cluster x86; build đa kiến trúc chỉ làm job lâu gấp
-          # đôi mà không ai dùng tới bản arm64.
-          platforms: linux/amd64
+          # ⚠️ ĐỪNG thu về mỗi `linux/amd64`. Bản trước ghi "node chạy trên
+          # cluster x86" — đó là GIẢ ĐỊNH chưa ai kiểm, và nó đã tốn một buổi:
+          #
+          #   0.1.0 (chạy được)  : linux/amd64 + linux/arm64
+          #   0.2.0 (amd64-only) : Redeploy -> "Partial redeploy: 1 node(s) failed"
+          #
+          # Nền tảng không cho xem pod đang fail (nodes/watch giữ nguyên Running,
+          # logs chỉ trỏ về pod cũ, container-exec 502) nên không đọc được lý do
+          # trực tiếp. Nhưng bản duy nhất từng chạy được là bản đa kiến trúc, và
+          # biến DUY NHẤT khác giữa hai lần là dòng này.
+          #
+          # Giữ đúng bộ kiến trúc của 0.1.0 cho tới khi có ai đó xác minh được
+          # kiến trúc thật của node. Build lâu hơn vài phút, đổi lại không cược.
+          platforms: linux/amd64,linux/arm64
           tags: ${{ env.IMAGE }}:${{ inputs.tag }}
           build-args: |
             ASR_HF_MODEL=${{ inputs.hf_model }}
