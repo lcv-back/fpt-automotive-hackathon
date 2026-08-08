@@ -1,7 +1,7 @@
 name: carsky-deploy-asr
 
-# Restart container `viva-asr` trên CarSky sau khi đã đổi image, và xác minh nó
-# trở lại Running.
+# Đổi image container `viva-asr` trên CarSky: PATCH blueprint, xoá deployment,
+# dựng lại, chờ room lên đủ node. Tự lùi nếu ASR không lên được.
 #
 # ## ⚠️ `openapi.json` ghi SAI đường dẫn PATCH — đừng lấy path từ đó
 #
@@ -19,10 +19,12 @@ name: carsky-deploy-asr
 # vẹn. Bài học: `openapi.json` của CarSky khai sai cả địa chỉ, không chỉ khai
 # thừa endpoint. Đối chiếu với tài liệu người viết trước khi tin.
 #
-# Cùng lớp lỗi này, `docs/backend-docs/carsky-api.md` §10 kết luận "pin ETHERNET
-# chỉ tạo được trong web UI" dựa trên `POST /nodes/{nodeId}/pins` -> 404. Đường
-# thật nhiều khả năng là `POST /api/v1/blueprints/nodes/{nodeId}/pins` — CHƯA
-# THỬ, vì thêm pin là thao tác ghi không dò khan được.
+# Cùng lớp lỗi này, `carsky-api.md` §10 kết luận "pin ETHERNET chỉ tạo được
+# trong web UI" dựa trên `POST /nodes/{nodeId}/pins` -> 404. Đã kiểm lại trên
+# một blueprint clone tạm: đường đúng là `/blueprints/nodes/{id}/pins` và nó
+# TỒN TẠI, nhưng trả 422 `Pin type ... is not allowed on container nodes.
+# Allowed: CAN, KUKSA, VIDEO`. Kết luận của §10 vẫn đúng, chỉ cơ chế khác —
+# là giới hạn thiết kế, không phải route thiếu. Xem §9d.
 #
 # ## `restart/{node}` trả 500 nhưng VẪN CHẠY — đừng tin mã HTTP
 #
@@ -39,17 +41,23 @@ name: carsky-deploy-asr
 # lại. Thiếu giai đoạn một thì một lệnh restart không ăn gì sẽ trông y hệt một
 # lần deploy thành công.
 #
-# ## Sau khi PATCH vẫn cần một cú bấm tay: Redeploy
+# ## Đổi image = XOÁ deployment rồi DỰNG LẠI. Không có cách nhẹ hơn.
 #
-# Tài liệu mục 3.7 "Khi nào cần redeploy": *đổi artifact/image dùng trong node*
-# và *cấu hình node thay đổi* đều thuộc nhóm PHẢI redeploy. Mà **redeploy không
-# có endpoint REST** — đã grep cả `openapi.json`, không có redeploy/reconcile/
-# sync/apply. Nó là nút trong Deployment Viewer.
+# Hai cách hiển nhiên hơn đều KHÔNG áp được image mới, đã đo 08/08:
 #
-# Workflow này vẫn gọi `restart/{node}` sau khi PATCH, nhưng ĐỪNG coi restart là
-# đủ: theo tài liệu, thứ áp dụng bản blueprint mới vào Room đang chạy là
-# Redeploy. Bấm Redeploy nếu ASR vẫn chạy image cũ sau khi job này xanh.
-# Bán kính ảnh hưởng nhỏ: "Redeploy: chỉ restart các node có thay đổi".
+#   restart/{node}   chỉ chạy lại pod theo spec K8s hiện có, không đọc lại
+#                    blueprint -> pod lên lại vẫn mang image CŨ
+#   Redeploy (UI)    "Partial redeploy: 1 node(s) failed", không lộ lý do,
+#                    thử 3 lần đều vậy
+#
+# Đối chứng chứng minh không phải lỗi image: cùng blueprint, cùng image 0.2.1,
+# dựng deployment MỚI trên device thứ hai thì ASR `Running` sau **9 giây**.
+# Chi tiết ở docs/backend-docs/carsky-api.md §9h.
+#
+# Cái giá phải trả: xoá deployment huỷ pod đang chạy, mất ~3 phút mới đủ 22/22
+# (node `IVI - Android` boot chậm nhất). **Đừng chạy job này sát giờ duyệt.**
+# Muốn không gián đoạn thì dựng trước một deployment thứ hai trên device khác
+# rồi mới xoá cái cũ — quota cho phép 2 deployment đồng thời.
 #
 # ⚠️ Blueprint có cờ `Locked` để chống sửa nhầm lúc đang demo. Bật khoá thì bước
 # PATCH sẽ fail — đó là có chủ đích, đừng gỡ khoá giữa buổi duyệt.
@@ -94,7 +102,7 @@ on:
         default: "b8eada00-d137-4fdc-a131-2197b1d1356b"
         type: string
       dry_run:
-        description: "Chỉ in ra thay đổi sẽ làm, không gọi PATCH/restart"
+        description: "Chi in ra thay doi se lam, khong PATCH va khong xoa-dung-lai"
         required: true
         default: true
         type: boolean
@@ -111,7 +119,7 @@ env:
 
 jobs:
   deploy:
-    name: PATCH digest + restart node
+    name: PATCH digest + dung lai deployment
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -229,119 +237,128 @@ jobs:
           fi
           echo "Da xac minh: image doi dung, env con $GOT_ENV bien."
 
-      - name: restart node
+      - name: xoá deployment rồi dựng lại
         if: ${{ !inputs.dry_run }}
         run: |
-          set -uo pipefail
-          # Chỉ node này, KHÔNG phải `POST /deployments/{room}/restart` (cả room).
-          # Bán kính ảnh hưởng là một container thay vì 22 node.
-          #
-          # ⚠️ KHÔNG dùng `curl -f` ở đây. Đo 08/08: endpoint này trả **500 với
-          # body rỗng NHƯNG VẪN THỰC THI** — node chuyển Provisioning ngay sau
-          # đó rồi Running sau ~50s. Với `-f`, curl coi 500 là lỗi, step fail,
-          # rollback chạy và PATCH đè image cũ lên bản mới vừa ghi thành công.
-          # Tức workflow tự huỷ việc của chính nó vì tin vào mã HTTP.
-          #
-          # Nên: ghi lại mã, không phán xét ở đây. Bước sau phán xét bằng HỆ QUẢ
-          # quan sát được (phase đổi), không bằng lời khai của server.
-          CODE=$(curl -s -o /dev/null -w "%{http_code}" \
-                 -X POST "$BASE/deployments/${{ inputs.room_id }}/restart/${{ inputs.node_id }}" \
-                 -H "x-api-key: ${{ secrets.CARSKY_API_KEY }}" \
-                 -H "Content-Length: 0")
-          echo "restart tra HTTP $CODE (500 la binh thuong o API nay)"
-          case "$CODE" in
-            2*|500) ;;
-            *) echo "::warning::Ma la: $CODE — van di tiep, buoc verify se quyet dinh." ;;
-          esac
+          set -euo pipefail
+          KEY='${{ secrets.CARSKY_API_KEY }}'
+          ROOM='${{ inputs.room_id }}'
+          BP='${{ steps.current.outputs.blueprint }}'
 
-      - name: chờ node Running trở lại
+          # ⚠️ ĐÂY LÀ ĐƯỜNG DUY NHẤT ÁP ĐƯỢC IMAGE MỚI. Hai cách hiển nhiên hơn
+          # đều KHÔNG hoạt động, đã đo 08/08:
+          #
+          #   restart/{node}  chỉ chạy lại pod theo spec K8s hiện có, không đọc
+          #                   lại blueprint -> pod lên lại vẫn mang image CŨ
+          #   Redeploy (UI)   "Partial redeploy: 1 node(s) failed", không lộ lý do
+          #
+          # Chứng minh bằng đối chứng: cùng blueprint, cùng image 0.2.1, dựng
+          # deployment MỚI trên device thứ hai thì ASR Running sau 9 giây.
+          # Xem docs/backend-docs/carsky-api.md §9h.
+          #
+          # Cái giá: xoá pod đang chạy, mất ~3 phút mới có lại. Không có cách nào
+          # rẻ hơn cho tới khi CarSky sửa Redeploy.
+          echo "::warning::Xoá deployment $ROOM — ASR sẽ gián đoạn ~3 phút."
+          curl -fsS -X DELETE "$BASE/deployments/$ROOM" -H "x-api-key: $KEY" >/dev/null
+          echo "Đã xoá. Dựng lại từ blueprint $BP..."
+
+          # Tên phải khác deployment vừa xoá — trùng tên có thể bị từ chối.
+          NAME="viva-asr-$(date -u +%Y%m%d-%H%M%S)"
+          curl -fsS -X POST "$BASE/deployments" \
+            -H "x-api-key: $KEY" -H "Content-Type: application/json" \
+            -d "{\"blueprintId\":\"$BP\",\"roomId\":\"$ROOM\",\"name\":\"$NAME\"}" \
+            > /tmp/redeploy.json
+          echo "deployment moi: $(jq -r '.id + \" | \" + .namespace' /tmp/redeploy.json)"
+
+      - name: chờ room lên lại đủ node
         id: verify
         if: ${{ !inputs.dry_run }}
         run: |
           set -uo pipefail
           KEY='${{ secrets.CARSKY_API_KEY }}'
-          phase_now() {
-            curl -fsS -H "x-api-key: $KEY" \
-              "$BASE/deployments/${{ inputs.room_id }}/nodes" \
-              | jq -r --arg id '${{ inputs.node_id }}' '.[] | select(.name == $id) | .phase'
+          nodes_json() {
+            curl -fsS -H "x-api-key: $KEY" "$BASE/deployments/${{ inputs.room_id }}/nodes" 2>/dev/null || echo '[]'
           }
 
-          # GIAI DOAN 1 — xac nhan restart THAT SU xay ra.
-          #
-          # Bo qua buoc nay thi mot lenh restart khong an gi se trong y het mot
-          # lan deploy thanh cong: node chua bao gio roi Running, vong doi ben
-          # duoi thay "Running" ngay lap tuc va bao xanh. Do la kieu hong te
-          # nhat — bao cao thanh cong ma khong doi gi.
-          LEFT=no
-          D1=$(( $(date +%s) + 90 ))
-          while [ "$(date +%s)" -lt "$D1" ]; do
-            P=$(phase_now); echo "cho roi Running... phase=$P"
-            if [ "$P" != "Running" ]; then LEFT=yes; break; fi
-            sleep 5
+          # Đo 08/08 trên lần dựng lại thật: 21/22 sau ~60s, node `IVI - Android`
+          # (skycraft, phải boot cả máy ảo Android) lên nốt ở ~180s. Cho 420s để
+          # còn dư khi cluster bận.
+          DEADLINE=$(( $(date +%s) + 420 ))
+          TOTAL=0; READY=0; ASR=""
+          while [ "$(date +%s)" -lt "$DEADLINE" ]; do
+            J=$(nodes_json)
+            TOTAL=$(echo "$J" | jq 'length')
+            READY=$(echo "$J" | jq '[.[] | select(.phase == "Running")] | length')
+            ASR=$(echo "$J" | jq -r --arg id '${{ inputs.node_id }}' '.[] | select(.name == $id) | .phase')
+            echo "$READY/$TOTAL Running | ASR=${ASR:-chua co}"
+            [ "$TOTAL" -gt 0 ] && [ "$READY" = "$TOTAL" ] && break
+            sleep 15
           done
 
-          if [ "$LEFT" = "no" ]; then
-            echo "::error::Node khong he roi trang thai Running trong 90s — lenh restart KHONG an gi."
-            echo "left_running=no" >> "$GITHUB_OUTPUT"
+          echo "ready=$READY/$TOTAL" >> "$GITHUB_OUTPUT"
+
+          # ASR là node DUY NHẤT job này chịu trách nhiệm. Node khác chưa lên
+          # (thường là IVI - Android boot chậm) thì cảnh báo chứ không fail —
+          # lùi lại vì lý do đó sẽ xoá-dựng-lại thêm một lần vô ích.
+          if [ "$ASR" != "Running" ]; then
+            echo "::error::Node ASR khong len duoc (phase: ${ASR:-khong thay})"
             exit 1
           fi
-
-          # GIAI DOAN 2 — cho no quay lai.
-          DEADLINE=$(( $(date +%s) + 300 ))
-          PHASE=""
-          while [ "$(date +%s)" -lt "$DEADLINE" ]; do
-            PHASE=$(phase_now); echo "phase=$PHASE"
-            [ "$PHASE" = "Running" ] && break
-            sleep 10
-          done
-          echo "phase=$PHASE" >> "$GITHUB_OUTPUT"
-          if [ "$PHASE" != "Running" ]; then
-            echo "::error::Node khong tro lai Running (phase cuoi: $PHASE)"
-            exit 1
+          if [ "$READY" != "$TOTAL" ]; then
+            echo "::warning::ASR da Running nhung room moi $READY/$TOTAL — kiem lai bang mat."
           fi
           {
             echo ""
-            echo "### Node đã Running"
+            echo "### ✅ Room đã lên lại với image mới"
             echo ""
-            echo "⚠️ **Chưa chắc nó đang chạy image MỚI.** Tài liệu CarSky mục 3.7 nói"
-            echo "đổi image thì phải **Redeploy**, mà redeploy không có endpoint REST —"
-            echo "workflow này chỉ gọi được \`restart/{node}\`."
+            echo "| | |"
+            echo "|---|---|"
+            echo "| node sẵn sàng | \`${{ steps.verify.outputs.ready }}\` |"
+            echo "| image | \`${{ inputs.image }}\` |"
             echo ""
-            echo "Mở Deployment Viewer và bấm **Redeploy** nếu ASR vẫn hành xử như bản cũ."
-            echo "Nút đó chỉ restart các node có thay đổi, không đụng 21 node còn lại."
+            echo "Xác minh bằng log (tham số \`?container=user\` không có trong openapi.json"
+            echo "nhưng server nhận — xem carsky-api.md §5b):"
+            echo ""
+            echo '```'
+            echo "GET $BASE/deployments/${{ inputs.room_id }}/logs/${{ inputs.node_id }}?container=user&tail=10"
+            echo '```'
+            echo ""
+            echo "Dòng \`VIVA_ASR model ready …\` phải có mốc thời gian của lần dựng này."
           } >> "$GITHUB_STEP_SUMMARY"
 
-      - name: lùi lại image cũ nếu node không lên
-        # Lùi được thật, vì PATCH đã dùng đúng đường dẫn `/blueprints/nodes/{id}`.
+      - name: lùi lại image cũ nếu ASR không lên
+        # Lùi bằng ĐÚNG cơ chế đã dùng để tiến: PATCH + xoá + dựng lại. Bản trước
+        # lùi bằng `restart/{node}`, mà restart không đọc lại blueprint nên nó
+        # chưa bao giờ thật sự lùi được gì.
         #
-        # ⚠️ Điều kiện phải bám vào `steps.verify.outcome`, KHÔNG phải `failure()`
-        # chung chung. Lần chạy 08/08 dùng `failure()`: bước restart fail chỉ vì
-        # API trả 500 (dù lệnh đã chạy), rollback liền PATCH đè image cũ lên bản
-        # mới vừa ghi thành công. Deploy tự huỷ chính nó.
-        #
-        # Chỉ lùi khi bước verify kết luận node THẬT SỰ không lên được — đó mới
-        # là tình huống đáng đánh đổi để quay về bản cũ.
+        # ⚠️ Điều kiện bám vào `steps.verify.outcome`, KHÔNG phải `failure()`
+        # chung chung: lần chạy 08/08 dùng `failure()` thì một bước fail chỉ vì
+        # API trả 500 (dù lệnh đã chạy) cũng kích rollback, và rollback đè image
+        # cũ lên bản mới vừa ghi thành công. Deploy tự huỷ chính nó.
         if: ${{ always() && !inputs.dry_run && steps.verify.outcome == 'failure' && steps.current.outputs.old_image != '' }}
         run: |
           set -euo pipefail
-          echo "::warning::Lùi node về ${{ steps.current.outputs.old_image }}"
+          KEY='${{ secrets.CARSKY_API_KEY }}'
+          ROOM='${{ inputs.room_id }}'
+          BP='${{ steps.current.outputs.blueprint }}'
+          echo "::warning::Lùi về ${{ steps.current.outputs.old_image }}"
+
           jq -n --slurpfile c /tmp/config-old.json '{config: $c[0]}' > /tmp/rollback.json
           curl -fsS -X PATCH "$BASE/blueprints/nodes/${{ inputs.node_id }}" \
-            -H "x-api-key: ${{ secrets.CARSKY_API_KEY }}" \
-            -H "Content-Type: application/json" \
-            --data @/tmp/rollback.json
-          # Cũng không `-f`: restart trả 500 nhưng vẫn chạy. Bản 08/08 dùng `-f`
-          # ở đây nên rollback báo hỏng dù nó đã lùi image xong xuôi — người đọc
-          # log tưởng mất cả đường lùi.
-          RC=$(curl -s -o /dev/null -w "%{http_code}" \
-               -X POST "$BASE/deployments/${{ inputs.room_id }}/restart/${{ inputs.node_id }}" \
-               -H "x-api-key: ${{ secrets.CARSKY_API_KEY }}" -H "Content-Length: 0")
-          echo "restart (rollback) tra HTTP $RC"
+            -H "x-api-key: $KEY" -H "Content-Type: application/json" \
+            --data @/tmp/rollback.json >/dev/null
+
+          # Room có thể đã bị xoá ở bước trước rồi. `|| true` để không chết vì
+          # xoá một thứ không còn tồn tại.
+          curl -fsS -X DELETE "$BASE/deployments/$ROOM" -H "x-api-key: $KEY" >/dev/null || true
+          curl -fsS -X POST "$BASE/deployments" \
+            -H "x-api-key: $KEY" -H "Content-Type: application/json" \
+            -d "{\"blueprintId\":\"$BP\",\"roomId\":\"$ROOM\",\"name\":\"viva-rollback-$(date -u +%Y%m%d-%H%M%S)\"}" \
+            >/dev/null
           {
             echo ""
             echo "### ⚠️ Đã lùi lại"
             echo ""
-            echo "Node được trả về \`${{ steps.current.outputs.old_image }}\` và restart."
-            echo "Bấm **Redeploy** trong Deployment Viewer để chắc chắn bản cũ được áp lại,"
-            echo "rồi kiểm bằng mắt trước khi coi là xong."
+            echo "Blueprint trả về \`${{ steps.current.outputs.old_image }}\` và room đang dựng lại."
+            echo "Mất ~3 phút mới đủ 22/22 — **kiểm bằng mắt trước khi coi là xong**."
           } >> "$GITHUB_STEP_SUMMARY"
