@@ -162,6 +162,39 @@ qua HTTPS. Đường thay thế là tunnel ở mục 5.
 - **`/devices` liệt kê cả device của đội khác** (18 cái, phần lớn `PUBLISHED`). Chỉ
   thao tác trên `VIVA`; đừng gọi lệnh ghi lên id lạ.
 
+### 5b. `/logs/{node}` cần `?container=user` — tham số KHÔNG có trong spec
+
+Gọi thẳng endpoint này với node `VIVA ASR` trả **502**, và thoạt nhìn giống hệt
+họ lỗi Conduit ở mục 4 — nhưng không phải:
+
+```
+502 {"error":"UPSTREAM_ERROR","message":"Blueprint service error: 500",
+     "details":{"upstream":"ApiError: a container name must be specified for pod
+     b8eada00-…-6cc865b44-gltn9, choose one of: [user sidecar] …"}}
+```
+
+Pod của container node có **hai container**: `user` (image của mình) và `sidecar`
+(`nydus_sidecar_native`, lo eth-tunnel/silkit của nền tảng). API không chọn giúp,
+và `openapi.json` **chỉ khai `tail` với `since`** — không có tham số nào để chỉ
+định container.
+
+**Nhưng server vẫn nhận nó.** Thêm `?container=user` thì ra 200:
+
+```
+GET /api/v1/deployments/{room}/logs/{node}?container=user&tail=200
+→ 200 {"lines":[ …, "2026-08-08 07:20:55,678 INFO viva.asr VIVA_ASR model ready in 363 ms: phowhisper-tiny-int8" ]}
+```
+
+`?container=sidecar` cũng chạy, và đó là chỗ đọc được mạng của node
+(`TAP 'e-eth' configured: 10.99.0.3/24`, bridge silkit, upstream tunnel).
+
+Giá trị: đây là **đường duy nhất nhìn được vào trong container** khi
+`container-exec` còn chết vì Conduit. Đủ để xác nhận ASR nạp model xong và
+Uvicorn đang nghe — thứ trước đây phải đoán.
+
+⚠️ **Giới hạn:** nó chỉ đọc được **pod đang chạy**. Pod mới chết lúc redeploy
+không để lại dòng nào, và endpoint vẫn trỏ về pod cũ. Xem 9g.
+
 ## 6. Dev loop hiện dùng được (V5)
 
 API trả sẵn lệnh mở tunnel cho node Android:
@@ -445,6 +478,49 @@ là *blueprint đã ghi đúng digest*. Pod có kéo image mới về hay chưa 
 khai `exposedPorts` nên không có route HTTP tới `/health`. Muốn chắc thì bấm
 **Redeploy** trong Deployment Viewer — tài liệu mục 3.7 nói đổi image thì phải
 redeploy, và nút đó *"chỉ restart các node có thay đổi"*.
+
+### 9g. Redeploy hỏng thì API KHÔNG cho biết vì sao — 08/08
+
+Bấm `Redeploy` sau khi PATCH sang `0.2.0`, UI trả đúng một dòng:
+
+```
+Redeploy failed: Partial redeploy: 1 node(s) failed
+```
+
+Không có tên node, không có lý do. Và **mọi đường quan sát qua API đều mù**:
+
+| Cách | Kết quả |
+|---|---|
+| `GET /deployments/{room}/nodes` | `phase: Running`, `message: null` — 22/22 |
+| `GET .../nodes/watch` (SSE, 23 event) | node **chưa từng rời `Running`** |
+| `GET .../logs/{node}?container=user` | vẫn pod cũ `…6cc865b44-gltn9`, log dừng ở lần restart trước |
+| `?container=sidecar` | như trên |
+| `GET .../logs/{node}/search` | `result: []` |
+| `container-exec` | 502 Conduit |
+
+**Cơ chế:** K8s giữ ReplicaSet cũ chạy tiếp khi pod mới không lên được. Nên
+`phase` của node vẫn `Running` (đúng — *có* một pod đang chạy), dịch vụ vẫn phục
+vụ bình thường, và pod hỏng biến mất khỏi mọi endpoint. **Không có endpoint liệt
+kê pod** trong 73 route; `list_pods(roomId)` chỉ tồn tại ở tầng MCP.
+
+**Hệ quả thực dụng:** khi redeploy fail, đừng cố quan sát — **đổi biến rồi thử
+lại**. Ghi ra danh sách khác biệt giữa bản chạy được và bản hỏng, sửa từng cái.
+
+Lần này biến duy nhất là kiến trúc image:
+
+```
+0.1.0 (chạy được) : linux/amd64 + linux/arm64
+0.2.0 (hỏng)      : chỉ linux/amd64
+```
+
+`carsky-push-asr-image.yml` từng ghi `platforms: linux/amd64` kèm comment *"node
+chạy trên cluster x86"* — **giả định chưa ai kiểm**, và không có cách nào kiểm
+qua API. Đã trả về đa kiến trúc.
+
+> **Phép thử dứt điểm nếu còn nghi kiến trúc:** PATCH node sang **digest amd64
+> riêng** của `0.1.0` (`sha256:fd047333…`, tách từ OCI index) rồi redeploy. Cùng
+> nội dung đã biết là tốt, khác đúng một biến. Chạy được → cluster amd64. Hỏng →
+> cluster arm64.
 
 ## 10. 🚫 API công khai KHÔNG tạo được pin `ETHERNET` — và hệ quả cho V2
 
