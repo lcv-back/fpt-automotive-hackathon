@@ -378,6 +378,74 @@ chứ không phải `on: push`. Vẫn được tính là tự động hoá, mà 
 commit docs làm sập room lúc 21:00. Khi Conduit được bật thì thêm bước cài APK và
 lúc đó mới đáng bàn tới `on: push` cho nhánh release.
 
+### 9e. `restart/{node}` trả 500 nhưng VẪN CHẠY — 08/08
+
+Đây là cái bẫy tốn nhiều thời gian nhất trong ngày, và nó không nằm ở chỗ nào
+ai ngờ tới.
+
+```
+POST /api/v1/deployments/{roomId}/restart/{node}   →  500, body RỖNG
+```
+
+Không có `error`, không có `message` — chỉ mã 500 trống. **Nhưng lệnh vẫn thực
+thi:** gọi tay lúc 07:00 ngày 08/08, node chuyển `Provisioning` ngay sau đó rồi
+về `Running` sau ~50 giây. Lệnh có tác dụng; chỉ mã trả về là sai.
+
+**Hậu quả đã xảy ra thật**, không phải giả định. Run
+[31245160421](https://github.com/lcv-back/fpt-automotive-hackathon/actions/runs/31245160421):
+
+```
+PATCH image  → 200, ghi thành công digest mới
+restart      → 500 → curl -f coi là lỗi → step fail
+rollback     → failure() kích hoạt → PATCH đè image CŨ lên bản mới vừa ghi
+```
+
+**Deploy tự huỷ chính nó**, và log báo `failure` nên trông như nền tảng hỏng.
+Thật ra mọi lệnh đều đã chạy đúng.
+
+**Quy tắc rút ra:** với CarSky, phán xét bằng **hệ quả quan sát được**, không
+bằng mã HTTP. Cụ thể trong `carsky-deploy-asr.yml`:
+
+- Bước restart **không dùng `curl -f`** — ghi lại mã, coi cả `2xx` lẫn `500` là
+  bình thường, không phán xét tại chỗ.
+- Điều kiện rollback bám vào `steps.verify.outcome == 'failure'`, **không phải
+  `failure()`** chung chung. Chỉ lùi khi node thật sự không lên được.
+
+### 9f. Verify phải bắt node RỜI `Running` trước — nếu không, "không làm gì" trông y hệt "thành công"
+
+Hệ quả thiết kế của 9e, và nó tổng quát hơn CarSky.
+
+Vòng chờ ngây thơ là: gửi restart → poll tới khi `phase == Running` → báo xanh.
+Nhưng node **đang** ở `Running` từ trước. Nếu lệnh restart không ăn gì — sai
+`nodeKey`, route đổi, server nuốt lệnh — thì vòng lặp thấy `Running` **ngay ở
+vòng đầu** và kết luận thành công. Không có gì trong log để lộ ra rằng không có
+gì xảy ra cả.
+
+Đây là kiểu hỏng tệ nhất trong một pipeline deploy: **báo cáo thành công mà
+không đổi gì.** Nó tệ hơn fail thẳng, vì fail thì người ta đi sửa.
+
+Cách sửa — verify hai giai đoạn:
+
+```
+1. chờ phase RỜI Running   (tối đa 90s)   → chứng minh restart THẬT SỰ xảy ra
+2. chờ phase VỀ Running    (tối đa 300s)  → chứng minh nó sống lại được
+```
+
+Thiếu giai đoạn 1 thì giai đoạn 2 vô nghĩa. Áp dụng cho mọi thao tác "khởi động
+lại một thứ đang chạy", không riêng CarSky.
+
+> Chạy sau khi sửa: run
+> [31245949648](https://github.com/lcv-back/fpt-automotive-hackathon/actions/runs/31245949648)
+> xanh toàn bộ — PATCH ✅ restart ✅ verify ✅ rollback `skipped`. Node mang
+> digest `da1ea85e…` (`0.2.0`), 3 biến env nguyên vẹn, 22/22 node `Running`.
+
+⚠️ **Vẫn chưa xác minh được container đang chạy image nào.** Thứ chứng minh được
+là *blueprint đã ghi đúng digest*. Pod có kéo image mới về hay chưa thì không đọc
+được qua API: `container-exec` chết vì Conduit (mục 4), và node `VIVA ASR` không
+khai `exposedPorts` nên không có route HTTP tới `/health`. Muốn chắc thì bấm
+**Redeploy** trong Deployment Viewer — tài liệu mục 3.7 nói đổi image thì phải
+redeploy, và nút đó *"chỉ restart các node có thay đổi"*.
+
 ## 10. 🚫 API công khai KHÔNG tạo được pin `ETHERNET` — và hệ quả cho V2
 
 > ✅ **Kết luận của mục này ĐÚNG — đã kiểm lại 08/08 ở đường dẫn đúng (xem 9d).**
